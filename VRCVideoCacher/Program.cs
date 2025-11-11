@@ -28,7 +28,9 @@ internal static class Program
         const string elly = "Elly";
         const string natsumi = "Natsumi";
         const string haxy = "Haxy";
+        const string fynn = "Fynn9563";
         Logger.Information("VRCVideoCacher version {Version} created by {Elly}, {Natsumi}, {Haxy}", Version, elly, natsumi, haxy);
+        Logger.Information("Modified by {Fynn}", fynn);
         
         DataPath = OperatingSystem.IsWindows()
             ? CurrentProcessPath
@@ -134,6 +136,7 @@ internal static class Program
 
     private static void OnAppQuit()
     {
+        CacheManager.ClearCacheOnExit();
         FileTools.Restore();
         Logger.Information("Exiting...");
     }

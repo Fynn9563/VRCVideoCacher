@@ -61,11 +61,11 @@ public class ApiController : WebApiController
             return;
         }
 
-        var (isCached, filePath, fileName) = GetCachedFile(videoInfo.VideoId, avPro);
+        var (isCached, filePath, relativeUrl) = GetCachedFile(videoInfo, avPro);
         if (isCached)
         {
             File.SetLastWriteTimeUtc(filePath, DateTime.UtcNow);
-            var url = $"{ConfigManager.Config.ytdlWebServerURL}/{fileName}";
+            var url = $"{ConfigManager.Config.ytdlWebServerURL}/{relativeUrl}";
             Log.Information("Responding with Cached URL: {URL}", url);
             await HttpContext.SendStringAsync(url, "text/plain", Encoding.UTF8);
             return;
@@ -125,24 +125,28 @@ public class ApiController : WebApiController
         Log.Information("Responding with URL: {URL}", response);
         await HttpContext.SendStringAsync(response, "text/plain", Encoding.UTF8);
         // check if file is cached again to handle race condition
-        (isCached, _, _) = GetCachedFile(videoInfo.VideoId, avPro);
+        (isCached, _, _) = GetCachedFile(videoInfo, avPro);
         if (!isCached)
             VideoDownloader.QueueDownload(videoInfo);
     }
 
-    private static (bool isCached, string filePath, string fileName) GetCachedFile(string videoId, bool avPro)
+    private static (bool isCached, string filePath, string relativeUrl) GetCachedFile(VideoInfo videoInfo, bool avPro)
     {
         var ext = avPro ? "webm" : "mp4";
-        var fileName = $"{videoId}.{ext}";
-        var filePath = Path.Combine(CacheManager.CachePath, fileName);
+        var fileName = $"{videoInfo.VideoId}.{ext}";
+        var subdirPath = CacheManager.GetSubdirectoryPath(videoInfo.UrlType, videoInfo.Domain);
+        var filePath = Path.Combine(subdirPath, fileName);
         var isCached = File.Exists(filePath);
+
         if (avPro && !isCached)
         {
             // retry with .mp4
-            fileName = $"{videoId}.mp4";
-            filePath = Path.Combine(CacheManager.CachePath, fileName);
+            fileName = $"{videoInfo.VideoId}.mp4";
+            filePath = Path.Combine(subdirPath, fileName);
             isCached = File.Exists(filePath);
         }
-        return (isCached, filePath, fileName);
+
+        var relativeUrl = isCached ? CacheManager.GetRelativePath(videoInfo.UrlType, fileName, videoInfo.Domain) : string.Empty;
+        return (isCached, filePath, relativeUrl);
     }
 }

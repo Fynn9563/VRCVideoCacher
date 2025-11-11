@@ -51,6 +51,15 @@ public class VideoDownloader
                     if (ConfigManager.Config.CacheVRDancing)
                         await DownloadVideoWithId(queueItem);
                     break;
+                case UrlType.CustomDomain:
+                    if (ConfigManager.Config.CacheCustomDomains.Length > 0)
+                    {
+                        if (queueItem.IsStreaming)
+                            await DownloadCustomDomainWithYtdlp(queueItem);
+                        else
+                            await DownloadVideoWithId(queueItem);
+                    }
+                    break;
                 case UrlType.Other:
                     break;
                 default:
@@ -152,7 +161,8 @@ public class VideoDownloader
         Thread.Sleep(10);
         
         var fileName = $"{videoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
-        var filePath = Path.Combine(CacheManager.CachePath, fileName);
+        var subdirPath = CacheManager.GetSubdirectoryPath(UrlType.YouTube);
+        var filePath = Path.Combine(subdirPath, fileName);
         if (File.Exists(filePath))
         {
             Log.Error("File already exists, canceling...");
@@ -184,8 +194,9 @@ public class VideoDownloader
             return;
         }
 
-        CacheManager.AddToCache(fileName);
-        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{fileName}");
+        CacheManager.AddToCache(fileName, UrlType.YouTube);
+        var relativeUrl = CacheManager.GetRelativePath(UrlType.YouTube, fileName);
+        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativeUrl}");
     }
     
     private static async Task DownloadVideoWithId(VideoInfo videoInfo)
@@ -223,7 +234,13 @@ public class VideoDownloader
         await Task.Delay(10);
         
         var fileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
-        var filePath = Path.Combine(CacheManager.CachePath, fileName);
+        var subdirPath = CacheManager.GetSubdirectoryPath(videoInfo.UrlType, videoInfo.Domain);
+
+        // Create domain subdirectory if it doesn't exist
+        if (!string.IsNullOrEmpty(videoInfo.Domain))
+            Directory.CreateDirectory(subdirPath);
+
+        var filePath = Path.Combine(subdirPath, fileName);
         if (File.Exists(TempDownloadMp4Path))
         {
             File.Move(TempDownloadMp4Path, filePath);
@@ -237,6 +254,86 @@ public class VideoDownloader
             Log.Error("Failed to download Video: {URL}", url);
             return;
         }
-        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{fileName}");
+
+        CacheManager.AddToCache(fileName, videoInfo.UrlType, videoInfo.Domain);
+        var relativeUrl = CacheManager.GetRelativePath(videoInfo.UrlType, fileName, videoInfo.Domain);
+        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativeUrl}");
+    }
+
+    private static async Task DownloadCustomDomainWithYtdlp(VideoInfo videoInfo)
+    {
+        var url = videoInfo.VideoUrl;
+
+        if (File.Exists(TempDownloadMp4Path))
+        {
+            Log.Error("Temp file already exists, deleting...");
+            File.Delete(TempDownloadMp4Path);
+        }
+
+        Log.Information("Downloading Streaming Video: {URL}", url);
+
+        var process = new Process
+        {
+            StartInfo =
+            {
+                FileName = YtdlManager.YtdlPath,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+            }
+        };
+
+        process.StartInfo.Arguments = $"--encoding utf-8 -q -o \"{TempDownloadMp4Path}\" --no-playlist --no-progress -- \"{url}\"";
+
+        process.Start();
+        await process.WaitForExitAsync();
+        var error = await process.StandardError.ReadToEndAsync();
+        error = error.Trim();
+        if (process.ExitCode != 0)
+        {
+            Log.Error("Failed to download streaming video: {exitCode} {URL} {error}", process.ExitCode, url, error);
+            return;
+        }
+        Thread.Sleep(10);
+
+        var fileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
+        var subdirPath = CacheManager.GetSubdirectoryPath(UrlType.CustomDomain, videoInfo.Domain);
+
+        // Create domain subdirectory if it doesn't exist
+        if (!string.IsNullOrEmpty(videoInfo.Domain))
+            Directory.CreateDirectory(subdirPath);
+
+        var filePath = Path.Combine(subdirPath, fileName);
+        if (File.Exists(filePath))
+        {
+            Log.Error("File already exists, canceling...");
+            try
+            {
+                if (File.Exists(TempDownloadMp4Path))
+                    File.Delete(TempDownloadMp4Path);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to delete temp file: {ex}", ex.Message);
+            }
+            return;
+        }
+
+        if (File.Exists(TempDownloadMp4Path))
+        {
+            File.Move(TempDownloadMp4Path, filePath);
+        }
+        else
+        {
+            Log.Error("Failed to download streaming video: {URL}", url);
+            return;
+        }
+
+        CacheManager.AddToCache(fileName, UrlType.CustomDomain, videoInfo.Domain);
+        var relativeUrl = CacheManager.GetRelativePath(UrlType.CustomDomain, fileName, videoInfo.Domain);
+        Log.Information("Streaming Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativeUrl}");
     }
 }
