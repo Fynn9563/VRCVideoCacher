@@ -9,6 +9,7 @@ public class CacheManager
     private static readonly ILogger Log = Program.Logger.ForContext<CacheManager>();
     private static readonly ConcurrentDictionary<string, VideoCache> CachedAssets = new();
     public static readonly string CachePath;
+    private static readonly string LockFilePath;
 
     static CacheManager()
     {
@@ -19,8 +20,11 @@ public class CacheManager
         else
             CachePath = Path.Combine(Program.CurrentProcessPath, ConfigManager.Config.CachedAssetPath);
 
+        LockFilePath = Path.Combine(Program.DataPath, ".cache_lock");
+
         Log.Debug("Using cache path {CachePath}", CachePath);
         CreateSubdirectories();
+        CheckAndClearPreviousSession();
         BuildCache();
     }
 
@@ -73,9 +77,97 @@ public class CacheManager
     
     public static void Init()
     {
+        CreateLockFile();
         TryFlushCache();
     }
-    
+
+    private static void CheckAndClearPreviousSession()
+    {
+        if (File.Exists(LockFilePath))
+        {
+            Log.Information("Detected unclean shutdown from previous session. Checking if cache needs clearing...");
+            ClearCacheIfNeeded();
+            File.Delete(LockFilePath);
+        }
+    }
+
+    private static void CreateLockFile()
+    {
+        try
+        {
+            File.WriteAllText(LockFilePath, DateTime.UtcNow.ToString("O"));
+            Log.Debug("Created cache lock file");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Failed to create lock file: {Message}", ex.Message);
+        }
+    }
+
+    private static void ClearCacheIfNeeded()
+    {
+        var directoriesToClear = new List<(UrlType type, string path)>();
+
+        if (ConfigManager.Config.ClearYouTubeCacheOnExit)
+            directoriesToClear.Add((UrlType.YouTube, GetSubdirectoryPath(UrlType.YouTube)));
+        if (ConfigManager.Config.ClearPyPyDanceCacheOnExit)
+            directoriesToClear.Add((UrlType.PyPyDance, GetSubdirectoryPath(UrlType.PyPyDance)));
+        if (ConfigManager.Config.ClearVRDancingCacheOnExit)
+            directoriesToClear.Add((UrlType.VRDancing, GetSubdirectoryPath(UrlType.VRDancing)));
+
+        if (directoriesToClear.Count == 0 && ConfigManager.Config.ClearCustomDomainsOnExit.Length == 0)
+            return;
+
+        Log.Information("Clearing cache from previous session...");
+
+        foreach (var (type, path) in directoriesToClear)
+        {
+            try
+            {
+                if (Directory.Exists(path))
+                {
+                    var files = Directory.GetFiles(path);
+                    foreach (var file in files)
+                    {
+                        File.Delete(file);
+                    }
+                    Log.Information("Cleared {Type} cache ({Count} files)", type, files.Length);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to clear {Type} cache: {Error}", type, ex.Message);
+            }
+        }
+
+        if (ConfigManager.Config.ClearCustomDomainsOnExit.Length > 0)
+        {
+            var customDomainsPath = Path.Combine(CachePath, "CustomDomains");
+            foreach (var domain in ConfigManager.Config.ClearCustomDomainsOnExit)
+            {
+                try
+                {
+                    var domainPath = Path.Combine(customDomainsPath, domain);
+                    if (Directory.Exists(domainPath))
+                    {
+                        var files = Directory.GetFiles(domainPath);
+                        foreach (var file in files)
+                        {
+                            File.Delete(file);
+                        }
+                        Log.Information("Cleared CustomDomain cache for {Domain} ({Count} files)", domain, files.Length);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Failed to clear CustomDomain cache for {Domain}: {Error}", domain, ex.Message);
+                }
+            }
+        }
+
+        Log.Information("Cache cleanup from previous session completed.");
+    }
+
     private static void BuildCache()
     {
         CachedAssets.Clear();
@@ -249,5 +341,22 @@ public class CacheManager
         }
 
         Log.Information("Cache cleanup completed.");
+        RemoveLockFile();
+    }
+
+    private static void RemoveLockFile()
+    {
+        try
+        {
+            if (File.Exists(LockFilePath))
+            {
+                File.Delete(LockFilePath);
+                Log.Debug("Removed cache lock file on clean shutdown");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Failed to remove lock file: {Message}", ex.Message);
+        }
     }
 }

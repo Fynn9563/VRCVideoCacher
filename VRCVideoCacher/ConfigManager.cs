@@ -35,6 +35,9 @@ public class ConfigManager
         if (!UtilsPath.EndsWith("Utils"))
             UtilsPath = Path.Combine(UtilsPath, "Utils");
 
+        if (!Path.IsPathRooted(UtilsPath))
+            UtilsPath = Path.Combine(Program.DataPath, UtilsPath);
+
         Directory.CreateDirectory(UtilsPath);
         
         Log.Information("Loaded config.");
@@ -108,13 +111,15 @@ public class ConfigModel
     public bool ytdlUseCookies = true;
     public bool ytdlAutoUpdate = true;
     public string ytdlAdditionalArgs = string.Empty;
-    public string ytdlDubLanguage = string.Empty;
+    public string ytdlArgsOverride = string.Empty;
+    public string ytdlDubLanguage = "en";
     public int ytdlDelay = 0;
+    public string avproOverride = "default";
     public string CachedAssetPath = "";
     public string[] BlockedUrls = ["https://na2.vrdancing.club/sampleurl.mp4"];
     public bool CacheYouTube = true;
     public int CacheYouTubeMaxResolution = 2160;
-    public int CacheYouTubeMaxLength = 120;
+    public int CacheYouTubeMaxLength = 180;
     public float CacheMaxSizeInGb = 0;
     public bool CachePyPyDance = true;
     public bool CacheVRDancing = true;

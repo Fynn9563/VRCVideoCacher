@@ -107,7 +107,7 @@ public class VideoDownloader
 
         Log.Information("Downloading YouTube Video: {URL}", url);
 
-        var additionalArgs = ConfigManager.Config.ytdlAdditionalArgs;
+        var additionalArgs = YtdlArgsHelper.GetYtdlArgs();
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";

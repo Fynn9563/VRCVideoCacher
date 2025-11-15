@@ -37,9 +37,10 @@ public class ApiController : WebApiController
     [Route(HttpVerbs.Get, "/getvideo")]
     public async Task GetVideo()
     {
-        // escape double quotes for our own safety
         var requestUrl = Request.QueryString["url"]?.Replace("\"", "%22").Trim();
-        var avPro = string.Compare(Request.QueryString["avpro"], "true", StringComparison.OrdinalIgnoreCase) == 0;
+        var originalAvPro = string.Compare(Request.QueryString["avpro"], "true", StringComparison.OrdinalIgnoreCase) == 0;
+        var avPro = YtdlArgsHelper.ApplyAvproOverride(originalAvPro, out var wasOverriddenToFalse);
+
         if (string.IsNullOrEmpty(requestUrl))
         {
             Log.Error("No URL provided.");
@@ -112,7 +113,22 @@ public class ApiController : WebApiController
         if (!success)
         {
             Log.Error("Get URL: {error}", response);
-            // only send the error back if it's for YouTube, otherwise let it play the request URL normally
+
+            if (videoInfo.UrlType == UrlType.YouTube && wasOverriddenToFalse && !avPro)
+            {
+                Log.Information("Retrying YouTube video with original avpro setting due to failure with avpro=false override");
+                var (retryResponse, retrySuccess) = await VideoId.GetUrl(videoInfo, originalAvPro);
+                if (retrySuccess)
+                {
+                    Log.Information("Retry successful, responding with URL: {URL}", retryResponse);
+                    await HttpContext.SendStringAsync(retryResponse, "text/plain", Encoding.UTF8);
+                    (isCached, _, _) = GetCachedFile(videoInfo, originalAvPro);
+                    if (!isCached)
+                        VideoDownloader.QueueDownload(videoInfo);
+                    return;
+                }
+            }
+
             if (videoInfo.UrlType == UrlType.YouTube)
             {
                 HttpContext.Response.StatusCode = 500;
