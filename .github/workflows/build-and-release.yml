@@ -3,18 +3,14 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'
-      - '[0-9]+.[0-9]+.[0-9]+'
-      - '[0-9]+.[0-9]+.[0-9]+-*'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release (e.g., 2025.11.5)'
-        required: true
-        type: string
+      - '*'
 
 permissions:
   contents: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -25,25 +21,42 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nuget/packages
+            ${{ github.workspace }}/**/obj
+            ${{ github.workspace }}/**/bin
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.sln', '**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Cache .NET tools
+        id: cache-dotnet-tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.dotnet/tools
+          key: ${{ runner.os }}-dotnet-tools-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-dotnet-tools-
+
       - name: Setup .NET
+        if: steps.cache-dotnet-tools.outputs.cache-hit != 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
 
-      - name: Determine version
+      - name: Restore dependencies
+        run: dotnet restore VRCVideoCacher.sln --verbosity minimal
+
+      - name: Extract version from tag
         id: version
         shell: pwsh
         run: |
-          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
-            $version = "${{ github.event.inputs.version }}"
-            echo "VERSION=$version" >> $env:GITHUB_OUTPUT
-            echo "TAG_NAME=$version" >> $env:GITHUB_OUTPUT
-          } else {
-            $tag = "${{ github.ref_name }}"
-            $version = $tag -replace '^v', ''
-            echo "VERSION=$version" >> $env:GITHUB_OUTPUT
-            echo "TAG_NAME=$tag" >> $env:GITHUB_OUTPUT
-          }
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^v', ''
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
           echo "Building version: $version"
 
       - name: Build yt-dlp-stub for Windows
@@ -101,35 +114,12 @@ jobs:
         run: |
           Move-Item -Path "Build/VRCVideoCacher" -Destination "Build/VRCVideoCacher-linux" -Force
 
-      - name: Generate release notes
-        id: release_notes
-        shell: pwsh
-        run: |
-          $version = "${{ steps.version.outputs.VERSION }}"
-          $notes = @"
-          ## VRCVideoCacher $version
-
-          ### Downloads
-          - **Windows (x64)**: VRCVideoCacher.exe
-          - **Linux (x64)**: VRCVideoCacher-linux
-
-          ### Installation
-          1. Download the appropriate executable for your platform
-          2. Run the executable
-          3. Follow the first-run setup prompts
-
-          ### Changes
-          See commit history for details.
-          "@
-
-          $notes | Out-File -FilePath release_notes.md -Encoding utf8
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.TAG_NAME }}
+          tag_name: ${{ github.ref_name }}
           name: VRCVideoCacher ${{ steps.version.outputs.VERSION }}
-          body_path: release_notes.md
+          generate_release_notes: true
           draft: false
           prerelease: ${{ contains(steps.version.outputs.VERSION, '-dev') || contains(steps.version.outputs.VERSION, '-beta') || contains(steps.version.outputs.VERSION, '-alpha') }}
           files: |
