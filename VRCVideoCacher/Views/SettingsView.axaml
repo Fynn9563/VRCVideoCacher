@@ -194,12 +194,16 @@
                 </StackPanel>
             </Border>
 
-            <!-- Updates -->
+            <!-- Updates & Startup -->
             <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="Updates" FontWeight="SemiBold" FontSize="16"/>
+                    <TextBlock Text="Updates &amp; Startup" FontWeight="SemiBold" FontSize="16"/>
 
                     <CheckBox IsChecked="{Binding AutoUpdate}" Content="Auto-update VRCVideoCacher"/>
+                    <CheckBox IsChecked="{Binding VrcxAutoStart}"
+                              Content="Start with VRCX (Windows only)"
+                              IsVisible="{Binding IsVrcxInstalled}"
+                              ToolTip.Tip="Automatically launch VRCVideoCacher when VRCX starts"/>
                 </StackPanel>
             </Border>
 

@@ -66,6 +66,13 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _autoUpdate;
 
+    // VRCX Auto-start (Windows only, immediate effect - not saved to config)
+    [ObservableProperty]
+    private bool _vrcxAutoStart;
+
+    [ObservableProperty]
+    private bool _isVrcxInstalled;
+
     // Advanced Settings
     [ObservableProperty]
     private string _ytdlArgsOverride = string.Empty;
@@ -134,6 +141,13 @@ public partial class SettingsViewModel : ViewModelBase
         PatchVRC = config.PatchVRC;
         AutoUpdate = config.AutoUpdate;
 
+        // VRCX Auto-start (Windows only)
+        if (OperatingSystem.IsWindows())
+        {
+            IsVrcxInstalled = AutoStartShortcut.IsVrcxInstalled();
+            VrcxAutoStart = AutoStartShortcut.IsStartupEnabled();
+        }
+
         // Advanced Settings
         YtdlArgsOverride = config.ytdlArgsOverride;
         AvproOverride = config.avproOverride;
@@ -196,6 +210,17 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnClearYouTubeCacheOnExitChanged(bool value) => HasChanges = true;
     partial void OnClearPyPyDanceCacheOnExitChanged(bool value) => HasChanges = true;
     partial void OnClearVRDancingCacheOnExitChanged(bool value) => HasChanges = true;
+
+    partial void OnVrcxAutoStartChanged(bool value)
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        if (value)
+            AutoStartShortcut.CreateShortcut();
+        else
+            AutoStartShortcut.RemoveShortcut();
+    }
 
     [RelayCommand]
     private void SaveSettings()
