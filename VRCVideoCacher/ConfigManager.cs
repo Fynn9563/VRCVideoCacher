@@ -88,6 +88,16 @@ public class ConfigManager
             Config.CacheVRDancing = vrDancingPyPyChoice;
             Config.CachePyPyDance = vrDancingPyPyChoice;
 
+            if (GetUserConfirmation("Would you like to cache/download music/videos from custom domains?", false))
+            {
+                Log.Information("Custom domains can be configured in Config.json under 'CacheCustomDomains'.");
+                Log.Information("Example: \"CacheCustomDomains\": [\"cdn.example.com\", \"media.yourdomain.com\"]");
+            }
+
+            Log.Information("Would you like to use the companion extension to fetch youtube cookies? (This will fix bot errors, requires installation of the extension)");
+            Log.Information("Extension can be found here: https://github.com/clienthax/VRCVideoCacherBrowserExtension");
+            Config.ytdlUseCookies = GetUserConfirmation("", true);
+
             Config.PatchResonite = GetUserConfirmation("Would you like to enable Resonite support?", false);
         }
 
