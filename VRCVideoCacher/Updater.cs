@@ -82,13 +82,12 @@ public class Updater
             if (asset.name != FileName)
                 continue;
 
-            // Clean up any leftover files from previous update attempts
-            if (File.Exists(BackupFilePath))
-                File.Delete(BackupFilePath);
+            // Clean up any leftover temp file from previous update attempts
             if (File.Exists(TempFilePath))
                 File.Delete(TempFilePath);
 
-            File.Move(FilePath, BackupFilePath);
+            // Use overwrite to handle case where backup file already exists
+            File.Move(FilePath, BackupFilePath, overwrite: true);
             
             try
             {
