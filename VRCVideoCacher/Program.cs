@@ -1,14 +1,17 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Security.Cryptography;
+using Avalonia;
 using Serilog;
 using Serilog.Templates;
 using Serilog.Templates.Themes;
 using VRCVideoCacher.API;
+using VRCVideoCacher.Services;
 using VRCVideoCacher.YTDL;
 
 namespace VRCVideoCacher;
 
-public static class Program
+internal sealed class Program
 {
     public static string YtdlpHash = string.Empty;
     public const string Version = "2026.1.9";
@@ -17,13 +20,56 @@ public static class Program
     public static readonly string DataPath = OperatingSystem.IsWindows()
         ? CurrentProcessPath
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VRCVideoCacher");
-
-    /// <summary>
-    /// Fired when YouTube cookies are received from the browser extension.
-    /// </summary>
     public static event Action? OnCookiesUpdated;
+    
+    [STAThread]
+    public static void Main(string[] args)
+    {
+        int count = Process.GetProcessesByName("VRCVideoCacher").Length;
+        if (count  > 1)
+        {
+            Console.WriteLine("Application is already running ");
+            Environment.Exit(0);
+        }
+        
+        // Check for --nogui flag
+        if (args.Contains("--nogui"))
+        {
+            // Run backend only (console mode)
+            InitVRCVideoCacher().GetAwaiter().GetResult();
+            return;
+        }
 
-    public static async Task Main(string[] args)
+        // Configure Serilog with UI sink
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.Console(new ExpressionTemplate(
+                "[{@t:HH:mm:ss} {@l:u3} {Coalesce(Substring(SourceContext, LastIndexOf(SourceContext, '.') + 1),'<none>')}] {@m}\n{@x}",
+                theme: TemplateTheme.Literate))
+            .WriteTo.Sink(new UiLogSink())
+            .CreateLogger();
+
+        // Start backend on background thread
+        Task.Run(async () =>
+        {
+            try
+            {
+                await InitVRCVideoCacher();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Backend error "+ex.Message+" "+ex.StackTrace);
+            }
+        });
+
+        // Give the backend a moment to initialize
+        Thread.Sleep(1000);
+
+        // Start the UI
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
+
+    public static async Task InitVRCVideoCacher()
     {
         try { Console.Title = $"VRCVideoCacher v{Version}"; } catch { /* GUI mode, no console */ }
 
@@ -88,7 +134,13 @@ public static class Program
         
         await Task.Delay(-1);
     }
-
+    
+    public static AppBuilder BuildAvaloniaApp()
+        => AppBuilder.Configure<App>()
+            .UsePlatformDetect()
+            .WithInterFont()
+            .LogToTrace();
+    
     public static bool IsCookiesEnabledAndValid()
     {
         if (!ConfigManager.Config.ytdlUseCookies)
@@ -146,10 +198,7 @@ public static class Program
         FileTools.RestoreAllYtdl();
         Logger.Information("Exiting...");
     }
-
-    /// <summary>
-    /// Notifies listeners that cookies have been updated.
-    /// </summary>
+    
     public static void NotifyCookiesUpdated()
     {
         OnCookiesUpdated?.Invoke();

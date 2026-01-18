@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using Semver;
 using Serilog;
 using VRCVideoCacher.Models;
+using VRCVideoCacher;
 
 namespace VRCVideoCacher;
 
