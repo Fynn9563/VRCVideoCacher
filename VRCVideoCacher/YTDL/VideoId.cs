@@ -47,16 +47,16 @@ public class VideoId
         
         if (url.StartsWith("http://api.pypy.dance/video"))
         {
-            var req = new HttpRequestMessage(HttpMethod.Head, url);
-            var res = await HttpClient.SendAsync(req);
-            var videoUrl = res.RequestMessage?.RequestUri?.ToString();
-            if (string.IsNullOrEmpty(videoUrl))
-            {
-                Log.Error("Failed to get video ID from PypyDance URL: {URL}", url);
-                return null;
-            }
             try
             {
+                using var req = new HttpRequestMessage(HttpMethod.Head, url);
+                using var res = await HttpClient.SendAsync(req);
+                var videoUrl = res.RequestMessage?.RequestUri?.ToString();
+                if (string.IsNullOrEmpty(videoUrl))
+                {
+                    Log.Error("Failed to get video ID from PypyDance URL: {URL} Response: {Response} - {Data}", url, res.StatusCode, await res.Content.ReadAsStringAsync());
+                    return null;
+                }
                 var uri = new Uri(videoUrl);
                 var fileName = Path.GetFileName(uri.LocalPath);
                 var pypyVideoId = !fileName.Contains('.') ? fileName : fileName.Split('.')[0];
@@ -320,12 +320,6 @@ public class VideoId
                 Log.Error("Fix this error by following these instructions: https://github.com/clienthax/VRCVideoCacherBrowserExtension");
 
             return new Tuple<string, bool>(error, false);
-        }
-        
-        if (videoInfo.UrlType == UrlType.YouTube && ConfigManager.Config.ytdlDelay > 0)
-        {
-            Log.Information("Delaying YouTube URL response for configured {delay} seconds, this can help with video errors, don't ask why", ConfigManager.Config.ytdlDelay);
-            await Task.Delay(ConfigManager.Config.ytdlDelay * 1000);
         }
 
         return new Tuple<string, bool>(output, true);
