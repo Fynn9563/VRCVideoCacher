@@ -34,6 +34,7 @@ public class ApiController : WebApiController
         await HttpContext.SendStringAsync("Cookies received.", "text/plain", Encoding.UTF8);
 
         Log.Information("Received Youtube cookies from browser extension.");
+        Program.NotifyCookiesUpdated();
         if (!ConfigManager.Config.ytdlUseCookies)
             Log.Warning("Config is NOT set to use cookies from browser extension.");
     }
@@ -76,6 +77,13 @@ public class ApiController : WebApiController
             Log.Warning("URL Is Blocked: {url}", requestUrl);
             requestUrl = ConfigManager.Config.BlockRedirect;
         }
+
+        // Apply avproOverride from config
+        avPro = YtdlArgsHelper.GetEffectiveAvPro(avPro);
+
+        // Check for custom domain caching
+        string? customDomain = null;
+        CacheManager.IsCustomDomainUrl(requestUrl, out customDomain);
 
         var videoInfo = await VideoId.GetVideoId(requestUrl, avPro);
         if (videoInfo == null)
@@ -192,7 +200,7 @@ public class ApiController : WebApiController
         // check if file is cached again to handle race condition
         (isCached, _, _) = GetCachedFile(videoInfo, avPro);
         if (!isCached)
-            VideoDownloader.QueueDownload(videoInfo);
+            VideoDownloader.QueueDownload(videoInfo, customDomain);
     }
 
     private static (bool isCached, string filePath, string relativeUrl) GetCachedFile(VideoInfo videoInfo, bool avPro)

@@ -4,12 +4,28 @@ using VRCVideoCacher.Models;
 
 namespace VRCVideoCacher;
 
+public enum CacheChangeType
+{
+    Added,
+    Removed,
+    Cleared
+}
+
 public class CacheManager
 {
     private static readonly ILogger Log = Program.Logger.ForContext<CacheManager>();
     private static readonly ConcurrentDictionary<string, VideoCache> CachedAssets = new();
     public static readonly string CachePath;
     private static readonly string LockFilePath;
+
+    // Events for UI
+    public static event Action<string, CacheChangeType>? OnCacheChanged;
+
+    // Subdirectory names for different URL types
+    private const string YouTubeSubdir = "YouTube";
+    private const string PyPyDanceSubdir = "PyPyDance";
+    private const string VRDancingSubdir = "VRDancing";
+    private const string CustomDomainsSubdir = "CustomDomains";
 
     static CacheManager()
     {
@@ -222,7 +238,7 @@ public class CacheManager
     {
         if (ConfigManager.Config.CacheMaxSizeInGb <= 0f)
             return;
-        
+
         var maxCacheSize = (long)(ConfigManager.Config.CacheMaxSizeInGb * 1024f * 1024f * 1024f);
         var cacheSize = GetCacheSize();
         if (cacheSize < maxCacheSize)
@@ -235,8 +251,15 @@ public class CacheManager
             var filePath = Path.Combine(CachePath, oldestFile.Value.FileName);
             if (File.Exists(filePath))
             {
-                File.Delete(filePath);
-                cacheSize -= oldestFile.Value.Size;
+                try
+                {
+                    File.Delete(filePath);
+                    cacheSize -= oldestFile.Value.Size;
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Failed to delete {FileName} during cache flush: {Error}", oldestFile.Value.FileName, ex.Message);
+                }
             }
             CachedAssets.TryRemove(oldestFile.Key, out _);
             oldestFiles.RemoveAt(0);
