@@ -11,6 +11,17 @@ internal sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        bool createdNew = true;
+        using (Mutex mutex = new Mutex(true, "VRCVideoCacher", out createdNew))
+        {
+            if (!createdNew)
+            {
+                Console.WriteLine("Application is already running.");
+                Environment.Exit(0);
+            }
+            
+        }
+        
         // Check for --nogui flag
         if (args.Contains("--nogui"))
         {
