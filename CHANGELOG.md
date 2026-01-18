@@ -1,7 +1,8 @@
 # Changelog
 
 ## 2026.1.20
-- Fix updater failing when backup file already exists
+- Fix update loop caused by version mismatch in 2026.1.19 release (forgot to update version in `Program.cs`)
+- Fix updater failing when backup file already exists (use versioned backup filename)
 
 ## 2026.1.19
 - Fix custom domain folder naming (use `vr-m.net` instead of `vr-m_net`)

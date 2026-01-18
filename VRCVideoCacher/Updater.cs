@@ -18,7 +18,7 @@ public class Updater
     private static readonly ILogger Log = Program.Logger.ForContext<Updater>();
     private static readonly string FileName =  OperatingSystem.IsWindows() ? "VRCVideoCacher.exe" : "VRCVideoCacher";
     private static readonly string FilePath = Path.Combine(Program.CurrentProcessPath, FileName);
-    private static readonly string BackupFilePath = Path.Combine(Program.CurrentProcessPath, "VRCVideoCacher.bkp");
+    private static readonly string BackupFilePath = Path.Combine(Program.CurrentProcessPath, $"VRCVideoCacher_{Program.Version}.bkp");
     private static readonly string TempFilePath = Path.Combine(Program.CurrentProcessPath, "VRCVideoCacher.Temp");
 
     public static async Task CheckForUpdates()
@@ -66,12 +66,42 @@ public class Updater
         
     public static void Cleanup()
     {
-        if (File.Exists(BackupFilePath))
+        try
         {
-            File.Delete(BackupFilePath);
-            // silly temporary config reset to test video prefetch
-            ConfigManager.Config.ytdlDelay = 0;
-            ConfigManager.TrySaveConfig();
+            // Clean up any versioned backup files (VRCVideoCacher_*.bkp)
+            var backupFiles = Directory.GetFiles(Program.CurrentProcessPath, "VRCVideoCacher_*.bkp");
+            foreach (var backupFile in backupFiles)
+            {
+                try
+                {
+                    File.Delete(backupFile);
+                    // silly temporary config reset to test video prefetch
+                    ConfigManager.Config.ytdlDelay = 0;
+                    ConfigManager.TrySaveConfig();
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+            }
+
+            // Also clean up old non-versioned backup file if it exists
+            var oldBackupPath = Path.Combine(Program.CurrentProcessPath, "VRCVideoCacher.bkp");
+            if (File.Exists(oldBackupPath))
+            {
+                try
+                {
+                    File.Delete(oldBackupPath);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+            }
+        }
+        catch
+        {
+            // Ignore all cleanup errors
         }
     }
         
