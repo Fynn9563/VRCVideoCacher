@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026.1.18.1
+- Fix custom domain folder naming (use `vr-m.net` instead of `vr-m_net`)
+
 ## 2026.1.18
 - Merge UI project into main VRCVideoCacher project (single executable)
 - Add 360p resolution option

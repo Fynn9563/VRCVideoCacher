@@ -371,7 +371,7 @@ public class CacheManager
         {
             if (url.Contains(customDomain, StringComparison.OrdinalIgnoreCase))
             {
-                domain = customDomain.Replace(".", "_");
+                domain = customDomain;
                 return true;
             }
         }
