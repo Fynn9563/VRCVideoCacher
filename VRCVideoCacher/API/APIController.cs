@@ -88,6 +88,13 @@ public class ApiController : WebApiController
             return;
         }
 
+        if (source == "resonite")
+        {
+            Log.Information("Request sent from resonite sending json.");
+            await HttpContext.SendStringAsync(await VideoId.GetURLResonite(requestUrl), "text/plain", Encoding.UTF8);
+            return;
+        }
+        
         var (isCached, filePath, fileName) = GetCachedFile(videoInfo.VideoId, avPro);
         if (isCached)
         {
@@ -109,13 +116,6 @@ public class ApiController : WebApiController
         {
             Log.Information("URL Is Mighty Gym: Bypassing.");
             await HttpContext.SendStringAsync(string.Empty, "text/plain", Encoding.UTF8);
-            return;
-        }
-
-        if (source == "resonite")
-        {
-            Log.Information("Request sent from resonite sending json.");
-            await HttpContext.SendStringAsync(await VideoId.GetURLResonite(requestUrl), "text/plain", Encoding.UTF8);
             return;
         }
 
