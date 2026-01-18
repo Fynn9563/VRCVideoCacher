@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using VRCVideoCacher.Models;
 using VRCVideoCacher.Services;
+using VRCVideoCacher.YTDL;
 
 namespace VRCVideoCacher.ViewModels;
 
@@ -26,41 +27,96 @@ public partial class CacheItemViewModel : ViewModelBase
 
     public string SizeFormatted => FormatSize(Size);
 
+    public bool IsYouTube => Category == "YouTube";
+
+    public bool IsAudioFile => Extension.Equals(".mp3", StringComparison.OrdinalIgnoreCase) ||
+                               Extension.Equals(".m4a", StringComparison.OrdinalIgnoreCase) ||
+                               Extension.Equals(".ogg", StringComparison.OrdinalIgnoreCase) ||
+                               Extension.Equals(".flac", StringComparison.OrdinalIgnoreCase) ||
+                               Extension.Equals(".wav", StringComparison.OrdinalIgnoreCase);
+
+    // Shows music icon when it's an audio file without a thumbnail
+    [ObservableProperty]
+    private bool _showMusicIcon;
+
     // Event to notify parent when item is deleted
     public event Action<CacheItemViewModel>? OnDeleted;
 
     public async Task LoadMetadataAsync()
     {
-        // Load title
-        var title = await YouTubeMetadataService.GetVideoTitleAsync(VideoId);
-        if (!string.IsNullOrEmpty(title))
+        if (IsYouTube)
         {
-            Title = title;
-            OnPropertyChanged(nameof(DisplayTitle));
-        }
+            // Load YouTube title
+            var title = await YouTubeMetadataService.GetVideoTitleAsync(VideoId);
+            if (!string.IsNullOrEmpty(title))
+            {
+                Title = title;
+                OnPropertyChanged(nameof(DisplayTitle));
+            }
 
-        // Load and cache thumbnail
-        var thumbnailPath = await YouTubeMetadataService.GetCachedThumbnailAsync(VideoId);
-        if (!string.IsNullOrEmpty(thumbnailPath))
-        {
-            ThumbnailSource = thumbnailPath;
+            // Load and cache YouTube thumbnail
+            var thumbnailPath = await YouTubeMetadataService.GetCachedThumbnailAsync(VideoId);
+            if (!string.IsNullOrEmpty(thumbnailPath))
+            {
+                ThumbnailSource = thumbnailPath;
+            }
+            else
+            {
+                // Fallback to remote URL if caching failed
+                ThumbnailSource = $"https://img.youtube.com/vi/{VideoId}/mqdefault.jpg";
+            }
         }
         else
         {
-            // Fallback to remote URL if caching failed
-            ThumbnailSource = $"https://img.youtube.com/vi/{VideoId}/mqdefault.jpg";
+            // For non-YouTube videos, extract thumbnail from video file
+            var videoFilePath = Path.Combine(CacheManager.CachePath, FileName);
+            var thumbnailPath = await YouTubeMetadataService.ExtractVideoThumbnailAsync(videoFilePath, VideoId, Category);
+
+            if (thumbnailPath == YouTubeMetadataService.AudioOnlyMarker)
+            {
+                // File is audio-only (even if extension says .mp4) - show music icon
+                ShowMusicIcon = true;
+            }
+            else if (!string.IsNullOrEmpty(thumbnailPath))
+            {
+                ThumbnailSource = thumbnailPath;
+            }
+            else if (IsAudioFile)
+            {
+                // Fallback: show music icon for known audio extensions without thumbnails
+                ShowMusicIcon = true;
+            }
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsYouTube))]
     private void OpenOnYouTube()
     {
+        if (!IsYouTube) return;
+
         var url = $"https://www.youtube.com/watch?v={VideoId}";
         try
         {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
                 FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch { /* Ignore errors */ }
+    }
+
+    [RelayCommand]
+    private void OpenInMediaPlayer()
+    {
+        var filePath = Path.Combine(CacheManager.CachePath, FileName);
+        if (!File.Exists(filePath)) return;
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = filePath,
                 UseShellExecute = true
             });
         }
@@ -105,6 +161,9 @@ public partial class CacheBrowserViewModel : ViewModelBase
     private string _searchFilter = string.Empty;
 
     [ObservableProperty]
+    private string _selectedCategory = "All";
+
+    [ObservableProperty]
     private CacheItemViewModel? _selectedItem;
 
     [ObservableProperty]
@@ -112,11 +171,13 @@ public partial class CacheBrowserViewModel : ViewModelBase
 
     public ObservableCollection<CacheItemViewModel> CachedVideos { get; } = [];
     public ObservableCollection<CacheItemViewModel> FilteredVideos { get; } = [];
+    public ObservableCollection<string> Categories { get; } = ["All"];
 
     public CacheBrowserViewModel()
     {
         RefreshCache();
         CacheManager.OnCacheChanged += OnCacheChanged;
+        VideoDownloader.OnDownloadCompleted += OnDownloadCompleted;
     }
 
     private void OnCacheChanged(string fileName, CacheChangeType changeType)
@@ -124,7 +185,18 @@ public partial class CacheBrowserViewModel : ViewModelBase
         Dispatcher.UIThread.InvokeAsync(RefreshCache);
     }
 
+    private void OnDownloadCompleted(VideoInfo video, bool success)
+    {
+        if (success)
+            Dispatcher.UIThread.InvokeAsync(RefreshCache);
+    }
+
     partial void OnSearchFilterChanged(string value)
+    {
+        ApplyFilter();
+    }
+
+    partial void OnSelectedCategoryChanged(string value)
     {
         ApplyFilter();
     }
@@ -134,16 +206,25 @@ public partial class CacheBrowserViewModel : ViewModelBase
         FilteredVideos.Clear();
 
         var filter = SearchFilter?.ToLowerInvariant() ?? string.Empty;
+        var categoryFilter = SelectedCategory ?? "All";
+
         foreach (var video in CachedVideos)
         {
-            if (string.IsNullOrEmpty(filter) ||
-                video.FileName.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
-                video.VideoId.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
-                video.Category.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
-                video.DisplayTitle.Contains(filter, StringComparison.OrdinalIgnoreCase))
+            // Category filter
+            if (categoryFilter != "All" && video.Category != categoryFilter)
+                continue;
+
+            // Text search filter
+            if (!string.IsNullOrEmpty(filter) &&
+                !video.FileName.Contains(filter, StringComparison.OrdinalIgnoreCase) &&
+                !video.VideoId.Contains(filter, StringComparison.OrdinalIgnoreCase) &&
+                !video.Category.Contains(filter, StringComparison.OrdinalIgnoreCase) &&
+                !video.DisplayTitle.Contains(filter, StringComparison.OrdinalIgnoreCase))
             {
-                FilteredVideos.Add(video);
+                continue;
             }
+
+            FilteredVideos.Add(video);
         }
 
         StatusText = $"{FilteredVideos.Count} of {CachedVideos.Count} videos";
@@ -157,6 +238,7 @@ public partial class CacheBrowserViewModel : ViewModelBase
 
         var cachedAssets = CacheManager.GetCachedAssets();
         var itemsToLoad = new List<CacheItemViewModel>();
+        var foundCategories = new HashSet<string>();
 
         foreach (var (fileName, cache) in cachedAssets.OrderByDescending(x => x.Value.LastModified))
         {
@@ -182,6 +264,9 @@ public partial class CacheBrowserViewModel : ViewModelBase
                 }
             }
 
+            if (!string.IsNullOrEmpty(category))
+                foundCategories.Add(category);
+
             var item = new CacheItemViewModel
             {
                 FileName = fileName,
@@ -198,6 +283,17 @@ public partial class CacheBrowserViewModel : ViewModelBase
             CachedVideos.Add(item);
             itemsToLoad.Add(item);
         }
+
+        // Update categories list
+        var previousSelection = SelectedCategory;
+        Categories.Clear();
+        Categories.Add("All");
+        foreach (var cat in foundCategories.OrderBy(c => c))
+        {
+            Categories.Add(cat);
+        }
+        // Restore selection if still valid, otherwise default to "All"
+        SelectedCategory = Categories.Contains(previousSelection) ? previousSelection : "All";
 
         ApplyFilter();
 

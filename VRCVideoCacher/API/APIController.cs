@@ -81,9 +81,6 @@ public class ApiController : WebApiController
             requestUrl = ConfigManager.Config.BlockRedirect;
         }
 
-        // Apply avproOverride from config
-        avPro = YtdlArgsHelper.GetEffectiveAvPro(avPro);
-
         // Check for custom domain caching
         string? customDomain = null;
         CacheManager.IsCustomDomainUrl(requestUrl, out customDomain);
@@ -140,11 +137,21 @@ public class ApiController : WebApiController
             return;
         }
 
-        // bypass vfi - cinema 
+        // bypass vfi - cinema
         if (requestUrl.StartsWith("https://virtualfilm.institute"))
         {
             Log.Information("URL Is VFI -Cinema: Bypassing.");
             await HttpContext.SendStringAsync(string.Empty, "text/plain", Encoding.UTF8);
+            return;
+        }
+
+        // For custom domain streaming URLs (m3u8/mpd), skip yt-dlp and use the URL directly
+        if (videoInfo.UrlType == UrlType.CustomDomain && videoInfo.IsStreaming)
+        {
+            Log.Information("Custom domain streaming URL, using direct URL: {URL}", videoInfo.VideoUrl);
+            await VideoTools.Prefetch(videoInfo.VideoUrl, YoutubePrefetchMaxRetries);
+            await HttpContext.SendStringAsync(videoInfo.VideoUrl, "text/plain", Encoding.UTF8);
+            VideoDownloader.QueueDownload(videoInfo, customDomain);
             return;
         }
 
@@ -195,6 +202,18 @@ public class ApiController : WebApiController
             {
                 Log.Information("Delaying YouTube URL response for configured {delay} seconds, this can help with video errors, don't ask why", ConfigManager.Config.ytdlDelay);
                 await Task.Delay(ConfigManager.Config.ytdlDelay * 1000);
+            }
+        }
+        else if (videoInfo.UrlType == UrlType.CustomDomain)
+        {
+            var isPrefetchSuccessful = await VideoTools.Prefetch(response, YoutubePrefetchMaxRetries);
+
+            if (!isPrefetchSuccessful && avPro)
+            {
+                Log.Warning("Prefetch failed with AVPro for custom domain, retrying without AVPro.");
+                avPro = false;
+                (response, success) = await VideoId.GetUrl(videoInfo, avPro);
+                await VideoTools.Prefetch(response, YoutubePrefetchMaxRetries);
             }
         }
 

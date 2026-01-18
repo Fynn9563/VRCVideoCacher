@@ -78,10 +78,10 @@ public class VideoDownloader
                 case UrlType.CustomDomain:
                     if (ConfigManager.Config.CacheCustomDomains.Length > 0)
                     {
-                        if (queueItem.IsStreaming)
-                            await DownloadCustomDomainWithYtdlp(queueItem);
+                        if (videoInfo.IsStreaming)
+                            success = await DownloadCustomDomainWithYtdlp(videoInfo);
                         else
-                            await DownloadVideoWithId(queueItem);
+                            success = await DownloadVideoWithId(videoInfo, customDomain);
                     }
                     break;
                 case UrlType.Other:
@@ -245,6 +245,7 @@ public class VideoDownloader
         CacheManager.AddToCache(fileName, UrlType.YouTube);
         var relativeUrl = CacheManager.GetRelativePath(UrlType.YouTube, fileName);
         Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativeUrl}");
+        return true;
     }
 
     private static async Task<bool> DownloadVideoWithId(VideoInfo videoInfo, string? customDomain = null)
@@ -307,9 +308,10 @@ public class VideoDownloader
         CacheManager.AddToCache(fileName, videoInfo.UrlType, videoInfo.Domain);
         var relativeUrl = CacheManager.GetRelativePath(videoInfo.UrlType, fileName, videoInfo.Domain);
         Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativeUrl}");
+        return true;
     }
 
-    private static async Task DownloadCustomDomainWithYtdlp(VideoInfo videoInfo)
+    private static async Task<bool> DownloadCustomDomainWithYtdlp(VideoInfo videoInfo)
     {
         var url = videoInfo.VideoUrl;
 
@@ -344,7 +346,7 @@ public class VideoDownloader
         if (process.ExitCode != 0)
         {
             Log.Error("Failed to download streaming video: {exitCode} {URL} {error}", process.ExitCode, url, error);
-            return;
+            return false;
         }
         Thread.Sleep(10);
 
@@ -368,7 +370,7 @@ public class VideoDownloader
             {
                 Log.Error("Failed to delete temp file: {ex}", ex.Message);
             }
-            return;
+            return false;
         }
 
         if (File.Exists(TempDownloadMp4Path))
@@ -378,11 +380,12 @@ public class VideoDownloader
         else
         {
             Log.Error("Failed to download streaming video: {URL}", url);
-            return;
+            return false;
         }
 
         CacheManager.AddToCache(fileName, UrlType.CustomDomain, videoInfo.Domain);
         var relativeUrl = CacheManager.GetRelativePath(UrlType.CustomDomain, fileName, videoInfo.Domain);
         Log.Information("Streaming Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativeUrl}");
+        return true;
     }
 }

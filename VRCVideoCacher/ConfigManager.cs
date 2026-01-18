@@ -156,6 +156,7 @@ public class ConfigModel
     public float CacheMaxSizeInGb = 0;
     public bool CachePyPyDance = false;
     public bool CacheVRDancing = false;
+    public bool CacheCustomDomainsEnabled = false;
     public string[] CacheCustomDomains = [];
 
     public bool ClearYouTubeCacheOnExit = false;
@@ -168,12 +169,5 @@ public class ConfigModel
     public bool AutoUpdate = true;
     public string[] PreCacheUrls = [];
     public bool CookieSetupCompleted = false;
-    public string ytdlArgsOverride = string.Empty;
-    public bool avproOverride = false;
-    public string[] CacheCustomDomains = [];
-    public bool ClearYouTubeCacheOnExit = false;
-    public bool ClearPyPyDanceCacheOnExit = false;
-    public bool ClearVRDancingCacheOnExit = false;
-    public string[] ClearCustomDomainsOnExit = [];
 }
 // ReSharper restore InconsistentNaming

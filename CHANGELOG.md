@@ -13,6 +13,14 @@
 - Add category badges in cache browser UI
 - Add UI settings for all new config options
 - Update auto-updater to use Fynn9563 fork releases
+- Add `PreCacheUrls` setting to UI with support for direct video URLs (YouTube, Vimeo, etc.)
+- Fix "Open on YouTube" button for custom domain videos
+- Add category filtering dropdown in cache browser
+- Add video thumbnails for custom domain videos (extracted via FFmpeg)
+- Add music icon for audio-only cached files
+- Auto-refresh cache browser when video downloads complete
+- Cache audio-only detection to avoid repeated FFmpeg runs
+- Fix custom domain streaming URLs (m3u8/mpd) - skip yt-dlp and use direct URL
 
 ## 2025.11.24
 - UI branch with Avalonia-based graphical interface

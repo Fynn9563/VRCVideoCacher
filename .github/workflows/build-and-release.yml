@@ -58,6 +58,25 @@ jobs:
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
           echo "Building version: $version"
 
+      - name: Extract changelog for version
+        id: changelog
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          $changelog = Get-Content "CHANGELOG.md" -Raw
+
+          # Find the section for this version (## version until next ## or end)
+          $pattern = "(?ms)^## $([regex]::Escape($version))\r?\n(.*?)(?=^## |\z)"
+          if ($changelog -match $pattern) {
+            $notes = $matches[1].Trim()
+            # Write to file to preserve newlines
+            $notes | Out-File -FilePath "release_notes.md" -Encoding utf8
+            echo "Found changelog for version $version"
+          } else {
+            echo "No changelog found for version $version, using default"
+            "Release $version" | Out-File -FilePath "release_notes.md" -Encoding utf8
+          }
+
       - name: Build yt-dlp-stub for Windows
         run: |
           dotnet publish yt-dlp-stub/yt-dlp-stub.csproj `
@@ -118,7 +137,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: VRCVideoCacher ${{ steps.version.outputs.VERSION }}
-          generate_release_notes: true
+          body_path: release_notes.md
           draft: false
           prerelease: ${{ contains(steps.version.outputs.VERSION, '-dev') || contains(steps.version.outputs.VERSION, '-beta') || contains(steps.version.outputs.VERSION, '-alpha') }}
           files: |

@@ -24,13 +24,15 @@
             </StackPanel>
         </Grid>
 
-        <!-- Search -->
-        <Grid Grid.Row="1" Margin="10,0,10,10">
-            <TextBox Text="{Binding SearchFilter}" Watermark="Search videos...">
+        <!-- Search and Filter -->
+        <Grid Grid.Row="1" ColumnDefinitions="*, Auto" Margin="10,0,10,10">
+            <TextBox Grid.Column="0" Text="{Binding SearchFilter}" Watermark="Search videos..." Margin="0,0,10,0">
                 <TextBox.InnerLeftContent>
                     <mi:MaterialIcon Kind="Magnify" Width="16" Height="16" Margin="5,0"/>
                 </TextBox.InnerLeftContent>
             </TextBox>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}"
+                      MinWidth="150" VerticalAlignment="Center"/>
         </Grid>
 
         <!-- Video List -->
@@ -45,7 +47,13 @@
                         <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto">
                             <!-- Thumbnail -->
                             <Border Grid.Column="0" Width="120" Height="68" CornerRadius="4" ClipToBounds="True" Background="#333333">
-                                <Image asyncImageLoader:ImageLoader.Source="{Binding ThumbnailSource}" Stretch="UniformToFill"/>
+                                <Grid>
+                                    <Image asyncImageLoader:ImageLoader.Source="{Binding ThumbnailSource}" Stretch="UniformToFill"
+                                           IsVisible="{Binding ShowMusicIcon, Converter={x:Static BoolConverters.Not}}"/>
+                                    <mi:MaterialIcon Kind="Music" Width="40" Height="40" Foreground="#888888"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                     IsVisible="{Binding ShowMusicIcon}"/>
+                                </Grid>
                             </Border>
 
                             <!-- Video Info -->
@@ -70,8 +78,12 @@
 
                             <!-- Action Buttons -->
                             <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center" Margin="10,0">
-                                <Button Command="{Binding OpenOnYouTubeCommand}" ToolTip.Tip="Open on YouTube" Padding="8">
+                                <Button Command="{Binding OpenOnYouTubeCommand}" ToolTip.Tip="Open on YouTube" Padding="8"
+                                        IsVisible="{Binding IsYouTube}">
                                     <mi:MaterialIcon Kind="Youtube" Width="18" Height="18" Foreground="#FF0000"/>
+                                </Button>
+                                <Button Command="{Binding OpenInMediaPlayerCommand}" ToolTip.Tip="Open in Media Player" Padding="8">
+                                    <mi:MaterialIcon Kind="PlayCircle" Width="18" Height="18" Foreground="#64B5F6"/>
                                 </Button>
                                 <Button Command="{Binding CopyUrlCommand}" ToolTip.Tip="Copy Local URL" Padding="8">
                                     <mi:MaterialIcon Kind="ContentCopy" Width="18" Height="18"/>

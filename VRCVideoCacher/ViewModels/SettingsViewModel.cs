@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using VRCVideoCacher.Models;
 
 namespace VRCVideoCacher.ViewModels;
 
@@ -70,10 +71,16 @@ public partial class SettingsViewModel : ViewModelBase
     private string _ytdlArgsOverride = string.Empty;
 
     [ObservableProperty]
-    private bool _avproOverride;
+    private string _avproOverride = "default";
+
+    // AvproOverride options for dropdown
+    public string[] AvproOverrideOptions { get; } = ["default", "true", "false"];
 
     // Custom Domains
-    public ObservableCollection<string> CacheCustomDomains { get; } = [];
+    [ObservableProperty]
+    private bool _cacheCustomDomainsEnabled;
+
+    public ObservableCollection<EditableString> CacheCustomDomains { get; } = [];
 
     // Clear Cache on Exit
     [ObservableProperty]
@@ -85,10 +92,13 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _clearVRDancingCacheOnExit;
 
-    public ObservableCollection<string> ClearCustomDomainsOnExit { get; } = [];
+    public ObservableCollection<EditableString> ClearCustomDomainsOnExit { get; } = [];
 
     // Blocked URLs
-    public ObservableCollection<string> BlockedUrls { get; } = [];
+    public ObservableCollection<EditableString> BlockedUrls { get; } = [];
+
+    // Pre-Cache URLs
+    public ObservableCollection<EditableString> PreCacheUrls { get; } = [];
 
     // Status
     [ObservableProperty]
@@ -134,22 +144,29 @@ public partial class SettingsViewModel : ViewModelBase
         ClearVRDancingCacheOnExit = config.ClearVRDancingCacheOnExit;
 
         // Custom Domains
+        CacheCustomDomainsEnabled = config.CacheCustomDomainsEnabled;
         CacheCustomDomains.Clear();
         foreach (var domain in config.CacheCustomDomains)
         {
-            CacheCustomDomains.Add(domain);
+            CacheCustomDomains.Add(new EditableString(domain));
         }
 
         ClearCustomDomainsOnExit.Clear();
         foreach (var domain in config.ClearCustomDomainsOnExit)
         {
-            ClearCustomDomainsOnExit.Add(domain);
+            ClearCustomDomainsOnExit.Add(new EditableString(domain));
         }
 
         BlockedUrls.Clear();
         foreach (var url in config.BlockedUrls)
         {
-            BlockedUrls.Add(url);
+            BlockedUrls.Add(new EditableString(url));
+        }
+
+        PreCacheUrls.Clear();
+        foreach (var url in config.PreCacheUrls)
+        {
+            PreCacheUrls.Add(new EditableString(url));
         }
 
         HasChanges = false;
@@ -174,7 +191,8 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnPatchVRCChanged(bool value) => HasChanges = true;
     partial void OnAutoUpdateChanged(bool value) => HasChanges = true;
     partial void OnYtdlArgsOverrideChanged(string value) => HasChanges = true;
-    partial void OnAvproOverrideChanged(bool value) => HasChanges = true;
+    partial void OnAvproOverrideChanged(string value) => HasChanges = true;
+    partial void OnCacheCustomDomainsEnabledChanged(bool value) => HasChanges = true;
     partial void OnClearYouTubeCacheOnExitChanged(bool value) => HasChanges = true;
     partial void OnClearPyPyDanceCacheOnExitChanged(bool value) => HasChanges = true;
     partial void OnClearVRDancingCacheOnExitChanged(bool value) => HasChanges = true;
@@ -212,10 +230,12 @@ public partial class SettingsViewModel : ViewModelBase
         config.ClearVRDancingCacheOnExit = ClearVRDancingCacheOnExit;
 
         // Custom Domains
-        config.CacheCustomDomains = CacheCustomDomains.ToArray();
-        config.ClearCustomDomainsOnExit = ClearCustomDomainsOnExit.ToArray();
+        config.CacheCustomDomainsEnabled = CacheCustomDomainsEnabled;
+        config.CacheCustomDomains = CacheCustomDomains.Select(x => x.Value).ToArray();
+        config.ClearCustomDomainsOnExit = ClearCustomDomainsOnExit.Select(x => x.Value).ToArray();
 
-        config.BlockedUrls = BlockedUrls.ToArray();
+        config.BlockedUrls = BlockedUrls.Select(x => x.Value).ToArray();
+        config.PreCacheUrls = PreCacheUrls.Select(x => x.Value).ToArray();
 
         ConfigManager.TrySaveConfig();
         HasChanges = false;
@@ -232,12 +252,12 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void AddBlockedUrl()
     {
-        BlockedUrls.Add("https://");
+        BlockedUrls.Add(new EditableString("https://"));
         HasChanges = true;
     }
 
     [RelayCommand]
-    private void RemoveBlockedUrl(string url)
+    private void RemoveBlockedUrl(EditableString url)
     {
         BlockedUrls.Remove(url);
         HasChanges = true;
@@ -246,12 +266,12 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void AddCacheCustomDomain()
     {
-        CacheCustomDomains.Add("example.com");
+        CacheCustomDomains.Add(new EditableString("example.com"));
         HasChanges = true;
     }
 
     [RelayCommand]
-    private void RemoveCacheCustomDomain(string domain)
+    private void RemoveCacheCustomDomain(EditableString domain)
     {
         CacheCustomDomains.Remove(domain);
         HasChanges = true;
@@ -260,14 +280,28 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void AddClearCustomDomainOnExit()
     {
-        ClearCustomDomainsOnExit.Add("example.com");
+        ClearCustomDomainsOnExit.Add(new EditableString("example.com"));
         HasChanges = true;
     }
 
     [RelayCommand]
-    private void RemoveClearCustomDomainOnExit(string domain)
+    private void RemoveClearCustomDomainOnExit(EditableString domain)
     {
         ClearCustomDomainsOnExit.Remove(domain);
+        HasChanges = true;
+    }
+
+    [RelayCommand]
+    private void AddPreCacheUrl()
+    {
+        PreCacheUrls.Add(new EditableString("https://"));
+        HasChanges = true;
+    }
+
+    [RelayCommand]
+    private void RemovePreCacheUrl(EditableString url)
+    {
+        PreCacheUrls.Remove(url);
         HasChanges = true;
     }
 }

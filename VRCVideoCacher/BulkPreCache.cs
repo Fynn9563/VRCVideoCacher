@@ -1,5 +1,7 @@
 using Newtonsoft.Json;
 using Serilog;
+using VRCVideoCacher.Models;
+using VRCVideoCacher.YTDL;
 
 namespace VRCVideoCacher;
 
@@ -10,6 +12,15 @@ public class BulkPreCache
     {
         DefaultRequestHeaders = { { "User-Agent", "VRCVideoCacher" } }
     };
+
+    // Known video URL patterns
+    private static readonly string[] VideoUrlPatterns =
+    [
+        "youtube.com", "youtu.be",
+        "vimeo.com",
+        "twitch.tv",
+        "dailymotion.com"
+    ];
 
     // FileName and Url are required
     // LastModified and Size are optional
@@ -27,27 +38,91 @@ public class BulkPreCache
             .AddSeconds(LastModified);
         public string FilePath => Path.Combine(CacheManager.CachePath, FileName);
     }
-    
+
     public static async Task DownloadFileList()
     {
         foreach (var url in ConfigManager.Config.PreCacheUrls)
         {
-            using var response = await HttpClient.GetAsync(url);
-            if (!response.IsSuccessStatusCode)
+            if (string.IsNullOrWhiteSpace(url))
+                continue;
+
+            // Check if this is a direct video URL (YouTube, etc.)
+            if (IsDirectVideoUrl(url))
             {
-                Log.Information("Failed to download {Url}: {ResponseStatusCode}", url, response.StatusCode);
+                await DownloadDirectVideoUrl(url);
+                continue;
+            }
+
+            // Otherwise, treat as JSON endpoint
+            try
+            {
+                using var response = await HttpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode)
+                {
+                    Log.Warning("Failed to download {Url}: {ResponseStatusCode}", url, response.StatusCode);
+                    continue;
+                }
+
+                var content = await response.Content.ReadAsStringAsync();
+
+                // Check if response looks like JSON
+                if (!content.TrimStart().StartsWith('[') && !content.TrimStart().StartsWith('{'))
+                {
+                    Log.Warning("URL {Url} did not return JSON. Skipping.", url);
+                    continue;
+                }
+
+                var files = JsonConvert.DeserializeObject<List<DownloadInfo>>(content);
+                if (files == null || files.Count == 0)
+                {
+                    Log.Information("No files to download for {URL}", url);
+                    continue;
+                }
+                await DownloadVideos(files);
+                Log.Information("All {count} files for {URL} are up to date.", files.Count, url);
+            }
+            catch (JsonException ex)
+            {
+                Log.Error("Failed to parse JSON from {Url}: {Error}", url, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Error processing pre-cache URL {Url}: {Error}", url, ex.Message);
+            }
+        }
+    }
+
+    private static bool IsDirectVideoUrl(string url)
+    {
+        return VideoUrlPatterns.Any(pattern => url.Contains(pattern, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static async Task DownloadDirectVideoUrl(string url)
+    {
+        Log.Information("Pre-caching video URL: {Url}", url);
+        try
+        {
+            // Parse the URL to get video info
+            var videoInfo = await VideoId.GetVideoId(url, false);
+            if (videoInfo == null)
+            {
+                Log.Warning("Could not parse video URL: {Url}", url);
                 return;
             }
 
-            var content = await response.Content.ReadAsStringAsync();
-            var files = JsonConvert.DeserializeObject<List<DownloadInfo>>(content);
-            if (files == null || files.Count == 0)
+            // Check for custom domain
+            string? customDomain = null;
+            if (videoInfo.UrlType == UrlType.CustomDomain || videoInfo.UrlType == UrlType.Other)
             {
-                Log.Information("No files to download for {URL}", url);
-                return;
+                CacheManager.IsCustomDomainUrl(url, out customDomain);
             }
-            await DownloadVideos(files);
-            Log.Information("All {count} files for {URL} are up to date.", files.Count, url);
+
+            // Queue the download (the download logic will handle checking if already cached)
+            VideoDownloader.QueueDownload(videoInfo, customDomain);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to pre-cache video {Url}: {Error}", url, ex.Message);
         }
     }
 

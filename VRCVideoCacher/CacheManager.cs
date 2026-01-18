@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Serilog;
 using VRCVideoCacher.Models;
+using VRCVideoCacher.Services;
 
 namespace VRCVideoCacher;
 
@@ -301,6 +302,88 @@ public class CacheManager
         return totalSize;
     }
 
+    // Public accessors for UI
+    public static IReadOnlyDictionary<string, VideoCache> GetCachedAssets()
+        => CachedAssets.ToDictionary(k => k.Key, v => v.Value);
+
+    public static long GetTotalCacheSize() => GetCacheSize();
+
+    public static int GetCachedVideoCount() => CachedAssets.Count;
+
+    public static void DeleteCacheItem(string fileName)
+    {
+        var filePath = Path.Combine(CachePath, fileName);
+        if (File.Exists(filePath))
+        {
+            try
+            {
+                File.Delete(filePath);
+                CachedAssets.TryRemove(fileName, out _);
+
+                // Delete associated thumbnail
+                var videoId = Path.GetFileNameWithoutExtension(Path.GetFileName(fileName));
+                YouTubeMetadataService.DeleteThumbnail(videoId);
+
+                OnCacheChanged?.Invoke(fileName, CacheChangeType.Removed);
+                Log.Information("Deleted cached video: {FileName}", fileName);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to delete {FileName}: {Error}", fileName, ex.Message);
+            }
+        }
+    }
+
+    public static void ClearCache()
+    {
+        var files = CachedAssets.Keys.ToList();
+        foreach (var fileName in files)
+        {
+            var filePath = Path.Combine(CachePath, fileName);
+            if (File.Exists(filePath))
+            {
+                try
+                {
+                    File.Delete(filePath);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Failed to delete {FileName}: {Error}", fileName, ex.Message);
+                }
+            }
+        }
+        CachedAssets.Clear();
+
+        // Clear all cached thumbnails
+        YouTubeMetadataService.ClearAllThumbnails();
+
+        OnCacheChanged?.Invoke(string.Empty, CacheChangeType.Cleared);
+        Log.Information("Cache cleared");
+    }
+
+    public static bool IsCustomDomainUrl(string url, out string? domain)
+    {
+        domain = null;
+        if (ConfigManager.Config.CacheCustomDomains.Length == 0)
+            return false;
+
+        foreach (var customDomain in ConfigManager.Config.CacheCustomDomains)
+        {
+            if (url.Contains(customDomain, StringComparison.OrdinalIgnoreCase))
+            {
+                domain = customDomain.Replace(".", "_");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static void EnsureCustomDomainDirectory(string domain)
+    {
+        var domainPath = Path.Combine(CachePath, "CustomDomains", domain);
+        Directory.CreateDirectory(domainPath);
+    }
+
     public static void ClearCacheOnExit()
     {
         var directoriesToClear = new List<(UrlType type, string path)>();
@@ -326,6 +409,10 @@ public class CacheManager
                     var files = Directory.GetFiles(path);
                     foreach (var file in files)
                     {
+                        // Delete associated thumbnail
+                        var videoId = Path.GetFileNameWithoutExtension(file);
+                        YouTubeMetadataService.DeleteThumbnail(videoId);
+
                         File.Delete(file);
                     }
                     Log.Information("Cleared {Type} cache ({Count} files)", type, files.Length);
@@ -351,6 +438,10 @@ public class CacheManager
                         var files = Directory.GetFiles(domainPath);
                         foreach (var file in files)
                         {
+                            // Delete associated thumbnail
+                            var videoId = Path.GetFileNameWithoutExtension(file);
+                            YouTubeMetadataService.DeleteThumbnail(videoId);
+
                             File.Delete(file);
                         }
                         Log.Information("Cleared CustomDomain cache for {Domain} ({Count} files)", domain, files.Length);
