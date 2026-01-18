@@ -42,7 +42,6 @@ jobs:
             ${{ runner.os }}-dotnet-tools-
 
       - name: Setup .NET
-        if: steps.cache-dotnet-tools.outputs.cache-hit != 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
@@ -88,9 +87,9 @@ jobs:
           }
           New-Item -Path Build -ItemType Directory
 
-      - name: Build VRCVideoCacher UI for Windows
+      - name: Build VRCVideoCacher for Windows
         run: |
-          dotnet publish VRCVideoCacher.UI/VRCVideoCacher.UI.csproj `
+          dotnet publish VRCVideoCacher/VRCVideoCacher.csproj `
             -c Release `
             -r win-x64 `
             --self-contained true `
@@ -99,13 +98,9 @@ jobs:
             -p:IncludeAllContentForSelfExtract=true `
             -o Build/
 
-      - name: Rename Windows binary
+      - name: Build VRCVideoCacher for Linux
         run: |
-          Move-Item -Path "Build/VRCVideoCacher.UI.exe" -Destination "Build/VRCVideoCacher.exe" -Force
-
-      - name: Build VRCVideoCacher UI for Linux
-        run: |
-          dotnet publish VRCVideoCacher.UI/VRCVideoCacher.UI.csproj `
+          dotnet publish VRCVideoCacher/VRCVideoCacher.csproj `
             -c Release `
             -r linux-x64 `
             --self-contained true `
@@ -116,7 +111,7 @@ jobs:
 
       - name: Rename Linux binary
         run: |
-          Move-Item -Path "Build/VRCVideoCacher.UI" -Destination "Build/VRCVideoCacher-linux" -Force
+          Move-Item -Path "Build/VRCVideoCacher" -Destination "Build/VRCVideoCacher-linux" -Force
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

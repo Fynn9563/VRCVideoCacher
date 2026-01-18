@@ -6,6 +6,7 @@ public enum UrlType
     YouTube,
     PyPyDance,
     VRDancing,
+    CustomDomain,
     Other
 }
 
@@ -21,4 +22,6 @@ public class VideoInfo
     public required string VideoId;
     public required UrlType UrlType;
     public required DownloadFormat DownloadFormat;
+    public bool IsStreaming;
+    public string? Domain;
 }
