@@ -16,6 +16,7 @@ public class CacheManager
     private static readonly ILogger Log = Program.Logger.ForContext<CacheManager>();
     private static readonly ConcurrentDictionary<string, VideoCache> CachedAssets = new();
     public static readonly string CachePath;
+    private static readonly string LockFilePath;
 
     // Events for UI
     public static event Action<string, CacheChangeType>? OnCacheChanged;
@@ -35,91 +36,47 @@ public class CacheManager
         else
             CachePath = Path.Combine(Program.CurrentProcessPath, ConfigManager.Config.CachedAssetPath);
 
+        LockFilePath = Path.Combine(Program.DataPath, ".cache_lock");
+
         Log.Debug("Using cache path {CachePath}", CachePath);
         CreateSubdirectories();
+        CheckAndClearPreviousSession();
         BuildCache();
     }
 
     private static void CreateSubdirectories()
     {
         Directory.CreateDirectory(CachePath);
-        Directory.CreateDirectory(Path.Combine(CachePath, YouTubeSubdir));
-        Directory.CreateDirectory(Path.Combine(CachePath, PyPyDanceSubdir));
-        Directory.CreateDirectory(Path.Combine(CachePath, VRDancingSubdir));
-        Directory.CreateDirectory(Path.Combine(CachePath, CustomDomainsSubdir));
+        Directory.CreateDirectory(Path.Combine(CachePath, "YouTube"));
+        Directory.CreateDirectory(Path.Combine(CachePath, "PyPyDance"));
+        Directory.CreateDirectory(Path.Combine(CachePath, "VRDancing"));
+        Directory.CreateDirectory(Path.Combine(CachePath, "CustomDomains"));
     }
 
-    /// <summary>
-    /// Gets the subdirectory name for a given URL type.
-    /// </summary>
-    public static string GetSubdirectoryForUrlType(UrlType urlType)
+    public static string GetSubdirectoryPath(UrlType urlType, string? domain = null)
     {
         return urlType switch
         {
-            UrlType.YouTube => YouTubeSubdir,
-            UrlType.PyPyDance => PyPyDanceSubdir,
-            UrlType.VRDancing => VRDancingSubdir,
-            _ => string.Empty
+            UrlType.YouTube => Path.Combine(CachePath, "YouTube"),
+            UrlType.PyPyDance => Path.Combine(CachePath, "PyPyDance"),
+            UrlType.VRDancing => Path.Combine(CachePath, "VRDancing"),
+            UrlType.CustomDomain when !string.IsNullOrEmpty(domain) => Path.Combine(CachePath, "CustomDomains", domain),
+            UrlType.CustomDomain => Path.Combine(CachePath, "CustomDomains"),
+            _ => CachePath
         };
     }
 
-    /// <summary>
-    /// Gets the full path for a cached file, including subdirectory organization.
-    /// </summary>
-    public static string GetCacheFilePath(string fileName, UrlType urlType, string? domain = null)
+    public static string GetRelativePath(UrlType urlType, string fileName, string? domain = null)
     {
-        if (!string.IsNullOrEmpty(domain))
-            return Path.Combine(CachePath, CustomDomainsSubdir, domain, fileName);
-
-        var subdir = GetSubdirectoryForUrlType(urlType);
-        if (string.IsNullOrEmpty(subdir))
-            return Path.Combine(CachePath, fileName);
-
-        return Path.Combine(CachePath, subdir, fileName);
-    }
-
-    /// <summary>
-    /// Gets the relative path for a cached file from the cache root.
-    /// </summary>
-    public static string GetRelativePath(string fileName, UrlType urlType, string? domain = null)
-    {
-        if (!string.IsNullOrEmpty(domain))
-            return Path.Combine(CustomDomainsSubdir, domain, fileName);
-
-        var subdir = GetSubdirectoryForUrlType(urlType);
-        if (string.IsNullOrEmpty(subdir))
-            return fileName;
-
-        return Path.Combine(subdir, fileName);
-    }
-
-    /// <summary>
-    /// Checks if a URL matches any configured custom domain for caching.
-    /// </summary>
-    public static bool IsCustomDomainUrl(string url, out string? domain)
-    {
-        domain = null;
-        if (ConfigManager.Config.CacheCustomDomains.Length == 0)
-            return false;
-
-        try
+        return urlType switch
         {
-            var uri = new Uri(url);
-            foreach (var customDomain in ConfigManager.Config.CacheCustomDomains)
-            {
-                if (uri.Host.Contains(customDomain, StringComparison.OrdinalIgnoreCase))
-                {
-                    domain = customDomain.Replace(".", "_");
-                    return true;
-                }
-            }
-        }
-        catch
-        {
-            // Invalid URL
-        }
-
-        return false;
+            UrlType.YouTube => Path.Combine("YouTube", fileName),
+            UrlType.PyPyDance => Path.Combine("PyPyDance", fileName),
+            UrlType.VRDancing => Path.Combine("VRDancing", fileName),
+            UrlType.CustomDomain when !string.IsNullOrEmpty(domain) => Path.Combine("CustomDomains", domain, fileName),
+            UrlType.CustomDomain => Path.Combine("CustomDomains", fileName),
+            _ => fileName
+        };
     }
 
     private static string GetCacheFolder()
@@ -136,48 +93,144 @@ public class CacheManager
     
     public static void Init()
     {
+        CreateLockFile();
         TryFlushCache();
     }
-    
+
+    private static void CheckAndClearPreviousSession()
+    {
+        if (File.Exists(LockFilePath))
+        {
+            Log.Information("Detected unclean shutdown from previous session. Checking if cache needs clearing...");
+            ClearCacheIfNeeded();
+            File.Delete(LockFilePath);
+        }
+    }
+
+    private static void CreateLockFile()
+    {
+        try
+        {
+            File.WriteAllText(LockFilePath, DateTime.UtcNow.ToString("O"));
+            Log.Debug("Created cache lock file");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Failed to create lock file: {Message}", ex.Message);
+        }
+    }
+
+    private static void ClearCacheIfNeeded()
+    {
+        var directoriesToClear = new List<(UrlType type, string path)>();
+
+        if (ConfigManager.Config.ClearYouTubeCacheOnExit)
+            directoriesToClear.Add((UrlType.YouTube, GetSubdirectoryPath(UrlType.YouTube)));
+        if (ConfigManager.Config.ClearPyPyDanceCacheOnExit)
+            directoriesToClear.Add((UrlType.PyPyDance, GetSubdirectoryPath(UrlType.PyPyDance)));
+        if (ConfigManager.Config.ClearVRDancingCacheOnExit)
+            directoriesToClear.Add((UrlType.VRDancing, GetSubdirectoryPath(UrlType.VRDancing)));
+
+        if (directoriesToClear.Count == 0 && ConfigManager.Config.ClearCustomDomainsOnExit.Length == 0)
+            return;
+
+        Log.Information("Clearing cache from previous session...");
+
+        foreach (var (type, path) in directoriesToClear)
+        {
+            try
+            {
+                if (Directory.Exists(path))
+                {
+                    var files = Directory.GetFiles(path);
+                    foreach (var file in files)
+                    {
+                        File.Delete(file);
+                    }
+                    Log.Information("Cleared {Type} cache ({Count} files)", type, files.Length);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to clear {Type} cache: {Error}", type, ex.Message);
+            }
+        }
+
+        if (ConfigManager.Config.ClearCustomDomainsOnExit.Length > 0)
+        {
+            var customDomainsPath = Path.Combine(CachePath, "CustomDomains");
+            foreach (var domain in ConfigManager.Config.ClearCustomDomainsOnExit)
+            {
+                try
+                {
+                    var domainPath = Path.Combine(customDomainsPath, domain);
+                    if (Directory.Exists(domainPath))
+                    {
+                        var files = Directory.GetFiles(domainPath);
+                        foreach (var file in files)
+                        {
+                            File.Delete(file);
+                        }
+                        Log.Information("Cleared CustomDomain cache for {Domain} ({Count} files)", domain, files.Length);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Failed to clear CustomDomain cache for {Domain}: {Error}", domain, ex.Message);
+                }
+            }
+        }
+
+        Log.Information("Cache cleanup from previous session completed.");
+    }
+
     private static void BuildCache()
     {
         CachedAssets.Clear();
-        Directory.CreateDirectory(CachePath);
 
-        // Scan root directory
-        var files = Directory.GetFiles(CachePath);
+        ScanDirectory(UrlType.YouTube);
+        ScanDirectory(UrlType.PyPyDance);
+        ScanDirectory(UrlType.VRDancing);
+        ScanCustomDomainDirectories();
+    }
+
+    private static void ScanDirectory(UrlType urlType)
+    {
+        var subdirPath = GetSubdirectoryPath(urlType);
+        if (!Directory.Exists(subdirPath))
+            return;
+
+        var files = Directory.GetFiles(subdirPath);
         foreach (var path in files)
         {
-            var file = Path.GetFileName(path);
-            AddToCache(file, path);
+            var fileName = Path.GetFileName(path);
+            AddToCache(fileName, urlType);
         }
+    }
 
-        // Scan subdirectories
-        foreach (var subdir in new[] { YouTubeSubdir, PyPyDanceSubdir, VRDancingSubdir })
+    private static void ScanCustomDomainDirectories()
+    {
+        var customDomainsPath = Path.Combine(CachePath, "CustomDomains");
+        if (!Directory.Exists(customDomainsPath))
+            return;
+
+        var domainDirs = Directory.GetDirectories(customDomainsPath);
+        foreach (var domainDir in domainDirs)
         {
-            var subdirPath = Path.Combine(CachePath, subdir);
-            if (!Directory.Exists(subdirPath)) continue;
-
-            foreach (var path in Directory.GetFiles(subdirPath))
+            var domain = Path.GetFileName(domainDir);
+            var files = Directory.GetFiles(domainDir);
+            foreach (var path in files)
             {
-                var relativePath = Path.Combine(subdir, Path.GetFileName(path));
-                AddToCache(relativePath, path);
+                var fileName = Path.GetFileName(path);
+                AddToCache(fileName, UrlType.CustomDomain, domain);
             }
         }
 
-        // Scan custom domains subdirectory
-        var customDomainsPath = Path.Combine(CachePath, CustomDomainsSubdir);
-        if (Directory.Exists(customDomainsPath))
+        var rootFiles = Directory.GetFiles(customDomainsPath);
+        foreach (var path in rootFiles)
         {
-            foreach (var domainDir in Directory.GetDirectories(customDomainsPath))
-            {
-                var domainName = Path.GetFileName(domainDir);
-                foreach (var path in Directory.GetFiles(domainDir))
-                {
-                    var relativePath = Path.Combine(CustomDomainsSubdir, domainName, Path.GetFileName(path));
-                    AddToCache(relativePath, path);
-                }
-            }
+            var fileName = Path.GetFileName(path);
+            AddToCache(fileName, UrlType.CustomDomain);
         }
     }
     
@@ -213,13 +266,16 @@ public class CacheManager
         }
     }
 
-    public static void AddToCache(string relativePath, string? fullPath = null)
+    public static void AddToCache(string fileName, UrlType urlType, string? domain = null)
     {
-        var filePath = fullPath ?? Path.Combine(CachePath, relativePath);
+        var subdirPath = GetSubdirectoryPath(urlType, domain);
+        var filePath = Path.Combine(subdirPath, fileName);
         if (!File.Exists(filePath))
             return;
 
         var fileInfo = new FileInfo(filePath);
+        var relativePath = GetRelativePath(urlType, fileName, domain);
+
         var videoCache = new VideoCache
         {
             FileName = relativePath,
@@ -227,11 +283,10 @@ public class CacheManager
             LastModified = fileInfo.LastWriteTimeUtc
         };
 
-        var existingCache = CachedAssets.GetOrAdd(relativePath, videoCache);
+        var existingCache = CachedAssets.GetOrAdd(videoCache.FileName, videoCache);
         existingCache.Size = fileInfo.Length;
         existingCache.LastModified = fileInfo.LastWriteTimeUtc;
 
-        OnCacheChanged?.Invoke(relativePath, CacheChangeType.Added);
         TryFlushCache();
     }
     
@@ -246,123 +301,85 @@ public class CacheManager
         return totalSize;
     }
 
-    // Public accessors for UI
-    public static IReadOnlyDictionary<string, VideoCache> GetCachedAssets()
-        => CachedAssets.ToDictionary(k => k.Key, v => v.Value);
-
-    public static long GetTotalCacheSize() => GetCacheSize();
-
-    public static int GetCachedVideoCount() => CachedAssets.Count;
-
-    public static void DeleteCacheItem(string fileName)
-    {
-        var filePath = Path.Combine(CachePath, fileName);
-        if (File.Exists(filePath))
-        {
-            File.Delete(filePath);
-            CachedAssets.TryRemove(fileName, out _);
-            OnCacheChanged?.Invoke(fileName, CacheChangeType.Removed);
-            Log.Information("Deleted cached video: {FileName}", fileName);
-        }
-    }
-
-    public static void ClearCache()
-    {
-        var files = CachedAssets.Keys.ToList();
-        foreach (var fileName in files)
-        {
-            var filePath = Path.Combine(CachePath, fileName);
-            if (File.Exists(filePath))
-            {
-                try
-                {
-                    File.Delete(filePath);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error("Failed to delete {FileName}: {Error}", fileName, ex.Message);
-                }
-            }
-        }
-        CachedAssets.Clear();
-        OnCacheChanged?.Invoke(string.Empty, CacheChangeType.Cleared);
-        Log.Information("Cache cleared");
-    }
-
-    /// <summary>
-    /// Clears a specific subdirectory cache.
-    /// </summary>
-    private static void ClearSubdirectoryCache(string subdirName)
-    {
-        var subdirPath = Path.Combine(CachePath, subdirName);
-        if (!Directory.Exists(subdirPath))
-            return;
-
-        var filesToRemove = CachedAssets.Keys
-            .Where(k => k.StartsWith(subdirName + Path.DirectorySeparatorChar) || k.StartsWith(subdirName + "/"))
-            .ToList();
-
-        foreach (var relativePath in filesToRemove)
-        {
-            var filePath = Path.Combine(CachePath, relativePath);
-            if (File.Exists(filePath))
-            {
-                try
-                {
-                    File.Delete(filePath);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error("Failed to delete {FileName}: {Error}", relativePath, ex.Message);
-                }
-            }
-            CachedAssets.TryRemove(relativePath, out _);
-        }
-
-        Log.Information("Cleared {SubDir} cache ({Count} files)", subdirName, filesToRemove.Count);
-    }
-
-    /// <summary>
-    /// Clears cache based on configured "ClearOnExit" settings.
-    /// Should be called when the application is exiting.
-    /// </summary>
     public static void ClearCacheOnExit()
     {
+        var directoriesToClear = new List<(UrlType type, string path)>();
+
         if (ConfigManager.Config.ClearYouTubeCacheOnExit)
-        {
-            Log.Information("Clearing YouTube cache on exit...");
-            ClearSubdirectoryCache(YouTubeSubdir);
-        }
-
+            directoriesToClear.Add((UrlType.YouTube, GetSubdirectoryPath(UrlType.YouTube)));
         if (ConfigManager.Config.ClearPyPyDanceCacheOnExit)
-        {
-            Log.Information("Clearing PyPyDance cache on exit...");
-            ClearSubdirectoryCache(PyPyDanceSubdir);
-        }
-
+            directoriesToClear.Add((UrlType.PyPyDance, GetSubdirectoryPath(UrlType.PyPyDance)));
         if (ConfigManager.Config.ClearVRDancingCacheOnExit)
+            directoriesToClear.Add((UrlType.VRDancing, GetSubdirectoryPath(UrlType.VRDancing)));
+
+        if (directoriesToClear.Count == 0 && ConfigManager.Config.ClearCustomDomainsOnExit.Length == 0)
+            return;
+
+        Log.Information("Clearing cache on exit...");
+
+        foreach (var (type, path) in directoriesToClear)
         {
-            Log.Information("Clearing VRDancing cache on exit...");
-            ClearSubdirectoryCache(VRDancingSubdir);
+            try
+            {
+                if (Directory.Exists(path))
+                {
+                    var files = Directory.GetFiles(path);
+                    foreach (var file in files)
+                    {
+                        File.Delete(file);
+                    }
+                    Log.Information("Cleared {Type} cache ({Count} files)", type, files.Length);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to clear {Type} cache: {Error}", type, ex.Message);
+            }
         }
 
-        // Clear specific custom domains on exit
-        foreach (var domain in ConfigManager.Config.ClearCustomDomainsOnExit)
+        // Clear specific custom domains
+        if (ConfigManager.Config.ClearCustomDomainsOnExit.Length > 0)
         {
-            var safeDomain = domain.Replace(".", "_");
-            var domainPath = Path.Combine(CustomDomainsSubdir, safeDomain);
-            Log.Information("Clearing custom domain cache on exit: {Domain}", domain);
-            ClearSubdirectoryCache(domainPath);
+            var customDomainsPath = Path.Combine(CachePath, "CustomDomains");
+            foreach (var domain in ConfigManager.Config.ClearCustomDomainsOnExit)
+            {
+                try
+                {
+                    var domainPath = Path.Combine(customDomainsPath, domain);
+                    if (Directory.Exists(domainPath))
+                    {
+                        var files = Directory.GetFiles(domainPath);
+                        foreach (var file in files)
+                        {
+                            File.Delete(file);
+                        }
+                        Log.Information("Cleared CustomDomain cache for {Domain} ({Count} files)", domain, files.Length);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Failed to clear CustomDomain cache for {Domain}: {Error}", domain, ex.Message);
+                }
+            }
         }
+
+        Log.Information("Cache cleanup completed.");
+        RemoveLockFile();
     }
 
-    /// <summary>
-    /// Creates the subdirectory for a custom domain if it doesn't exist.
-    /// </summary>
-    public static void EnsureCustomDomainDirectory(string domain)
+    private static void RemoveLockFile()
     {
-        var safeDomain = domain.Replace(".", "_");
-        var domainPath = Path.Combine(CachePath, CustomDomainsSubdir, safeDomain);
-        Directory.CreateDirectory(domainPath);
+        try
+        {
+            if (File.Exists(LockFilePath))
+            {
+                File.Delete(LockFilePath);
+                Log.Debug("Removed cache lock file on clean shutdown");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Failed to remove lock file: {Message}", ex.Message);
+        }
     }
 }

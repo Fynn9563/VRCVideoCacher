@@ -87,8 +87,9 @@ internal sealed class Program
         const string natsumi = "Natsumi";
         const string haxy = "Haxy";
         const string fynn = "Fynn9563";
-        Logger.Information("VRCVideoCacher version {Version} created by {Elly}, {Natsumi}, {Haxy}. Modified by {Fynn}", Version, elly, natsumi, haxy, fynn);
-
+        Logger.Information("VRCVideoCacher version {Version} created by {Elly}, {Natsumi}, {Haxy}", Version, elly, natsumi, haxy);
+        Logger.Information("Modified by {Fynn}", fynn);
+        
         Directory.CreateDirectory(DataPath);
         await Updater.CheckForUpdates();
         Updater.Cleanup();
@@ -196,9 +197,7 @@ internal sealed class Program
 
     private static void OnAppQuit()
     {
-        // Clear cache on exit based on config settings
         CacheManager.ClearCacheOnExit();
-
         FileTools.RestoreAllYtdl();
         Logger.Information("Exiting...");
     }

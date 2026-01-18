@@ -75,6 +75,15 @@ public class VideoDownloader
                     if (ConfigManager.Config.CacheVRDancing)
                         success = await DownloadVideoWithId(videoInfo, customDomain);
                     break;
+                case UrlType.CustomDomain:
+                    if (ConfigManager.Config.CacheCustomDomains.Length > 0)
+                    {
+                        if (queueItem.IsStreaming)
+                            await DownloadCustomDomainWithYtdlp(queueItem);
+                        else
+                            await DownloadVideoWithId(queueItem);
+                    }
+                    break;
                 case UrlType.Other:
                     // Check if this is a custom domain URL
                     if (!string.IsNullOrEmpty(customDomain))
@@ -146,7 +155,7 @@ public class VideoDownloader
 
         Log.Information("Downloading YouTube Video: {URL}", url);
 
-        var additionalArgs = ConfigManager.Config.ytdlAdditionalArgs;
+        var additionalArgs = YtdlArgsHelper.GetYtdlArgs();
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
@@ -199,15 +208,9 @@ public class VideoDownloader
         }
         Thread.Sleep(100);
         
-        var fileNameOnly = $"{videoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
-        var relativePath = CacheManager.GetRelativePath(fileNameOnly, UrlType.YouTube);
-        var filePath = Path.Combine(CacheManager.CachePath, relativePath);
-
-        // Ensure subdirectory exists
-        var directory = Path.GetDirectoryName(filePath);
-        if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
-
+        var fileName = $"{videoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
+        var subdirPath = CacheManager.GetSubdirectoryPath(UrlType.YouTube);
+        var filePath = Path.Combine(subdirPath, fileName);
         if (File.Exists(filePath))
         {
             Log.Error("File already exists, canceling...");
@@ -239,9 +242,9 @@ public class VideoDownloader
             return false;
         }
 
-        CacheManager.AddToCache(relativePath);
-        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativePath.Replace('\\', '/')}");
-        return true;
+        CacheManager.AddToCache(fileName, UrlType.YouTube);
+        var relativeUrl = CacheManager.GetRelativePath(UrlType.YouTube, fileName);
+        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativeUrl}");
     }
 
     private static async Task<bool> DownloadVideoWithId(VideoInfo videoInfo, string? customDomain = null)
@@ -278,16 +281,15 @@ public class VideoDownloader
         fileStream.Close();
         response.Dispose();
         await Task.Delay(10);
+        
+        var fileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
+        var subdirPath = CacheManager.GetSubdirectoryPath(videoInfo.UrlType, videoInfo.Domain);
 
-        var fileNameOnly = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
-        var relativePath = CacheManager.GetRelativePath(fileNameOnly, videoInfo.UrlType, customDomain);
-        var filePath = Path.Combine(CacheManager.CachePath, relativePath);
+        // Create domain subdirectory if it doesn't exist
+        if (!string.IsNullOrEmpty(videoInfo.Domain))
+            Directory.CreateDirectory(subdirPath);
 
-        // Ensure subdirectory exists
-        var directory = Path.GetDirectoryName(filePath);
-        if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
-
+        var filePath = Path.Combine(subdirPath, fileName);
         if (File.Exists(TempDownloadMp4Path))
         {
             File.Move(TempDownloadMp4Path, filePath);
@@ -302,8 +304,85 @@ public class VideoDownloader
             return false;
         }
 
-        CacheManager.AddToCache(relativePath);
-        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativePath.Replace('\\', '/')}");
-        return true;
+        CacheManager.AddToCache(fileName, videoInfo.UrlType, videoInfo.Domain);
+        var relativeUrl = CacheManager.GetRelativePath(videoInfo.UrlType, fileName, videoInfo.Domain);
+        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativeUrl}");
+    }
+
+    private static async Task DownloadCustomDomainWithYtdlp(VideoInfo videoInfo)
+    {
+        var url = videoInfo.VideoUrl;
+
+        if (File.Exists(TempDownloadMp4Path))
+        {
+            Log.Error("Temp file already exists, deleting...");
+            File.Delete(TempDownloadMp4Path);
+        }
+
+        Log.Information("Downloading Streaming Video: {URL}", url);
+
+        var process = new Process
+        {
+            StartInfo =
+            {
+                FileName = YtdlManager.YtdlPath,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+            }
+        };
+
+        process.StartInfo.Arguments = $"--encoding utf-8 -q -o \"{TempDownloadMp4Path}\" --no-playlist --no-progress -- \"{url}\"";
+
+        process.Start();
+        await process.WaitForExitAsync();
+        var error = await process.StandardError.ReadToEndAsync();
+        error = error.Trim();
+        if (process.ExitCode != 0)
+        {
+            Log.Error("Failed to download streaming video: {exitCode} {URL} {error}", process.ExitCode, url, error);
+            return;
+        }
+        Thread.Sleep(10);
+
+        var fileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
+        var subdirPath = CacheManager.GetSubdirectoryPath(UrlType.CustomDomain, videoInfo.Domain);
+
+        // Create domain subdirectory if it doesn't exist
+        if (!string.IsNullOrEmpty(videoInfo.Domain))
+            Directory.CreateDirectory(subdirPath);
+
+        var filePath = Path.Combine(subdirPath, fileName);
+        if (File.Exists(filePath))
+        {
+            Log.Error("File already exists, canceling...");
+            try
+            {
+                if (File.Exists(TempDownloadMp4Path))
+                    File.Delete(TempDownloadMp4Path);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to delete temp file: {ex}", ex.Message);
+            }
+            return;
+        }
+
+        if (File.Exists(TempDownloadMp4Path))
+        {
+            File.Move(TempDownloadMp4Path, filePath);
+        }
+        else
+        {
+            Log.Error("Failed to download streaming video: {URL}", url);
+            return;
+        }
+
+        CacheManager.AddToCache(fileName, UrlType.CustomDomain, videoInfo.Domain);
+        var relativeUrl = CacheManager.GetRelativePath(UrlType.CustomDomain, fileName, videoInfo.Domain);
+        Log.Information("Streaming Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativeUrl}");
     }
 }

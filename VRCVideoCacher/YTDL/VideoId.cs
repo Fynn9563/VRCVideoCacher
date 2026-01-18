@@ -108,7 +108,43 @@ public class VideoId
                 DownloadFormat = DownloadFormat.MP4
             };
         }
-        
+
+        // Check custom domains
+        if (ConfigManager.Config.CacheCustomDomains.Length > 0)
+        {
+            try
+            {
+                var uri = new Uri(url);
+                var host = uri.Host;
+
+                foreach (var customDomain in ConfigManager.Config.CacheCustomDomains)
+                {
+                    if (host.Equals(customDomain, StringComparison.OrdinalIgnoreCase) ||
+                        host.EndsWith($".{customDomain}", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var fileName = Path.GetFileName(Uri.UnescapeDataString(uri.LocalPath));
+                        var videoId = fileName.Split('.')[0];
+                        var isStreaming = url.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase) ||
+                                         url.EndsWith(".mpd", StringComparison.OrdinalIgnoreCase);
+
+                        return new VideoInfo
+                        {
+                            VideoUrl = url,
+                            VideoId = videoId,
+                            UrlType = UrlType.CustomDomain,
+                            DownloadFormat = DownloadFormat.MP4,
+                            IsStreaming = isStreaming,
+                            Domain = host
+                        };
+                    }
+                }
+            }
+            catch
+            {
+                // Not a valid URI, continue to other checks
+            }
+        }
+
         if (IsYouTubeUrl(url))
         {
             var videoId = string.Empty;
@@ -152,7 +188,7 @@ public class VideoId
 
     public static async Task<string> TryGetYouTubeVideoId(string url)
     {
-        var additionalArgs = ConfigManager.Config.ytdlAdditionalArgs;
+        var additionalArgs = YtdlArgsHelper.GetYtdlArgs();
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
@@ -272,7 +308,7 @@ public class VideoId
 
         // yt-dlp -f best/bestvideo[height<=?720]+bestaudio --no-playlist --no-warnings --get-url https://youtu.be/GoSo8YOKSAE
         var url = videoInfo.VideoUrl;
-        var additionalArgs = ConfigManager.Config.ytdlAdditionalArgs;
+        var additionalArgs = YtdlArgsHelper.GetYtdlArgs();
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";

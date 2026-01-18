@@ -39,6 +39,9 @@ public class ConfigManager
         if (!UtilsPath.EndsWith("Utils"))
             UtilsPath = Path.Combine(UtilsPath, "Utils");
 
+        if (!Path.IsPathRooted(UtilsPath))
+            UtilsPath = Path.Combine(Program.DataPath, UtilsPath);
+
         Directory.CreateDirectory(UtilsPath);
         
         Log.Information("Loaded config.");
@@ -90,6 +93,16 @@ public class ConfigManager
             Config.CacheVRDancing = vrDancingPyPyChoice;
             Config.CachePyPyDance = vrDancingPyPyChoice;
 
+            if (GetUserConfirmation("Would you like to cache/download music/videos from custom domains?", false))
+            {
+                Log.Information("Custom domains can be configured in Config.json under 'CacheCustomDomains'.");
+                Log.Information("Example: \"CacheCustomDomains\": [\"cdn.example.com\", \"media.yourdomain.com\"]");
+            }
+
+            Log.Information("Would you like to use the companion extension to fetch youtube cookies? (This will fix bot errors, requires installation of the extension)");
+            Log.Information("Extension can be found here: https://github.com/clienthax/VRCVideoCacherBrowserExtension");
+            Config.ytdlUseCookies = GetUserConfirmation("", true);
+
             Config.PatchResonite = GetUserConfirmation("Would you like to enable Resonite support?", false);
         }
 
@@ -130,8 +143,10 @@ public class ConfigModel
     public bool ytdlUseCookies = true;
     public bool ytdlAutoUpdate = true;
     public string ytdlAdditionalArgs = string.Empty;
-    public string ytdlDubLanguage = string.Empty;
+    public string ytdlArgsOverride = string.Empty;
+    public string ytdlDubLanguage = "en";
     public int ytdlDelay = 0;
+    public string avproOverride = "default";
     public string CachedAssetPath = "";
     public string[] BlockedUrls = ["https://na2.vrdancing.club/sampleurl.mp4"];
     public string BlockRedirect = "https://www.youtube.com/watch?v=byv2bKekeWQ";
@@ -141,6 +156,12 @@ public class ConfigModel
     public float CacheMaxSizeInGb = 0;
     public bool CachePyPyDance = false;
     public bool CacheVRDancing = false;
+    public string[] CacheCustomDomains = [];
+
+    public bool ClearYouTubeCacheOnExit = false;
+    public bool ClearPyPyDanceCacheOnExit = false;
+    public bool ClearVRDancingCacheOnExit = false;
+    public string[] ClearCustomDomainsOnExit = [];
     public bool PatchResonite = false;
     public string ResonitePath = "";
     public bool PatchVRC = true;

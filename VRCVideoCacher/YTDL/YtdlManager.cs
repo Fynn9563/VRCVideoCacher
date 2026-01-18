@@ -172,9 +172,10 @@ public class YtdlManager
         {
             if (reader.Entry.Key == null || reader.Entry.IsDirectory)
                 continue;
-            
-            Log.Debug("Extracting file {Name} ({Size} bytes)", reader.Entry.Key, reader.Entry.Size);
-            var path = Path.Combine(ConfigManager.UtilsPath, reader.Entry.Key);
+
+            var fileName = Path.GetFileName(reader.Entry.Key);
+            Log.Debug("Extracting file {Name} ({Size} bytes)", fileName, reader.Entry.Size);
+            var path = Path.Combine(ConfigManager.UtilsPath, fileName);
             await using var outputStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
             await using var entryStream = reader.OpenEntryStream();
             await entryStream.CopyToAsync(outputStream);
