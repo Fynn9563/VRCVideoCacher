@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using Serilog;
+using VRCVideoCacher;
 using VRCVideoCacher.YTDL;
 
 // ReSharper disable FieldCanBeMadeReadOnly.Global

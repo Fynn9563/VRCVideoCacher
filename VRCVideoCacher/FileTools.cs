@@ -2,6 +2,7 @@
 using System.Globalization;
 using Serilog;
 using ValveKeyValue;
+using VRCVideoCacher;
 
 namespace VRCVideoCacher;
 

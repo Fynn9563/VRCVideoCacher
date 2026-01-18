@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Security.Cryptography;
 using Avalonia;
@@ -19,22 +20,16 @@ internal sealed class Program
     public static readonly string DataPath = OperatingSystem.IsWindows()
         ? CurrentProcessPath
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VRCVideoCacher");
-
-    /// <summary>
-    /// Fired when YouTube cookies are received from the browser extension.
-    /// </summary>
     public static event Action? OnCookiesUpdated;
 
     [STAThread]
     public static void Main(string[] args)
     {
-        // Prevent multiple instances using a named mutex
-        bool createdNew = true;
-        using var mutex = new Mutex(true, "VRCVideoCacher", out createdNew);
-        if (!createdNew)
+        int count = Process.GetProcessesByName("VRCVideoCacher").Length;
+        if (count > 1)
         {
-            Console.WriteLine("VRCVideoCacher is already running.");
-            return;
+            Console.WriteLine("Application is already running");
+            Environment.Exit(0);
         }
 
         // Check for --nogui flag
@@ -63,7 +58,7 @@ internal sealed class Program
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Backend error " + ex.Message + " " + ex.StackTrace);
+                Log.Error(ex, "Backend error "+ex.Message+" "+ex.StackTrace);
             }
         });
 
@@ -73,12 +68,6 @@ internal sealed class Program
         // Start the UI
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
-
-    public static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<App>()
-            .UsePlatformDetect()
-            .WithInterFont()
-            .LogToTrace();
 
     public static async Task InitVRCVideoCacher()
     {
@@ -147,6 +136,12 @@ internal sealed class Program
         await Task.Delay(-1);
     }
 
+    public static AppBuilder BuildAvaloniaApp()
+        => AppBuilder.Configure<App>()
+            .UsePlatformDetect()
+            .WithInterFont()
+            .LogToTrace();
+
     public static bool IsCookiesEnabledAndValid()
     {
         if (!ConfigManager.Config.ytdlUseCookies)
@@ -208,9 +203,6 @@ internal sealed class Program
         Logger.Information("Exiting...");
     }
 
-    /// <summary>
-    /// Notifies listeners that cookies have been updated.
-    /// </summary>
     public static void NotifyCookiesUpdated()
     {
         OnCookiesUpdated?.Invoke();

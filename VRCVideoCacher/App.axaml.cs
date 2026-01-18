@@ -88,7 +88,7 @@ public partial class App : Application
         _trayIcon = new TrayIcon
         {
             ToolTipText = "VRCVideoCacher",
-            Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://VRCVideoCacher.UI/Assets/icon.ico"))),
+            Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://VRCVideoCacher/Assets/icon.ico"))),
             Menu = menu,
             IsVisible = true
         };

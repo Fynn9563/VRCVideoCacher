@@ -5,12 +5,6 @@ public class VideoTools
     private static readonly Serilog.ILogger Log = Program.Logger.ForContext<VideoTools>();
     private static readonly HttpClient HttpClient = new();
 
-    /// <summary>
-    /// Prefetches a video URL to warm up CDN caches.
-    /// </summary>
-    /// <param name="videoUrl">The video URL to prefetch.</param>
-    /// <param name="maxRetryCount">Maximum number of retries for M3U8 prefetch.</param>
-    /// <returns>True if prefetch succeeded or was not needed, false if prefetch failed.</returns>
     public static async Task<bool> Prefetch(string videoUrl, int maxRetryCount = 7)
     {
         // If the URL is invalid, skip prefetching
@@ -38,7 +32,7 @@ public class VideoTools
         }
 
         if (firstM3U8Url == null)
-            return true; // No M3U8 URL to prefetch, consider it a success
+            return true;
 
         // If we have an M3U8 URL, perform HEAD requests to validate accessibility
         var statusCode = 0;
@@ -70,7 +64,10 @@ public class VideoTools
                 maxRetryCount, statusCode);
             return false;
         }
+        else
+        {
+            return true;
+        }
 
-        return true;
     }
 }
