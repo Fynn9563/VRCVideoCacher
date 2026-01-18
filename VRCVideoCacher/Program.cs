@@ -1,14 +1,16 @@
 using System.Reflection;
 using System.Security.Cryptography;
+using Avalonia;
 using Serilog;
 using Serilog.Templates;
 using Serilog.Templates.Themes;
 using VRCVideoCacher.API;
+using VRCVideoCacher.Services;
 using VRCVideoCacher.YTDL;
 
 namespace VRCVideoCacher;
 
-public static class Program
+internal sealed class Program
 {
     public static string YtdlpHash = string.Empty;
     public const string Version = "2026.1.18";
@@ -23,7 +25,62 @@ public static class Program
     /// </summary>
     public static event Action? OnCookiesUpdated;
 
-    public static async Task Main(string[] args)
+    [STAThread]
+    public static void Main(string[] args)
+    {
+        // Prevent multiple instances using a named mutex
+        bool createdNew = true;
+        using var mutex = new Mutex(true, "VRCVideoCacher", out createdNew);
+        if (!createdNew)
+        {
+            Console.WriteLine("VRCVideoCacher is already running.");
+            return;
+        }
+
+        // Check for --nogui flag
+        if (args.Contains("--nogui"))
+        {
+            // Run backend only (console mode)
+            InitVRCVideoCacher().GetAwaiter().GetResult();
+            return;
+        }
+
+        // Configure Serilog with UI sink
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.Console(new ExpressionTemplate(
+                "[{@t:HH:mm:ss} {@l:u3} {Coalesce(Substring(SourceContext, LastIndexOf(SourceContext, '.') + 1),'<none>')}] {@m}\n{@x}",
+                theme: TemplateTheme.Literate))
+            .WriteTo.Sink(new UiLogSink())
+            .CreateLogger();
+
+        // Start backend on background thread
+        Task.Run(async () =>
+        {
+            try
+            {
+                await InitVRCVideoCacher();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Backend error " + ex.Message + " " + ex.StackTrace);
+            }
+        });
+
+        // Give the backend a moment to initialize
+        Thread.Sleep(1000);
+
+        // Start the UI
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
+
+    public static AppBuilder BuildAvaloniaApp()
+        => AppBuilder.Configure<App>()
+            .UsePlatformDetect()
+            .WithInterFont()
+            .LogToTrace();
+
+    public static async Task InitVRCVideoCacher()
     {
         try { Console.Title = $"VRCVideoCacher v{Version}"; } catch { /* GUI mode, no console */ }
 
@@ -42,7 +99,7 @@ public static class Program
         const string haxy = "Haxy";
         const string fynn = "Fynn9563";
         Logger.Information("VRCVideoCacher version {Version} created by {Elly}, {Natsumi}, {Haxy}. Modified by {Fynn}", Version, elly, natsumi, haxy, fynn);
-        
+
         Directory.CreateDirectory(DataPath);
         await Updater.CheckForUpdates();
         Updater.Cleanup();
@@ -86,7 +143,7 @@ public static class Program
 
         if (YtdlManager.GlobalYtdlConfigExists())
             Logger.Error("Global yt-dlp config file found in \"%AppData%\\yt-dlp\". Please delete it to avoid conflicts with VRCVideoCacher.");
-        
+
         await Task.Delay(-1);
     }
 
@@ -97,7 +154,7 @@ public static class Program
 
         if (!File.Exists(YtdlManager.CookiesPath))
             return false;
-        
+
         var cookies = File.ReadAllText(YtdlManager.CookiesPath);
         return IsCookiesValid(cookies);
     }
@@ -117,7 +174,7 @@ public static class Program
     {
         return GetEmbeddedResource("VRCVideoCacher.yt-dlp-stub.exe");
     }
-    
+
     private static Stream GetEmbeddedResource(string resourceName)
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -136,7 +193,7 @@ public static class Program
         stream.Dispose();
         return ComputeBinaryContentHash(ms.ToArray());
     }
-    
+
     public static string ComputeBinaryContentHash(byte[] base64)
     {
         return Convert.ToBase64String(SHA256.HashData(base64));

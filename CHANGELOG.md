@@ -1,6 +1,10 @@
 # Changelog
 
 ## 2026.1.18
+- Merge UI project into main VRCVideoCacher project (single executable)
+- Add 360p resolution option
+- Retry without AVPro if prefetch fails
+- Add mutex to prevent multiple instances
 - Add custom domain caching support (`CacheCustomDomains` config)
 - Add cache clearing on exit (`ClearYouTubeCacheOnExit`, `ClearPyPyDanceCacheOnExit`, `ClearVRDancingCacheOnExit`, `ClearCustomDomainsOnExit`)
 - Add `avproOverride` to force AVPro mode for all requests
@@ -9,7 +13,6 @@
 - Add category badges in cache browser UI
 - Add UI settings for all new config options
 - Update auto-updater to use Fynn9563 fork releases
-- Add GitHub Actions workflow for UI branch builds
 
 ## 2025.11.24
 - UI branch with Avalonia-based graphical interface
