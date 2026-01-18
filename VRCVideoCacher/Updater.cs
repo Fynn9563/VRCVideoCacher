@@ -9,7 +9,7 @@ namespace VRCVideoCacher;
 
 public class Updater
 {
-    private const string UpdateUrl = "https://api.github.com/repos/EllyVR/VRCVideoCacher/releases/latest";
+    private const string UpdateUrl = "https://api.github.com/repos/Fynn9563/VRCVideoCacher/releases/latest";
     private static readonly HttpClient HttpClient = new()
     {
         DefaultRequestHeaders = { { "User-Agent", "VRCVideoCacher.Updater" } }
@@ -60,7 +60,7 @@ public class Updater
             return;
         }
         Log.Information(
-            "Auto Update is disabled. Please update manually from the releases page. https://github.com/EllyVR/VRCVideoCacher/releases");
+            "Auto Update is disabled. Please update manually from the releases page. https://github.com/Fynn9563/VRCVideoCacher/releases");
     }
         
     public static void Cleanup()

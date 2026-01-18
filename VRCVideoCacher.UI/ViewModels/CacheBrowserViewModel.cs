@@ -9,11 +9,12 @@ namespace VRCVideoCacher.UI.ViewModels;
 
 public partial class CacheItemViewModel : ViewModelBase
 {
-    public string FileName { get; init; } = string.Empty;
-    public string VideoId { get; init; } = string.Empty;
+    public string FileName { get; init; } = string.Empty;  // Relative path from cache root (e.g., "YouTube/abc123.mp4")
+    public string VideoId { get; init; } = string.Empty;   // Just the video ID without path or extension
     public long Size { get; init; }
     public DateTime LastModified { get; init; }
     public string Extension { get; init; } = string.Empty;
+    public string Category { get; init; } = string.Empty;  // Subdirectory category (YouTube, PyPyDance, etc.)
 
     [ObservableProperty]
     private string _title = string.Empty;
@@ -137,7 +138,9 @@ public partial class CacheBrowserViewModel : ViewModelBase
         {
             if (string.IsNullOrEmpty(filter) ||
                 video.FileName.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
-                video.VideoId.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                video.VideoId.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                video.Category.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                video.DisplayTitle.Contains(filter, StringComparison.OrdinalIgnoreCase))
             {
                 FilteredVideos.Add(video);
             }
@@ -158,11 +161,26 @@ public partial class CacheBrowserViewModel : ViewModelBase
         foreach (var (fileName, cache) in cachedAssets.OrderByDescending(x => x.Value.LastModified))
         {
             // Filter out non-video files like index.html
-            if (fileName.Equals("index.html", StringComparison.OrdinalIgnoreCase))
+            var actualFileName = Path.GetFileName(fileName);
+            if (actualFileName.Equals("index.html", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            var videoId = Path.GetFileNameWithoutExtension(fileName);
-            var extension = Path.GetExtension(fileName);
+            // Extract video ID from the actual filename (handles subdirectory paths)
+            var videoId = Path.GetFileNameWithoutExtension(actualFileName);
+            var extension = Path.GetExtension(actualFileName);
+
+            // Determine category from path
+            var category = string.Empty;
+            var pathParts = fileName.Replace('\\', '/').Split('/');
+            if (pathParts.Length > 1)
+            {
+                category = pathParts[0];
+                // Handle CustomDomains/domain_name/ paths
+                if (category == "CustomDomains" && pathParts.Length > 2)
+                {
+                    category = $"Custom: {pathParts[1].Replace("_", ".")}";
+                }
+            }
 
             var item = new CacheItemViewModel
             {
@@ -170,7 +188,8 @@ public partial class CacheBrowserViewModel : ViewModelBase
                 VideoId = videoId,
                 Size = cache.Size,
                 LastModified = cache.LastModified,
-                Extension = extension
+                Extension = extension,
+                Category = category
             };
 
             // Subscribe to delete event

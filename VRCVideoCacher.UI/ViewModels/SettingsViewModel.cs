@@ -65,6 +65,28 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _autoUpdate;
 
+    // Advanced Settings
+    [ObservableProperty]
+    private string _ytdlArgsOverride = string.Empty;
+
+    [ObservableProperty]
+    private bool _avproOverride;
+
+    // Custom Domains
+    public ObservableCollection<string> CacheCustomDomains { get; } = [];
+
+    // Clear Cache on Exit
+    [ObservableProperty]
+    private bool _clearYouTubeCacheOnExit;
+
+    [ObservableProperty]
+    private bool _clearPyPyDanceCacheOnExit;
+
+    [ObservableProperty]
+    private bool _clearVRDancingCacheOnExit;
+
+    public ObservableCollection<string> ClearCustomDomainsOnExit { get; } = [];
+
     // Blocked URLs
     public ObservableCollection<string> BlockedUrls { get; } = [];
 
@@ -102,6 +124,28 @@ public partial class SettingsViewModel : ViewModelBase
         PatchVRC = config.PatchVRC;
         AutoUpdate = config.AutoUpdate;
 
+        // Advanced Settings
+        YtdlArgsOverride = config.ytdlArgsOverride;
+        AvproOverride = config.avproOverride;
+
+        // Clear Cache on Exit
+        ClearYouTubeCacheOnExit = config.ClearYouTubeCacheOnExit;
+        ClearPyPyDanceCacheOnExit = config.ClearPyPyDanceCacheOnExit;
+        ClearVRDancingCacheOnExit = config.ClearVRDancingCacheOnExit;
+
+        // Custom Domains
+        CacheCustomDomains.Clear();
+        foreach (var domain in config.CacheCustomDomains)
+        {
+            CacheCustomDomains.Add(domain);
+        }
+
+        ClearCustomDomainsOnExit.Clear();
+        foreach (var domain in config.ClearCustomDomainsOnExit)
+        {
+            ClearCustomDomainsOnExit.Add(domain);
+        }
+
         BlockedUrls.Clear();
         foreach (var url in config.BlockedUrls)
         {
@@ -129,6 +173,11 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnPatchResoniteChanged(bool value) => HasChanges = true;
     partial void OnPatchVRCChanged(bool value) => HasChanges = true;
     partial void OnAutoUpdateChanged(bool value) => HasChanges = true;
+    partial void OnYtdlArgsOverrideChanged(string value) => HasChanges = true;
+    partial void OnAvproOverrideChanged(bool value) => HasChanges = true;
+    partial void OnClearYouTubeCacheOnExitChanged(bool value) => HasChanges = true;
+    partial void OnClearPyPyDanceCacheOnExitChanged(bool value) => HasChanges = true;
+    partial void OnClearVRDancingCacheOnExitChanged(bool value) => HasChanges = true;
 
     [RelayCommand]
     private void SaveSettings()
@@ -152,6 +201,20 @@ public partial class SettingsViewModel : ViewModelBase
         config.PatchResonite = PatchResonite;
         config.PatchVRC = PatchVRC;
         config.AutoUpdate = AutoUpdate;
+
+        // Advanced Settings
+        config.ytdlArgsOverride = YtdlArgsOverride;
+        config.avproOverride = AvproOverride;
+
+        // Clear Cache on Exit
+        config.ClearYouTubeCacheOnExit = ClearYouTubeCacheOnExit;
+        config.ClearPyPyDanceCacheOnExit = ClearPyPyDanceCacheOnExit;
+        config.ClearVRDancingCacheOnExit = ClearVRDancingCacheOnExit;
+
+        // Custom Domains
+        config.CacheCustomDomains = CacheCustomDomains.ToArray();
+        config.ClearCustomDomainsOnExit = ClearCustomDomainsOnExit.ToArray();
+
         config.BlockedUrls = BlockedUrls.ToArray();
 
         ConfigManager.TrySaveConfig();
@@ -177,6 +240,34 @@ public partial class SettingsViewModel : ViewModelBase
     private void RemoveBlockedUrl(string url)
     {
         BlockedUrls.Remove(url);
+        HasChanges = true;
+    }
+
+    [RelayCommand]
+    private void AddCacheCustomDomain()
+    {
+        CacheCustomDomains.Add("example.com");
+        HasChanges = true;
+    }
+
+    [RelayCommand]
+    private void RemoveCacheCustomDomain(string domain)
+    {
+        CacheCustomDomains.Remove(domain);
+        HasChanges = true;
+    }
+
+    [RelayCommand]
+    private void AddClearCustomDomainOnExit()
+    {
+        ClearCustomDomainsOnExit.Add("example.com");
+        HasChanges = true;
+    }
+
+    [RelayCommand]
+    private void RemoveClearCustomDomainOnExit(string domain)
+    {
+        ClearCustomDomainsOnExit.Remove(domain);
         HasChanges = true;
     }
 }

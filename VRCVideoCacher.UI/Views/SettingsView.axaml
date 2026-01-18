@@ -103,6 +103,78 @@
                 </StackPanel>
             </Border>
 
+            <!-- Custom Domains -->
+            <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="15">
+                    <Grid ColumnDefinitions="*, Auto">
+                        <StackPanel>
+                            <TextBlock Text="Custom Domain Caching" FontWeight="SemiBold" FontSize="16"/>
+                            <TextBlock Text="Cache videos from these domains" Foreground="#888" FontSize="12"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Command="{Binding AddCacheCustomDomainCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <mi:MaterialIcon Kind="Plus" Width="16" Height="16"/>
+                                <TextBlock Text="Add Domain"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding CacheCustomDomains}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="*, Auto" Margin="0,5">
+                                    <TextBox Grid.Column="0" Text="{Binding Mode=TwoWay}" Watermark="example.com"/>
+                                    <Button Grid.Column="1" Margin="5,0,0,0"
+                                            Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveCacheCustomDomainCommand}"
+                                            CommandParameter="{Binding}">
+                                        <mi:MaterialIcon Kind="Delete" Width="16" Height="16"/>
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Clear Cache on Exit -->
+            <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="15">
+                    <StackPanel>
+                        <TextBlock Text="Clear Cache on Exit" FontWeight="SemiBold" FontSize="16"/>
+                        <TextBlock Text="Automatically delete cached videos when VRCVideoCacher closes" Foreground="#888" FontSize="12"/>
+                    </StackPanel>
+
+                    <CheckBox IsChecked="{Binding ClearYouTubeCacheOnExit}" Content="Clear YouTube cache on exit"/>
+                    <CheckBox IsChecked="{Binding ClearPyPyDanceCacheOnExit}" Content="Clear PyPyDance cache on exit"/>
+                    <CheckBox IsChecked="{Binding ClearVRDancingCacheOnExit}" Content="Clear VRDancing cache on exit"/>
+
+                    <Grid ColumnDefinitions="*, Auto" Margin="0,10,0,0">
+                        <TextBlock Text="Custom Domains to Clear on Exit" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Command="{Binding AddClearCustomDomainOnExitCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <mi:MaterialIcon Kind="Plus" Width="16" Height="16"/>
+                                <TextBlock Text="Add"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding ClearCustomDomainsOnExit}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="*, Auto" Margin="0,5">
+                                    <TextBox Grid.Column="0" Text="{Binding Mode=TwoWay}" Watermark="example.com"/>
+                                    <Button Grid.Column="1" Margin="5,0,0,0"
+                                            Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveClearCustomDomainOnExitCommand}"
+                                            CommandParameter="{Binding}">
+                                        <mi:MaterialIcon Kind="Delete" Width="16" Height="16"/>
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
             <!-- Game Patching -->
             <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
                 <StackPanel Spacing="15">
@@ -119,6 +191,23 @@
                     <TextBlock Text="Updates" FontWeight="SemiBold" FontSize="16"/>
 
                     <CheckBox IsChecked="{Binding AutoUpdate}" Content="Auto-update VRCVideoCacher"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Advanced Settings -->
+            <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="15">
+                    <StackPanel>
+                        <TextBlock Text="Advanced Settings" FontWeight="SemiBold" FontSize="16"/>
+                        <TextBlock Text="For power users only - modify at your own risk" Foreground="#f0ad4e" FontSize="12"/>
+                    </StackPanel>
+
+                    <CheckBox IsChecked="{Binding AvproOverride}" Content="Force AVPro Mode (always use browser impersonation)"/>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="yt-dlp Arguments Override (replaces Additional Args when set)"/>
+                        <TextBox Text="{Binding YtdlArgsOverride}" Watermark="Leave empty to use Additional Arguments"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

@@ -11,7 +11,7 @@ namespace VRCVideoCacher;
 public static class Program
 {
     public static string YtdlpHash = string.Empty;
-    public const string Version = "2026.1.9";
+    public const string Version = "2026.1.18";
     public static readonly ILogger Logger = Log.ForContext("SourceContext", "Core");
     public static readonly string CurrentProcessPath = Path.GetDirectoryName(Environment.ProcessPath) ?? string.Empty;
     public static readonly string DataPath = OperatingSystem.IsWindows()
@@ -40,7 +40,8 @@ public static class Program
         const string elly = "Elly";
         const string natsumi = "Natsumi";
         const string haxy = "Haxy";
-        Logger.Information("VRCVideoCacher version {Version} created by {Elly}, {Natsumi}, {Haxy}", Version, elly, natsumi, haxy);
+        const string fynn = "Fynn9563";
+        Logger.Information("VRCVideoCacher version {Version} created by {Elly}, {Natsumi}, {Haxy}. Modified by {Fynn}", Version, elly, natsumi, haxy, fynn);
         
         Directory.CreateDirectory(DataPath);
         await Updater.CheckForUpdates();
@@ -143,6 +144,9 @@ public static class Program
 
     private static void OnAppQuit()
     {
+        // Clear cache on exit based on config settings
+        CacheManager.ClearCacheOnExit();
+
         FileTools.RestoreAllYtdl();
         Logger.Information("Exiting...");
     }

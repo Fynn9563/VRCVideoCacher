@@ -1,0 +1,133 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nuget/packages
+            ${{ github.workspace }}/**/obj
+            ${{ github.workspace }}/**/bin
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.sln', '**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Cache .NET tools
+        id: cache-dotnet-tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.dotnet/tools
+          key: ${{ runner.os }}-dotnet-tools-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-dotnet-tools-
+
+      - name: Setup .NET
+        if: steps.cache-dotnet-tools.outputs.cache-hit != 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore VRCVideoCacher.sln --verbosity minimal
+
+      - name: Extract version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^v', ''
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "Building version: $version"
+
+      - name: Build yt-dlp-stub for Windows
+        run: |
+          dotnet publish yt-dlp-stub/yt-dlp-stub.csproj `
+            -c Release `
+            -r win-x64 `
+            -o yt-dlp-stub/bin/publish/win
+
+      - name: Build yt-dlp-stub for Linux
+        run: |
+          dotnet publish yt-dlp-stub/yt-dlp-stub.csproj `
+            -c Release `
+            -r linux-x64 `
+            -p:PublishAot=false `
+            -p:PublishSingleFile=true `
+            -o yt-dlp-stub/bin/publish/linux
+
+      - name: Copy yt-dlp-stub to VRCVideoCacher
+        run: |
+          Copy-Item -Path "yt-dlp-stub/bin/publish/win/yt-dlp-stub.exe" `
+            -Destination "VRCVideoCacher/yt-dlp-stub.exe" `
+            -Force
+
+      - name: Clean Build directory
+        run: |
+          if (Test-Path Build) {
+            Remove-Item -Path Build -Recurse -Force
+          }
+          New-Item -Path Build -ItemType Directory
+
+      - name: Build VRCVideoCacher UI for Windows
+        run: |
+          dotnet publish VRCVideoCacher.UI/VRCVideoCacher.UI.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:IncludeAllContentForSelfExtract=true `
+            -o Build/
+
+      - name: Rename Windows binary
+        run: |
+          Move-Item -Path "Build/VRCVideoCacher.UI.exe" -Destination "Build/VRCVideoCacher.exe" -Force
+
+      - name: Build VRCVideoCacher UI for Linux
+        run: |
+          dotnet publish VRCVideoCacher.UI/VRCVideoCacher.UI.csproj `
+            -c Release `
+            -r linux-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:IncludeAllContentForSelfExtract=true `
+            -o Build/
+
+      - name: Rename Linux binary
+        run: |
+          Move-Item -Path "Build/VRCVideoCacher.UI" -Destination "Build/VRCVideoCacher-linux" -Force
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: VRCVideoCacher ${{ steps.version.outputs.VERSION }}
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.VERSION, '-dev') || contains(steps.version.outputs.VERSION, '-beta') || contains(steps.version.outputs.VERSION, '-alpha') }}
+          files: |
+            Build/VRCVideoCacher.exe
+            Build/VRCVideoCacher-linux
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

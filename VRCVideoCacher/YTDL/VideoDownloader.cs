@@ -14,7 +14,7 @@ public class VideoDownloader
     {
         DefaultRequestHeaders = { { "User-Agent", "VRCVideoCacher" } }
     };
-    private static readonly ConcurrentQueue<VideoInfo> DownloadQueue = new();
+    private static readonly ConcurrentQueue<DownloadQueueItem> DownloadQueue = new();
     private static readonly string TempDownloadMp4Path;
     private static readonly string TempDownloadWebmPath;
 
@@ -25,7 +25,14 @@ public class VideoDownloader
 
     // Current download tracking
     private static VideoInfo? _currentDownload;
-    
+
+    // Internal class to track queue items with their custom domain
+    private class DownloadQueueItem
+    {
+        public required VideoInfo VideoInfo { get; init; }
+        public string? CustomDomain { get; init; }
+    }
+
     static VideoDownloader()
     {
         TempDownloadMp4Path = Path.Combine(CacheManager.CachePath, "_tempVideo.mp4");
@@ -48,51 +55,67 @@ public class VideoDownloader
             if (queueItem == null)
                 continue;
 
-            _currentDownload = queueItem;
-            OnDownloadStarted?.Invoke(queueItem);
+            var videoInfo = queueItem.VideoInfo;
+            var customDomain = queueItem.CustomDomain;
+            _currentDownload = videoInfo;
+            OnDownloadStarted?.Invoke(videoInfo);
 
             var success = false;
-            switch (queueItem.UrlType)
+            switch (videoInfo.UrlType)
             {
                 case UrlType.YouTube:
                     if (ConfigManager.Config.CacheYouTube)
-                        success = await DownloadYouTubeVideo(queueItem);
+                        success = await DownloadYouTubeVideo(videoInfo);
                     break;
                 case UrlType.PyPyDance:
                     if (ConfigManager.Config.CachePyPyDance)
-                        success = await DownloadVideoWithId(queueItem);
+                        success = await DownloadVideoWithId(videoInfo, customDomain);
                     break;
                 case UrlType.VRDancing:
                     if (ConfigManager.Config.CacheVRDancing)
-                        success = await DownloadVideoWithId(queueItem);
+                        success = await DownloadVideoWithId(videoInfo, customDomain);
                     break;
                 case UrlType.Other:
+                    // Check if this is a custom domain URL
+                    if (!string.IsNullOrEmpty(customDomain))
+                        success = await DownloadVideoWithId(videoInfo, customDomain);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
 
             DownloadQueue.TryDequeue(out _);
-            OnDownloadCompleted?.Invoke(queueItem, success);
+            OnDownloadCompleted?.Invoke(videoInfo, success);
             OnQueueChanged?.Invoke();
             _currentDownload = null;
         }
     }
     
-    public static void QueueDownload(VideoInfo videoInfo)
+    public static void QueueDownload(VideoInfo videoInfo, string? customDomain = null)
     {
-        if (DownloadQueue.Any(x => x.VideoId == videoInfo.VideoId &&
-                                   x.DownloadFormat == videoInfo.DownloadFormat))
+        if (DownloadQueue.Any(x => x.VideoInfo.VideoId == videoInfo.VideoId &&
+                                   x.VideoInfo.DownloadFormat == videoInfo.DownloadFormat))
         {
             // Log.Information("URL is already in the download queue.");
             return;
         }
-        DownloadQueue.Enqueue(videoInfo);
+
+        // Create custom domain directory if needed
+        if (!string.IsNullOrEmpty(customDomain))
+        {
+            CacheManager.EnsureCustomDomainDirectory(customDomain);
+        }
+
+        DownloadQueue.Enqueue(new DownloadQueueItem
+        {
+            VideoInfo = videoInfo,
+            CustomDomain = customDomain
+        });
         OnQueueChanged?.Invoke();
     }
 
     // Public accessors for UI
-    public static IReadOnlyList<VideoInfo> GetQueueSnapshot() => DownloadQueue.ToArray();
+    public static IReadOnlyList<VideoInfo> GetQueueSnapshot() => DownloadQueue.Select(x => x.VideoInfo).ToArray();
     public static int GetQueueCount() => DownloadQueue.Count;
     public static VideoInfo? GetCurrentDownload() => _currentDownload;
 
@@ -176,8 +199,15 @@ public class VideoDownloader
         }
         Thread.Sleep(100);
         
-        var fileName = $"{videoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
-        var filePath = Path.Combine(CacheManager.CachePath, fileName);
+        var fileNameOnly = $"{videoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
+        var relativePath = CacheManager.GetRelativePath(fileNameOnly, UrlType.YouTube);
+        var filePath = Path.Combine(CacheManager.CachePath, relativePath);
+
+        // Ensure subdirectory exists
+        var directory = Path.GetDirectoryName(filePath);
+        if (!string.IsNullOrEmpty(directory))
+            Directory.CreateDirectory(directory);
+
         if (File.Exists(filePath))
         {
             Log.Error("File already exists, canceling...");
@@ -209,12 +239,12 @@ public class VideoDownloader
             return false;
         }
 
-        CacheManager.AddToCache(fileName);
-        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{fileName}");
+        CacheManager.AddToCache(relativePath);
+        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativePath.Replace('\\', '/')}");
         return true;
     }
 
-    private static async Task<bool> DownloadVideoWithId(VideoInfo videoInfo)
+    private static async Task<bool> DownloadVideoWithId(VideoInfo videoInfo, string? customDomain = null)
     {
         if (File.Exists(TempDownloadMp4Path))
         {
@@ -248,9 +278,16 @@ public class VideoDownloader
         fileStream.Close();
         response.Dispose();
         await Task.Delay(10);
-        
-        var fileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
-        var filePath = Path.Combine(CacheManager.CachePath, fileName);
+
+        var fileNameOnly = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
+        var relativePath = CacheManager.GetRelativePath(fileNameOnly, videoInfo.UrlType, customDomain);
+        var filePath = Path.Combine(CacheManager.CachePath, relativePath);
+
+        // Ensure subdirectory exists
+        var directory = Path.GetDirectoryName(filePath);
+        if (!string.IsNullOrEmpty(directory))
+            Directory.CreateDirectory(directory);
+
         if (File.Exists(TempDownloadMp4Path))
         {
             File.Move(TempDownloadMp4Path, filePath);
@@ -265,8 +302,8 @@ public class VideoDownloader
             return false;
         }
 
-        CacheManager.AddToCache(fileName);
-        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{fileName}");
+        CacheManager.AddToCache(relativePath);
+        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativePath.Replace('\\', '/')}");
         return true;
     }
 }

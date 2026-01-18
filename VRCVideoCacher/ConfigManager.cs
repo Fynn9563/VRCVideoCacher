@@ -102,10 +102,21 @@ public class ConfigManager
             YtdlManager.DeleteGlobalYtdlConfig();
         }
 
+        if (GetUserConfirmation("Would you like to cache custom domains? (You can configure domains later in Config.json)", false))
+        {
+            Log.Information("You can add custom domains to 'CacheCustomDomains' in Config.json later.");
+        }
+
         Log.Information("You'll need to install our companion extension to fetch youtube cookies (This will fix YouTube bot errors)");
         Log.Information("Chrome: https://chromewebstore.google.com/detail/vrcvideocacher-cookies-ex/kfgelknbegappcajiflgfbjbdpbpokge");
         Log.Information("Firefox: https://addons.mozilla.org/en-US/firefox/addon/vrcvideocachercookiesexporter/");
         Log.Information("More info: https://github.com/clienthax/VRCVideoCacherBrowserExtension");
+
+        if (GetUserConfirmation("Have you installed the cookies browser extension?", false))
+        {
+            Config.CookieSetupCompleted = true;
+        }
+
         TrySaveConfig();
     }
 }
@@ -135,5 +146,12 @@ public class ConfigModel
     public bool AutoUpdate = true;
     public string[] PreCacheUrls = [];
     public bool CookieSetupCompleted = false;
+    public string ytdlArgsOverride = string.Empty;
+    public bool avproOverride = false;
+    public string[] CacheCustomDomains = [];
+    public bool ClearYouTubeCacheOnExit = false;
+    public bool ClearPyPyDanceCacheOnExit = false;
+    public bool ClearVRDancingCacheOnExit = false;
+    public string[] ClearCustomDomainsOnExit = [];
 }
 // ReSharper restore InconsistentNaming

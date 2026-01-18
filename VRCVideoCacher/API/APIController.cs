@@ -78,6 +78,13 @@ public class ApiController : WebApiController
             requestUrl = ConfigManager.Config.BlockRedirect;
         }
 
+        // Apply avproOverride from config
+        avPro = YtdlArgsHelper.GetEffectiveAvPro(avPro);
+
+        // Check for custom domain caching
+        string? customDomain = null;
+        CacheManager.IsCustomDomainUrl(requestUrl, out customDomain);
+
         var videoInfo = await VideoId.GetVideoId(requestUrl, avPro);
         if (videoInfo == null)
         {
@@ -85,11 +92,11 @@ public class ApiController : WebApiController
             return;
         }
 
-        var (isCached, filePath, fileName) = GetCachedFile(videoInfo.VideoId, avPro);
+        var (isCached, filePath, relativePath) = GetCachedFile(videoInfo.VideoId, avPro, videoInfo.UrlType, customDomain);
         if (isCached)
         {
             File.SetLastWriteTimeUtc(filePath, DateTime.UtcNow);
-            var url = $"{ConfigManager.Config.ytdlWebServerURL}/{fileName}";
+            var url = $"{ConfigManager.Config.ytdlWebServerURL}/{relativePath.Replace('\\', '/')}";
             Log.Information("Responding with Cached URL: {URL}", url);
             await HttpContext.SendStringAsync(url, "text/plain", Encoding.UTF8);
             return;
@@ -156,7 +163,16 @@ public class ApiController : WebApiController
             videoInfo.VideoUrl.StartsWith("https://manifest.googlevideo.com") ||
             videoInfo.VideoUrl.Contains("googlevideo.com"))
         {
-            await VideoTools.Prefetch(response);
+            var isPrefetchSuccessful = await VideoTools.Prefetch(response);
+            if (!isPrefetchSuccessful && avPro)
+            {
+                Log.Warning("Prefetch failed with AVPro, retrying without AVPro.");
+                avPro = false;
+                (response, success) = await VideoId.GetUrl(videoInfo, avPro);
+                if (success)
+                    await VideoTools.Prefetch(response);
+            }
+
             if (ConfigManager.Config.ytdlDelay > 0)
             {
                 Log.Information("Delaying YouTube URL response for configured {delay} seconds, this can help with video errors, don't ask why", ConfigManager.Config.ytdlDelay);
@@ -167,25 +183,49 @@ public class ApiController : WebApiController
         Log.Information("Responding with URL: {URL}", response);
         await HttpContext.SendStringAsync(response, "text/plain", Encoding.UTF8);
         // check if file is cached again to handle race condition
-        (isCached, _, _) = GetCachedFile(videoInfo.VideoId, avPro);
+        (isCached, _, _) = GetCachedFile(videoInfo.VideoId, avPro, videoInfo.UrlType, customDomain);
         if (!isCached)
-            VideoDownloader.QueueDownload(videoInfo);
+            VideoDownloader.QueueDownload(videoInfo, customDomain);
     }
 
-    private static (bool isCached, string filePath, string fileName) GetCachedFile(string videoId, bool avPro)
+    private static (bool isCached, string filePath, string relativePath) GetCachedFile(string videoId, bool avPro, UrlType urlType, string? customDomain = null)
     {
         var ext = avPro ? "webm" : "mp4";
         var fileName = $"{videoId}.{ext}";
-        var filePath = Path.Combine(CacheManager.CachePath, fileName);
+        var relativePath = CacheManager.GetRelativePath(fileName, urlType, customDomain);
+        var filePath = Path.Combine(CacheManager.CachePath, relativePath);
         var isCached = File.Exists(filePath);
+
         if (avPro && !isCached)
         {
             // retry with .mp4
             fileName = $"{videoId}.mp4";
-            filePath = Path.Combine(CacheManager.CachePath, fileName);
+            relativePath = CacheManager.GetRelativePath(fileName, urlType, customDomain);
+            filePath = Path.Combine(CacheManager.CachePath, relativePath);
             isCached = File.Exists(filePath);
         }
-        return (isCached, filePath, fileName);
+
+        // Also check root directory for backwards compatibility
+        if (!isCached)
+        {
+            fileName = $"{videoId}.{ext}";
+            var rootPath = Path.Combine(CacheManager.CachePath, fileName);
+            if (File.Exists(rootPath))
+            {
+                return (true, rootPath, fileName);
+            }
+            if (avPro)
+            {
+                fileName = $"{videoId}.mp4";
+                rootPath = Path.Combine(CacheManager.CachePath, fileName);
+                if (File.Exists(rootPath))
+                {
+                    return (true, rootPath, fileName);
+                }
+            }
+        }
+
+        return (isCached, filePath, relativePath);
     }
 
     private static async Task<string?> GetRedirectUrl(string requestUrl)
