@@ -82,6 +82,12 @@ public class Updater
             if (asset.name != FileName)
                 continue;
 
+            // Clean up any leftover files from previous update attempts
+            if (File.Exists(BackupFilePath))
+                File.Delete(BackupFilePath);
+            if (File.Exists(TempFilePath))
+                File.Delete(TempFilePath);
+
             File.Move(FilePath, BackupFilePath);
             
             try

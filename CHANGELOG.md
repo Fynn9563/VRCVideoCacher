@@ -3,6 +3,7 @@
 ## 2026.1.19
 - Fix custom domain folder naming (use `vr-m.net` instead of `vr-m_net`)
 - Add VRCX auto-start toggle in Settings UI
+- Fix updater failing when backup file already exists
 
 ## 2026.1.18
 - Merge UI project into main VRCVideoCacher project (single executable)
