@@ -72,7 +72,8 @@ public class VideoDownloader
     
     public static void QueueDownload(VideoInfo videoInfo)
     {
-        if (DownloadQueue.Any(x => x.VideoId == videoInfo.VideoId))
+        if (DownloadQueue.Any(x => x.VideoId == videoInfo.VideoId &&
+                                   x.DownloadFormat == videoInfo.DownloadFormat))
         {
             // Log.Information("URL is already in the download queue.");
             return;
@@ -158,7 +159,7 @@ public class VideoDownloader
             
             return;
         }
-        Thread.Sleep(10);
+        Thread.Sleep(100);
         
         var fileName = $"{videoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
         var subdirPath = CacheManager.GetSubdirectoryPath(UrlType.YouTube);
@@ -231,6 +232,7 @@ public class VideoDownloader
         await using var fileStream = new FileStream(TempDownloadMp4Path, FileMode.Create, FileAccess.Write, FileShare.None);
         await stream.CopyToAsync(fileStream);
         fileStream.Close();
+        response.Dispose();
         await Task.Delay(10);
         
         var fileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
