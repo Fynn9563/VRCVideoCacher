@@ -168,7 +168,7 @@ public class YtdlManager
         using var response = await HttpClient.GetAsync(url);
         await using var responseStream = await response.Content.ReadAsStreamAsync();
         using var reader = ReaderFactory.Open(responseStream);
-        while (reader.MoveToNextEntry())
+        while (await reader.MoveToNextEntryAsync())
         {
             if (reader.Entry.Key == null || reader.Entry.IsDirectory)
                 continue;
@@ -176,7 +176,7 @@ public class YtdlManager
             Log.Debug("Extracting file {Name} ({Size} bytes)", reader.Entry.Key, reader.Entry.Size);
             var path = Path.Combine(ConfigManager.UtilsPath, reader.Entry.Key);
             await using var outputStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
-            await using var entryStream = reader.OpenEntryStream();
+            await using var entryStream = await reader.OpenEntryStreamAsync();
             await entryStream.CopyToAsync(outputStream);
             FileTools.MarkFileExecutable(path);
             Versions.CurrentVersion.deno = json.tag_name;
@@ -284,22 +284,22 @@ public class YtdlManager
         await using var responseStream = await response.Content.ReadAsStreamAsync();
         using var reader = ReaderFactory.Open(responseStream);
         var success = false;
-        while (reader.MoveToNextEntry())
+        while (await reader.MoveToNextEntryAsync())
         {
             if (reader.Entry.Key == null || reader.Entry.IsDirectory)
                 continue;
 
-            if (reader.Entry.Key.Contains("/bin/"))
-            {
-                var fileName = Path.GetFileName(reader.Entry.Key);
-                Log.Debug("Extracting file {Name} ({Size} bytes)", fileName, reader.Entry.Size);
-                var path = Path.Combine(ConfigManager.UtilsPath, fileName);
-                await using var outputStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
-                await using var entryStream = reader.OpenEntryStream();
-                await entryStream.CopyToAsync(outputStream);
-                FileTools.MarkFileExecutable(path);
-                success = true;
-            }
+            if (!reader.Entry.Key.Contains("/bin/"))
+                continue;
+
+            var fileName = Path.GetFileName(reader.Entry.Key);
+            Log.Debug("Extracting file {Name} ({Size} bytes)", fileName, reader.Entry.Size);
+            var path = Path.Combine(ConfigManager.UtilsPath, fileName);
+            await using var outputStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+            await using var entryStream = await reader.OpenEntryStreamAsync();
+            await entryStream.CopyToAsync(outputStream);
+            FileTools.MarkFileExecutable(path);
+            success = true;
         }
 
         if (!success)

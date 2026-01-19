@@ -65,6 +65,9 @@ public partial class SettingsViewModel : ViewModelBase
     // Blocked URLs
     public ObservableCollection<string> BlockedUrls { get; } = [];
 
+    [ObservableProperty]
+    public string _blockRedirect;
+
     // Status
     [ObservableProperty]
     private string _statusMessage = string.Empty;
@@ -103,6 +106,7 @@ public partial class SettingsViewModel : ViewModelBase
         {
             BlockedUrls.Add(url);
         }
+        _blockRedirect = config.BlockRedirect;
 
         HasChanges = false;
         StatusMessage = string.Empty;
@@ -147,6 +151,7 @@ public partial class SettingsViewModel : ViewModelBase
         config.PatchVRC = PatchVRC;
         config.AutoUpdate = AutoUpdate;
         config.BlockedUrls = BlockedUrls.ToArray();
+        config.BlockRedirect = BlockRedirect;
 
         ConfigManager.TrySaveConfig();
         HasChanges = false;
