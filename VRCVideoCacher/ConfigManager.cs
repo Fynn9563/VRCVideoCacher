@@ -120,7 +120,6 @@ public class ConfigModel
     public bool ytdlAutoUpdate = true;
     public string ytdlAdditionalArgs = string.Empty;
     public string ytdlDubLanguage = string.Empty;
-    public int ytdlDelay = 0;
     public string CachedAssetPath = "";
     public string[] BlockedUrls = ["https://na2.vrdancing.club/sampleurl.mp4"];
     public string BlockRedirect = "https://www.youtube.com/watch?v=byv2bKekeWQ";

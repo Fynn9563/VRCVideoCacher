@@ -231,12 +231,6 @@ public class VideoId
 
             return string.Empty;
         }
-        
-        if (IsYouTubeUrl(url) && ConfigManager.Config.ytdlDelay > 0)
-        {
-            Log.Information("Delaying YouTube URL response for configured {delay} seconds, this can help with video errors, don't ask why", ConfigManager.Config.ytdlDelay);
-            await Task.Delay(ConfigManager.Config.ytdlDelay * 1000);
-        }
 
         return  output;
     }

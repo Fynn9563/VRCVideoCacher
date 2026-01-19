@@ -161,18 +161,12 @@ public class ApiController : WebApiController
         {
             var isPrefetchSuccessful = await VideoTools.Prefetch(response, YoutubePrefetchMaxRetries);
 
-            if(!isPrefetchSuccessful && avPro)
+            if (!isPrefetchSuccessful && avPro)
             {
                 Log.Warning("Prefetch failed with AVPro, retrying without AVPro.");
                 avPro = false;
                 (response, success) = await VideoId.GetUrl(videoInfo, avPro);
                 await VideoTools.Prefetch(response, YoutubePrefetchMaxRetries);
-            }
-
-            if (ConfigManager.Config.ytdlDelay > 0)
-            {
-                Log.Information("Delaying YouTube URL response for configured {delay} seconds, this can help with video errors, don't ask why", ConfigManager.Config.ytdlDelay);
-                await Task.Delay(ConfigManager.Config.ytdlDelay * 1000);
             }
         }
 

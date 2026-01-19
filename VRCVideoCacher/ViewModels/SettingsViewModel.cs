@@ -26,9 +26,6 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private string _ytdlDubLanguage = string.Empty;
 
-    [ObservableProperty]
-    private int _ytdlDelay;
-
     // Cache Settings
     [ObservableProperty]
     private string _cachedAssetPath = string.Empty;
@@ -90,7 +87,6 @@ public partial class SettingsViewModel : ViewModelBase
         YtdlAutoUpdate = config.ytdlAutoUpdate;
         YtdlAdditionalArgs = config.ytdlAdditionalArgs;
         YtdlDubLanguage = config.ytdlDubLanguage;
-        YtdlDelay = config.ytdlDelay;
         CachedAssetPath = config.CachedAssetPath;
         CacheYouTube = config.CacheYouTube;
         CacheYouTubeMaxResolution = config.CacheYouTubeMaxResolution;
@@ -118,7 +114,6 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnYtdlAutoUpdateChanged(bool value) => HasChanges = true;
     partial void OnYtdlAdditionalArgsChanged(string value) => HasChanges = true;
     partial void OnYtdlDubLanguageChanged(string value) => HasChanges = true;
-    partial void OnYtdlDelayChanged(int value) => HasChanges = true;
     partial void OnCachedAssetPathChanged(string value) => HasChanges = true;
     partial void OnCacheYouTubeChanged(bool value) => HasChanges = true;
     partial void OnCacheYouTubeMaxResolutionChanged(int value) => HasChanges = true;
@@ -141,7 +136,6 @@ public partial class SettingsViewModel : ViewModelBase
         config.ytdlAutoUpdate = YtdlAutoUpdate;
         config.ytdlAdditionalArgs = YtdlAdditionalArgs;
         config.ytdlDubLanguage = YtdlDubLanguage;
-        config.ytdlDelay = YtdlDelay;
         config.CachedAssetPath = CachedAssetPath;
         config.CacheYouTube = CacheYouTube;
         config.CacheYouTubeMaxResolution = CacheYouTubeMaxResolution;

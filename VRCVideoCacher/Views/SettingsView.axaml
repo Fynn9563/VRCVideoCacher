@@ -63,11 +63,6 @@
                         <TextBlock Text="Preferred Dub Language (e.g., 'de' for German)"/>
                         <TextBox Text="{Binding YtdlDubLanguage}" Watermark="Leave empty for original"/>
                     </StackPanel>
-
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="Download Delay (seconds)"/>
-                        <NumericUpDown Value="{Binding YtdlDelay}" Minimum="0" Maximum="60" Increment="1"/>
-                    </StackPanel>
                 </StackPanel>
             </Border>
 
