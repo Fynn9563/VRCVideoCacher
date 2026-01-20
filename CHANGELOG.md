@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.0
+- Switch to semantic versioning (from date-based versioning)
+- Fix build-dev.bat preserving Config.json
+
 ## 2026.1.21
 - Add transition logic for semver versioning (next release will be `2.2.0`)
 - Merge EllyVR/UI branch features (Resonite mode, BlockRedirect, removed ytdlDelay)

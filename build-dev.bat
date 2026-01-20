@@ -5,13 +5,10 @@ set "DEV_BUILD_DIR=DevBuild"
 
 echo Cleaning previous dev build...
 if exist %DEV_BUILD_DIR% (
-    REM Only remove exe and dll files, preserve Config.json and CachedAssets
+    REM Only remove build artifacts, preserve Config.json, CachedAssets, Utils, MetadataCache
     del /q "%DEV_BUILD_DIR%\*.exe" 2>nul
-    del /q "%DEV_BUILD_DIR%\*.dll" 2>nul
     del /q "%DEV_BUILD_DIR%\*.pdb" 2>nul
-    del /q "%DEV_BUILD_DIR%\*.json" 2>nul
-    del /q "%DEV_BUILD_DIR%\*.deps.json" 2>nul
-    del /q "%DEV_BUILD_DIR%\*.runtimeconfig.json" 2>nul
+    del /q "%DEV_BUILD_DIR%\youtube_cookies.txt" 2>nul
 ) else (
     mkdir %DEV_BUILD_DIR%
 )
