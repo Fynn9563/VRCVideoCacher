@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026.1.21
+- Add transition logic for semver versioning (next release will be `2.2.0`)
+- Merge EllyVR/UI branch features (Resonite mode, BlockRedirect, removed ytdlDelay)
+- Move utility classes to Utils/ folder
+
 ## 2026.1.20
 - Fix update loop caused by version mismatch in 2026.1.19 release (forgot to update version in `Program.cs`)
 - Fix updater failing when backup file already exists (use versioned backup filename)

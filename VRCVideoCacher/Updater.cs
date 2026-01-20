@@ -49,7 +49,25 @@ public class Updater
         var latestVersion = SemVersion.Parse(latestRelease.tag_name);
         var currentVersion = SemVersion.Parse(Program.Version);
         Log.Information("Latest release: {Latest}, Installed Version: {Installed}", latestVersion, currentVersion);
-        if (SemVersion.ComparePrecedence(currentVersion, latestVersion) >= 0)
+
+        // Check if update is available
+        // Special case: date-based versions (major >= 2000) should always update to semver versions (major < 100)
+        var isCurrentDateBased = currentVersion.Major >= 2000;
+        var isLatestSemver = latestVersion.Major < 100;
+        var updateAvailable = false;
+
+        if (isCurrentDateBased && isLatestSemver)
+        {
+            // Transition from date-based to semver versioning
+            Log.Information("Transitioning from date-based version to semver.");
+            updateAvailable = true;
+        }
+        else if (SemVersion.ComparePrecedence(currentVersion, latestVersion) < 0)
+        {
+            updateAvailable = true;
+        }
+
+        if (!updateAvailable)
         {
             Log.Information("No updates available.");
             return;
@@ -75,9 +93,6 @@ public class Updater
                 try
                 {
                     File.Delete(backupFile);
-                    // silly temporary config reset to test video prefetch
-                    ConfigManager.Config.ytdlDelay = 0;
-                    ConfigManager.TrySaveConfig();
                 }
                 catch
                 {

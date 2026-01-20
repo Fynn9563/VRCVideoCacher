@@ -29,11 +29,21 @@ public class AutoStartShortcut
         info.WriteToFile(shortcut);
     }
 
-    public static bool IsStartupEnabled()
+    private static bool StartupEnabled()
     {
-        return !string.IsNullOrEmpty(GetOurShortcut());
+        if (string.IsNullOrEmpty(GetOurShortcut()))
+            return false;
+
+        return true;
     }
 
+    [SupportedOSPlatform("windows")]
+    public static bool IsStartupEnabled()
+    {
+        return StartupEnabled();
+    }
+
+    [SupportedOSPlatform("windows")]
     public static bool IsVrcxInstalled()
     {
         var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VRCX", "startup");
@@ -54,14 +64,14 @@ public class AutoStartShortcut
         }
         catch (Exception ex)
         {
-            Log.Error("Failed to remove VRCX autostart shortcut: {Error}", ex.Message);
+            Log.Error("Failed to remove shortcut: {Message}", ex.Message);
         }
     }
 
     [SupportedOSPlatform("windows")]
     public static void CreateShortcut()
     {
-        if (IsStartupEnabled())
+        if (StartupEnabled())
             return;
         
         Log.Information("Adding VRCVideoCacher to VRCX autostart...");

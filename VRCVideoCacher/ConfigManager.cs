@@ -144,8 +144,7 @@ public class ConfigModel
     public bool ytdlAutoUpdate = true;
     public string ytdlAdditionalArgs = string.Empty;
     public string ytdlArgsOverride = string.Empty;
-    public string ytdlDubLanguage = "en";
-    public int ytdlDelay = 0;
+    public string ytdlDubLanguage = string.Empty;
     public string avproOverride = "default";
     public string CachedAssetPath = "";
     public string[] BlockedUrls = ["https://na2.vrdancing.club/sampleurl.mp4"];

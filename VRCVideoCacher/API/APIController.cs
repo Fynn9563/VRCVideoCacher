@@ -92,6 +92,13 @@ public class ApiController : WebApiController
             return;
         }
 
+        if (source == "resonite")
+        {
+            Log.Information("Request sent from resonite sending json.");
+            await HttpContext.SendStringAsync(await VideoId.GetURLResonite(requestUrl), "text/plain", Encoding.UTF8);
+            return;
+        }
+
         var (isCached, filePath, relativeUrl) = GetCachedFile(videoInfo, avPro);
         if (isCached)
         {
@@ -113,13 +120,6 @@ public class ApiController : WebApiController
         {
             Log.Information("URL Is Mighty Gym: Bypassing.");
             await HttpContext.SendStringAsync(string.Empty, "text/plain", Encoding.UTF8);
-            return;
-        }
-
-        if (source == "resonite")
-        {
-            Log.Information("Request sent from resonite sending json.");
-            await HttpContext.SendStringAsync(await VideoId.GetURLResonite(requestUrl), "text/plain", Encoding.UTF8);
             return;
         }
 
@@ -196,12 +196,6 @@ public class ApiController : WebApiController
                 avPro = false;
                 (response, success) = await VideoId.GetUrl(videoInfo, avPro);
                 await VideoTools.Prefetch(response, YoutubePrefetchMaxRetries);
-            }
-
-            if (ConfigManager.Config.ytdlDelay > 0)
-            {
-                Log.Information("Delaying YouTube URL response for configured {delay} seconds, this can help with video errors, don't ask why", ConfigManager.Config.ytdlDelay);
-                await Task.Delay(ConfigManager.Config.ytdlDelay * 1000);
             }
         }
         else if (videoInfo.UrlType == UrlType.CustomDomain)

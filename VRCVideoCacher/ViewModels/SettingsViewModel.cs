@@ -27,9 +27,6 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private string _ytdlDubLanguage = string.Empty;
 
-    [ObservableProperty]
-    private int _ytdlDelay;
-
     // Cache Settings
     [ObservableProperty]
     private string _cachedAssetPath = string.Empty;
@@ -107,6 +104,9 @@ public partial class SettingsViewModel : ViewModelBase
     // Pre-Cache URLs
     public ObservableCollection<EditableString> PreCacheUrls { get; } = [];
 
+    [ObservableProperty]
+    private string _blockRedirect = string.Empty;
+
     // Status
     [ObservableProperty]
     private string _statusMessage = string.Empty;
@@ -129,7 +129,6 @@ public partial class SettingsViewModel : ViewModelBase
         YtdlAutoUpdate = config.ytdlAutoUpdate;
         YtdlAdditionalArgs = config.ytdlAdditionalArgs;
         YtdlDubLanguage = config.ytdlDubLanguage;
-        YtdlDelay = config.ytdlDelay;
         CachedAssetPath = config.CachedAssetPath;
         CacheYouTube = config.CacheYouTube;
         CacheYouTubeMaxResolution = config.CacheYouTubeMaxResolution;
@@ -182,6 +181,7 @@ public partial class SettingsViewModel : ViewModelBase
         {
             PreCacheUrls.Add(new EditableString(url));
         }
+        BlockRedirect = config.BlockRedirect;
 
         HasChanges = false;
         StatusMessage = string.Empty;
@@ -193,7 +193,6 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnYtdlAutoUpdateChanged(bool value) => HasChanges = true;
     partial void OnYtdlAdditionalArgsChanged(string value) => HasChanges = true;
     partial void OnYtdlDubLanguageChanged(string value) => HasChanges = true;
-    partial void OnYtdlDelayChanged(int value) => HasChanges = true;
     partial void OnCachedAssetPathChanged(string value) => HasChanges = true;
     partial void OnCacheYouTubeChanged(bool value) => HasChanges = true;
     partial void OnCacheYouTubeMaxResolutionChanged(int value) => HasChanges = true;
@@ -233,7 +232,6 @@ public partial class SettingsViewModel : ViewModelBase
         config.ytdlAutoUpdate = YtdlAutoUpdate;
         config.ytdlAdditionalArgs = YtdlAdditionalArgs;
         config.ytdlDubLanguage = YtdlDubLanguage;
-        config.ytdlDelay = YtdlDelay;
         config.CachedAssetPath = CachedAssetPath;
         config.CacheYouTube = CacheYouTube;
         config.CacheYouTubeMaxResolution = CacheYouTubeMaxResolution;
@@ -260,6 +258,7 @@ public partial class SettingsViewModel : ViewModelBase
         config.ClearCustomDomainsOnExit = ClearCustomDomainsOnExit.Select(x => x.Value).ToArray();
 
         config.BlockedUrls = BlockedUrls.Select(x => x.Value).ToArray();
+        config.BlockRedirect = BlockRedirect;
         config.PreCacheUrls = PreCacheUrls.Select(x => x.Value).ToArray();
 
         ConfigManager.TrySaveConfig();

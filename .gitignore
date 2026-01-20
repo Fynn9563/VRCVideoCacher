@@ -12,7 +12,5 @@ publish/
 *.DotSettings*
 
 # Runtime files
-Utils/
 *.log
 nul
-

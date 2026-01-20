@@ -48,12 +48,12 @@
                     <TextBlock Text="Download Settings" FontWeight="SemiBold" FontSize="16"/>
 
                     <StackPanel Spacing="5">
-                        <TextBlock Text="yt-dlp Path"/>
+                        <TextBlock Text="yt-dlp Path (leave empty to use global PATH)"/>
                         <TextBox Text="{Binding YtdlPath}" Watermark="Utils\yt-dlp.exe"/>
                     </StackPanel>
 
-                    <CheckBox IsChecked="{Binding YtdlUseCookies}" Content="Use YouTube Cookies (browser extension)"/>
-                    <CheckBox IsChecked="{Binding YtdlAutoUpdate}" Content="Auto-update yt-dlp, FFmpeg, and Deno"/>
+                    <CheckBox IsChecked="{Binding YtdlUseCookies}" Content="Use YouTube Cookies (requires browser extension)"/>
+                    <CheckBox IsChecked="{Binding YtdlAutoUpdate}" Content="Auto-update Utils (yt-dlp, FFmpeg, and Deno)"/>
 
                     <StackPanel Spacing="5">
                         <TextBlock Text="Additional yt-dlp Arguments"/>
@@ -63,11 +63,6 @@
                     <StackPanel Spacing="5">
                         <TextBlock Text="Preferred Dub Language (e.g., 'de' for German)"/>
                         <TextBox Text="{Binding YtdlDubLanguage}" Watermark="Leave empty for original"/>
-                    </StackPanel>
-
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="Download Delay (seconds)"/>
-                        <NumericUpDown Value="{Binding YtdlDelay}" Minimum="0" Maximum="60" Increment="1"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -79,24 +74,26 @@
 
                     <StackPanel Spacing="5">
                         <TextBlock Text="Cache Path (leave empty for default)"/>
-                        <TextBox Text="{Binding CachedAssetPath}" Watermark="Default: CachedAssets folder"/>
+                        <TextBox Text="{Binding CachedAssetPath}" Watermark="CachedAssets"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Max Cache Size in GB (0 = unlimited)"/>
+                        <NumericUpDown Value="{Binding CacheMaxSizeInGb}" Minimum="0" Maximum="10000" Increment="1" FormatString="0.#"/>
                     </StackPanel>
 
                     <CheckBox IsChecked="{Binding CacheYouTube}" Content="Cache YouTube Videos"/>
 
-                    <StackPanel Spacing="5" IsVisible="{Binding CacheYouTube}">
-                        <TextBlock Text="Max YouTube Resolution"/>
-                        <ComboBox ItemsSource="{Binding ResolutionOptions}" SelectedItem="{Binding CacheYouTubeMaxResolution}"/>
-                    </StackPanel>
+                    <StackPanel Spacing="5" Margin="30,0,0,0" IsVisible="{Binding CacheYouTube}">
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Max YouTube Resolution"/>
+                            <ComboBox ItemsSource="{Binding ResolutionOptions}" SelectedItem="{Binding CacheYouTubeMaxResolution}"/>
+                        </StackPanel>
 
-                    <StackPanel Spacing="5" IsVisible="{Binding CacheYouTube}">
-                        <TextBlock Text="Max Video Length (minutes)"/>
-                        <NumericUpDown Value="{Binding CacheYouTubeMaxLength}" Minimum="1" Maximum="600" Increment="10"/>
-                    </StackPanel>
-
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="Max Cache Size (GB, 0 = unlimited)"/>
-                        <NumericUpDown Value="{Binding CacheMaxSizeInGb}" Minimum="0" Maximum="1000" Increment="1" FormatString="0.#"/>
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Max Video Length (minutes)"/>
+                            <NumericUpDown Value="{Binding CacheYouTubeMaxLength}" Minimum="1" Maximum="600" Increment="10"/>
+                        </StackPanel>
                     </StackPanel>
 
                     <CheckBox IsChecked="{Binding CachePyPyDance}" Content="Cache PyPyDance Videos"/>
@@ -288,6 +285,10 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <StackPanel Spacing="5" Margin="0,20,0,0">
+                        <TextBlock Text="Blocked URL Redirect" FontWeight="SemiBold" FontSize="16"/>
+                        <TextBox Text="{Binding BlockRedirect}" Watermark="Redirect URL"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </StackPanel>
