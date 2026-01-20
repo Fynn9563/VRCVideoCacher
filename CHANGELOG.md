@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.3.1
+- Fix VRCX auto-start toggle applying immediately instead of on save
+
 ## 2.3.0
 - Add file logging (logs/VRCVideoCacher.log with 5-day retention)
 

@@ -210,16 +210,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnClearPyPyDanceCacheOnExitChanged(bool value) => HasChanges = true;
     partial void OnClearVRDancingCacheOnExitChanged(bool value) => HasChanges = true;
 
-    partial void OnVrcxAutoStartChanged(bool value)
-    {
-        if (!OperatingSystem.IsWindows())
-            return;
-
-        if (value)
-            AutoStartShortcut.CreateShortcut();
-        else
-            AutoStartShortcut.RemoveShortcut();
-    }
+    partial void OnVrcxAutoStartChanged(bool value) => HasChanges = true;
 
     [RelayCommand]
     private void SaveSettings()
@@ -262,6 +253,16 @@ public partial class SettingsViewModel : ViewModelBase
         config.PreCacheUrls = PreCacheUrls.Select(x => x.Value).ToArray();
 
         ConfigManager.TrySaveConfig();
+
+        // Apply VRCX auto-start setting (Windows only)
+        if (OperatingSystem.IsWindows())
+        {
+            if (VrcxAutoStart)
+                AutoStartShortcut.CreateShortcut();
+            else
+                AutoStartShortcut.RemoveShortcut();
+        }
+
         HasChanges = false;
         StatusMessage = "Settings saved!";
     }
