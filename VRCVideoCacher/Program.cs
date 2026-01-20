@@ -14,7 +14,7 @@ namespace VRCVideoCacher;
 internal sealed class Program
 {
     public static string YtdlpHash = string.Empty;
-    public const string Version = "2.2.0";
+    public const string Version = "2.3.0";
     public static readonly ILogger Logger = Log.ForContext("SourceContext", "Core");
     public static readonly string CurrentProcessPath = Path.GetDirectoryName(Environment.ProcessPath) ?? string.Empty;
     public static readonly string DataPath = OperatingSystem.IsWindows()
@@ -46,6 +46,10 @@ internal sealed class Program
             .WriteTo.Console(new ExpressionTemplate(
                 "[{@t:HH:mm:ss} {@l:u3} {Coalesce(Substring(SourceContext, LastIndexOf(SourceContext, '.') + 1),'<none>')}] {@m}\n\r{@x}",
                 theme: TemplateTheme.Literate))
+            .WriteTo.File(
+                path: "logs/VRCVideoCacher.log",
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 5)
             .WriteTo.Sink(new UiLogSink())
             .CreateLogger();
 

@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.3.0
+- Add file logging (logs/VRCVideoCacher.log with 5-day retention)
+
 ## 2.2.0
 - Switch to semantic versioning (from date-based versioning)
 - Fix build-dev.bat preserving Config.json
