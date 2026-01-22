@@ -119,13 +119,13 @@ public partial class CookieSetupViewModel : ViewModelBase
     private void OpenExtensionStore()
     {
         var url = IsChrome ? ChromeExtensionUrl : FirefoxExtensionUrl;
-        OpenUrl(url);
+        OpenUrlInBrowser(url, IsChrome);
     }
 
     [RelayCommand]
     private void OpenYouTube()
     {
-        OpenUrl("https://www.youtube.com");
+        OpenUrlInBrowser("https://www.youtube.com", IsChrome);
     }
 
     [RelayCommand]
@@ -165,16 +165,149 @@ public partial class CookieSetupViewModel : ViewModelBase
         RequestClose?.Invoke();
     }
 
-    private static void OpenUrl(string url)
+    private static void OpenUrlInBrowser(string url, bool useChrome)
     {
+        var browserPath = useChrome ? FindChromePath() : FindFirefoxPath();
+
         try
         {
-            Process.Start(new ProcessStartInfo
+            if (!string.IsNullOrEmpty(browserPath))
             {
-                FileName = url,
-                UseShellExecute = true
-            });
+                // Open with specific browser
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = browserPath,
+                    Arguments = url,
+                    UseShellExecute = false
+                });
+            }
+            else
+            {
+                // Fallback to default browser
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
+            }
         }
         catch { /* Ignore errors */ }
+    }
+
+    private static string? FindChromePath()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            // Try registry first
+            var registryPaths = new[]
+            {
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe",
+                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"
+            };
+
+            foreach (var regPath in registryPaths)
+            {
+                try
+                {
+                    using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(regPath);
+                    var path = key?.GetValue(null)?.ToString();
+                    if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                        return path;
+                }
+                catch { /* Registry access failed */ }
+            }
+
+            // Try common paths as fallback
+            var commonPaths = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Google\Chrome\Application\chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Google\Chrome\Application\chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Google\Chrome\Application\chrome.exe")
+            };
+
+            foreach (var path in commonPaths)
+            {
+                if (File.Exists(path))
+                    return path;
+            }
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            // Linux: check common locations and PATH
+            var linuxPaths = new[] { "google-chrome", "google-chrome-stable", "chromium", "chromium-browser" };
+            foreach (var browser in linuxPaths)
+            {
+                var path = FindInPath(browser);
+                if (path != null)
+                    return path;
+            }
+        }
+        return null;
+    }
+
+    private static string? FindFirefoxPath()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            // Try registry first
+            var registryPaths = new[]
+            {
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\firefox.exe",
+                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\firefox.exe"
+            };
+
+            foreach (var regPath in registryPaths)
+            {
+                try
+                {
+                    using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(regPath);
+                    var path = key?.GetValue(null)?.ToString();
+                    if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                        return path;
+                }
+                catch { /* Registry access failed */ }
+            }
+
+            // Try common paths as fallback
+            var commonPaths = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Mozilla Firefox\firefox.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Mozilla Firefox\firefox.exe")
+            };
+
+            foreach (var path in commonPaths)
+            {
+                if (File.Exists(path))
+                    return path;
+            }
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            var linuxPaths = new[] { "firefox", "firefox-esr" };
+            foreach (var browser in linuxPaths)
+            {
+                var path = FindInPath(browser);
+                if (path != null)
+                    return path;
+            }
+        }
+        return null;
+    }
+
+    private static string? FindInPath(string executable)
+    {
+        var pathEnv = Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrEmpty(pathEnv))
+            return null;
+
+        var paths = pathEnv.Split(Path.PathSeparator);
+        foreach (var path in paths)
+        {
+            var fullPath = Path.Combine(path, executable);
+            if (File.Exists(fullPath))
+                return fullPath;
+        }
+
+        return null;
     }
 }

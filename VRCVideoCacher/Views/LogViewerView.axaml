@@ -47,7 +47,7 @@
                      ScrollViewer.VerticalScrollBarVisibility="Auto">
                 <ListBox.ItemTemplate>
                     <DataTemplate DataType="{x:Type models:LogEntry}">
-                        <Grid ColumnDefinitions="80, 40, 100, *" Margin="5,2">
+                        <Grid ColumnDefinitions="80, 40, 100, *, Auto" Margin="5,2">
                             <TextBlock Grid.Column="0"
                                        Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}"
                                        FontFamily="Consolas"
@@ -72,6 +72,15 @@
                                        FontFamily="Consolas"
                                        TextWrapping="Wrap"
                                        FontSize="12"/>
+                            <Button Grid.Column="4"
+                                    IsVisible="{Binding HasClickableUrl}"
+                                    Command="{Binding $parent[ListBox].((vm:LogViewerViewModel)DataContext).OpenUrlCommand}"
+                                    CommandParameter="{Binding ClickableUrl}"
+                                    Background="Transparent"
+                                    Padding="5,0"
+                                    ToolTip.Tip="{Binding ClickableUrl}">
+                                <mi:MaterialIcon Kind="OpenInNew" Width="14" Height="14" Foreground="#64B5F6"/>
+                            </Button>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>

@@ -1,115 +1,141 @@
 # Changelog
 
-## 2.3.1
-- Fix VRCX auto-start toggle applying immediately instead of on save
+## [2.4.0] - 2026-01-22
 
-## 2.3.0
-- Add file logging (logs/VRCVideoCacher.log with 5-day retention)
+### Added
+- Clickable URL button in log viewer for YouTube and custom domain URLs (excludes localhost and googlevideo.com)
+- Cookie status display in Settings (shows logged-in YouTube account email)
+- Browser-specific URL opening in cookie setup wizard (opens in Chrome/Firefox based on selection)
 
-## 2.2.0
+## [2.3.1] - 2026-01-21
+
+### Fixed
+- VRCX auto-start toggle applying immediately instead of waiting for save
+
+## [2.3.0] - 2026-01-21
+
+### Added
+- File logging (logs/VRCVideoCacher.log with 5-day retention)
+
+## [2.2.0] - 2026-01-21
+
+### Changed
 - Switch to semantic versioning (from date-based versioning)
-- Fix build-dev.bat preserving Config.json
 
-## 2026.1.21
-- Add transition logic for semver versioning (next release will be `2.2.0`)
-- Merge EllyVR/UI branch features (Resonite mode, BlockRedirect, removed ytdlDelay)
-- Move utility classes to Utils/ folder
+### Fixed
+- build-dev.bat now preserves Config.json
 
-## 2026.1.20
-- Fix update loop caused by version mismatch in 2026.1.19 release (forgot to update version in `Program.cs`)
-- Fix updater failing when backup file already exists (use versioned backup filename)
+## [2026.1.21] - 2026-01-20
 
-## 2026.1.19
-- Fix custom domain folder naming (use `vr-m.net` instead of `vr-m_net`)
-- Add VRCX auto-start toggle in Settings UI
+### Added
+- Transition logic for semver versioning (next release will be `2.2.0`)
+- Resonite mode support (from EllyVR/UI branch)
+- BlockRedirect setting for blocked URLs
 
-## 2026.1.18
-- Merge UI project into main VRCVideoCacher project (single executable)
-- Add 360p resolution option
-- Retry without AVPro if prefetch fails
-- Add mutex to prevent multiple instances
-- Add custom domain caching support (`CacheCustomDomains` config)
-- Add cache clearing on exit (`ClearYouTubeCacheOnExit`, `ClearPyPyDanceCacheOnExit`, `ClearVRDancingCacheOnExit`, `ClearCustomDomainsOnExit`)
-- Add `avproOverride` to force AVPro mode for all requests
-- Add `ytdlArgsOverride` to completely override yt-dlp arguments
-- Organize cached videos into subdirectories by type (YouTube/, PyPyDance/, VRDancing/, CustomDomains/)
-- Add category badges in cache browser UI
-- Add UI settings for all new config options
-- Update auto-updater to use Fynn9563 fork releases
-- Add `PreCacheUrls` setting to UI with support for direct video URLs (YouTube, Vimeo, etc.)
-- Fix "Open on YouTube" button for custom domain videos
-- Add category filtering dropdown in cache browser
-- Add video thumbnails for custom domain videos (extracted via FFmpeg)
-- Add music icon for audio-only cached files
+### Changed
+- Moved utility classes to Utils/ folder
+- Removed ytdlDelay setting
+
+## [2026.1.20] - 2026-01-18
+
+### Fixed
+- Update loop caused by version mismatch in 2026.1.19 release
+- Updater failing when backup file already exists (now uses versioned backup filename)
+
+## [2026.1.19] - 2026-01-18
+
+### Added
+- VRCX auto-start toggle in Settings UI
+
+### Fixed
+- Custom domain folder naming (use `vr-m.net` instead of `vr-m_net`)
+
+## [2026.1.18] - 2026-01-18
+
+### Added
+- Merged UI project into main VRCVideoCacher project (single executable)
+- 360p resolution option
+- Custom domain caching support (`CacheCustomDomains` config)
+- Cache clearing on exit (`ClearYouTubeCacheOnExit`, `ClearPyPyDanceCacheOnExit`, `ClearVRDancingCacheOnExit`, `ClearCustomDomainsOnExit`)
+- `avproOverride` to force AVPro mode for all requests
+- `ytdlArgsOverride` to completely override yt-dlp arguments
+- Category badges in cache browser UI
+- UI settings for all new config options
+- `PreCacheUrls` setting with support for direct video URLs
+- Category filtering dropdown in cache browser
+- Video thumbnails for custom domain videos (extracted via FFmpeg)
+- Music icon for audio-only cached files
 - Auto-refresh cache browser when video downloads complete
-- Cache audio-only detection to avoid repeated FFmpeg runs
-- Fix custom domain streaming URLs (m3u8/mpd) - skip yt-dlp and use direct URL
+- Mutex to prevent multiple instances
 
-## 2025.11.24
-- UI branch with Avalonia-based graphical interface
+### Changed
+- Organized cached videos into subdirectories by type (YouTube/, PyPyDance/, VRDancing/, CustomDomains/)
+- Updated auto-updater to use Fynn9563 fork releases
+- Cache audio-only detection to avoid repeated FFmpeg runs
+
+### Fixed
+- "Open on YouTube" button for custom domain videos
+- Custom domain streaming URLs (m3u8/mpd) - skip yt-dlp and use direct URL
+- Retry without AVPro if prefetch fails
+
+## [2025.11.24] - 2025-11-24
+
+### Added
+- Avalonia-based graphical interface
 - Cache browser with thumbnails and video metadata
 - Settings UI for all configuration options
 - Download queue viewer
 - Log viewer
 
-## 2025.11.21
-- Version bump
+## [2025.11.15] - 2025-11-15
 
-## 2025.11.15
-- Fix autostart shortcut path updater
-- Updater use absolute path
-- Save config after edit
+### Added
 - Custom Resonite path support
 - Simple setup with defaults
 
-## 2025.11.8
-- Add prefetching for YouTube to fix playback issues
-- Ensure YouTube resolve delay runs when using third-party resolvers
+### Fixed
+- Autostart shortcut path updater
+- Updater now uses absolute path
+- Config saves after edit
 
-## 2025.11.5
+## [2025.11.8] - 2025-11-08
+
+### Added
+- Prefetching for YouTube to fix playback issues
+
+### Fixed
+- YouTube resolve delay now runs when using third-party resolvers
+
+## [2025.11.5] - 2025-11-11
+
+### Fixed
 - PyPyDance error handling improvements
 - Handle caching multiple formats for same video
 
-## 2025.10.3
-- Fix Linux updater not chmodding
-- Add bypass for "VFI - Cinema" URLs
+## [2025.10.3] - 2025-10-03
 
-## 2025.9.29
+### Added
+- Bypass for "VFI - Cinema" URLs
+
+### Fixed
+- Linux updater not setting executable permission
+
+## [2025.9.29] - 2025-09-29
+
+### Changed
 - Auto remove readonly attribute when VRCVideoCacher isn't running
-- Update block list behavior
+- Updated block list behavior
 
-## 2025.8.6
-- SupportedOSPlatform attributes
+## [2025.1.8] - 2025-01-08
 
-## 2025.7.16
-- Bug fixes
-
-## 2025.7.14
-- Bug fixes
-
-## 2025.5.18
-- Bug fixes
-
-## 2025.5.14
-- Bug fixes
-
-## 2025.5.12
-- Bug fixes
-
-## 2025.5.9
-- Bug fixes
-
-## 2025.5.7
-- Bug fixes
-
-## 2025.4.21
-- Bug fixes
-
-## 2025.1.8
+### Added
 - Initial versioned release
 
-## 2024.12.9
-- Early release
+## [2024.11.27] - 2024-12-03
 
-## 2024.11.27
+### Added
 - Initial release
+
+---
+
+For older releases, see [GitHub Releases](https://github.com/Fynn9563/VRCVideoCacher/releases).

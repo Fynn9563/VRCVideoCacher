@@ -19,6 +19,9 @@ public partial class SettingsViewModel : ViewModelBase
     private bool _ytdlUseCookies;
 
     [ObservableProperty]
+    private string _cookieStatus = string.Empty;
+
+    [ObservableProperty]
     private bool _ytdlAutoUpdate;
 
     [ObservableProperty]
@@ -117,6 +120,9 @@ public partial class SettingsViewModel : ViewModelBase
     public SettingsViewModel()
     {
         LoadFromConfig();
+
+        // Subscribe to cookie updates to refresh status after initialization
+        Program.OnCookiesUpdated += () => CookieStatus = Program.GetCookieStatus();
     }
 
     private void LoadFromConfig()
@@ -126,6 +132,7 @@ public partial class SettingsViewModel : ViewModelBase
         WebServerUrl = config.ytdlWebServerURL;
         YtdlPath = config.ytdlPath;
         YtdlUseCookies = config.ytdlUseCookies;
+        CookieStatus = Program.GetCookieStatus();
         YtdlAutoUpdate = config.ytdlAutoUpdate;
         YtdlAdditionalArgs = config.ytdlAdditionalArgs;
         YtdlDubLanguage = config.ytdlDubLanguage;

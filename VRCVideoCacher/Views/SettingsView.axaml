@@ -52,7 +52,10 @@
                         <TextBox Text="{Binding YtdlPath}" Watermark="Utils\yt-dlp.exe"/>
                     </StackPanel>
 
-                    <CheckBox IsChecked="{Binding YtdlUseCookies}" Content="Use YouTube Cookies (requires browser extension)"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <CheckBox IsChecked="{Binding YtdlUseCookies}" Content="Use YouTube Cookies (requires browser extension)"/>
+                        <TextBlock Text="{Binding CookieStatus}" VerticalAlignment="Center" Foreground="#81C784" FontStyle="Italic"/>
+                    </StackPanel>
                     <CheckBox IsChecked="{Binding YtdlAutoUpdate}" Content="Auto-update Utils (yt-dlp, FFmpeg, and Deno)"/>
 
                     <StackPanel Spacing="5">

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using Avalonia;
 using Serilog;
 using Serilog.Templates;
@@ -11,16 +12,17 @@ using VRCVideoCacher.YTDL;
 
 namespace VRCVideoCacher;
 
-internal sealed class Program
+internal sealed partial class Program
 {
     public static string YtdlpHash = string.Empty;
-    public const string Version = "2.3.1";
+    public const string Version = "2.4.0";
     public static readonly ILogger Logger = Log.ForContext("SourceContext", "Core");
     public static readonly string CurrentProcessPath = Path.GetDirectoryName(Environment.ProcessPath) ?? string.Empty;
     public static readonly string DataPath = OperatingSystem.IsWindows()
         ? CurrentProcessPath
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VRCVideoCacher");
     public static event Action? OnCookiesUpdated;
+    private static string? _youtubeUsername;
 
     [STAThread]
     public static void Main(string[] args)
@@ -128,6 +130,8 @@ internal sealed class Program
 
         if (ConfigManager.Config.ytdlUseCookies && !IsCookiesEnabledAndValid())
             Logger.Warning("No cookies found, please use the browser extension to send cookies or disable \"ytdlUseCookies\" in config.");
+        else if (IsCookiesEnabledAndValid())
+            _ = FetchYouTubeUsernameAsync();
 
         CacheManager.Init();
 
@@ -170,6 +174,22 @@ internal sealed class Program
         return false;
     }
 
+    // Returns cookie status for display in Settings UI (only when cookies enabled)
+    public static string GetCookieStatus()
+    {
+        if (!ConfigManager.Config.ytdlUseCookies)
+            return string.Empty;
+
+        if (!File.Exists(YtdlManager.CookiesPath))
+            return "No cookies";
+
+        var cookies = File.ReadAllText(YtdlManager.CookiesPath);
+        if (!IsCookiesValid(cookies))
+            return "Invalid cookies";
+
+        return string.IsNullOrEmpty(_youtubeUsername) ? "Logged in" : $"Logged in as {_youtubeUsername}";
+    }
+
     public static Stream GetYtDlpStub()
     {
         return GetEmbeddedResource("VRCVideoCacher.yt-dlp-stub.exe");
@@ -209,5 +229,71 @@ internal sealed class Program
     public static void NotifyCookiesUpdated()
     {
         OnCookiesUpdated?.Invoke();
+        _ = FetchYouTubeUsernameAsync();
     }
+
+    private static async Task FetchYouTubeUsernameAsync()
+    {
+        Logger.Debug("FetchYouTubeUsernameAsync called");
+
+        if (!IsCookiesEnabledAndValid())
+        {
+            Logger.Debug("Cookies not enabled or invalid, skipping username fetch");
+            _youtubeUsername = null;
+            return;
+        }
+
+        try
+        {
+            // Parse cookies from the Netscape cookie file
+            var cookieContainer = new System.Net.CookieContainer();
+            var cookieLines = await File.ReadAllLinesAsync(YtdlManager.CookiesPath);
+            foreach (var line in cookieLines)
+            {
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+                    continue;
+
+                var parts = line.Split('\t');
+                if (parts.Length >= 7)
+                {
+                    try
+                    {
+                        var domain = parts[0].TrimStart('.');
+                        var cookie = new System.Net.Cookie(parts[5], parts[6], parts[2], domain);
+                        cookieContainer.Add(cookie);
+                    }
+                    catch { /* Skip invalid cookies */ }
+                }
+            }
+
+            using var handler = new HttpClientHandler { CookieContainer = cookieContainer };
+            using var client = new HttpClient(handler);
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+
+            var html = await client.GetStringAsync("https://www.youtube.com/account");
+            Logger.Debug("YouTube account page fetched, length: {Length}", html.Length);
+
+            // Extract email from "Signed in as" text in page
+            var match = SignedInAsRegex().Match(html);
+            if (match.Success)
+            {
+                _youtubeUsername = match.Groups[1].Value;
+                Logger.Information("YouTube account fetched: {Username}", _youtubeUsername);
+                OnCookiesUpdated?.Invoke(); // Notify UI to update
+            }
+            else
+            {
+                Logger.Debug("Could not find account email in YouTube account page");
+                _youtubeUsername = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning("Failed to fetch YouTube username: {Error}", ex.Message);
+            _youtubeUsername = null;
+        }
+    }
+
+    [GeneratedRegex("\"text\":\"Signed in as \".*?\"text\":\"([^\"]+)\"")]
+    private static partial Regex SignedInAsRegex();
 }
