@@ -25,12 +25,14 @@ internal sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        int count = Process.GetProcessesByName("VRCVideoCacher").Length;
-        if (count  > 1)
+        var processes = Process.GetProcessesByName("VRCVideoCacher");
+        if (processes.Length > 1)
         {
-            Console.WriteLine("Application is already running ");
+            Console.WriteLine("Application is already running, Exiting...");
             Environment.Exit(0);
         }
+        foreach (var process in processes)
+            process.Dispose();
         
         // Check for --nogui flag
         if (args.Contains("--nogui"))
