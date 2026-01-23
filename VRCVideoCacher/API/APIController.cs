@@ -119,9 +119,6 @@ public class ApiController : WebApiController
             return;
         }
 
-        if (ConfigManager.Config.CacheYouTubeMaxResolution <= 360)
-            avPro = false; // disable browser impersonation when it isn't needed
-
         // pls no villager
         if (requestUrl.StartsWith("https://anime.illumination.media"))
             avPro = true;
