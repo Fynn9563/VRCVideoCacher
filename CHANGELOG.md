@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.4.1] - 2026-01-27
+
+### Fixed
+- Removed AVPro size fallback that was causing issues
+- Process handle cleanup when checking for existing instances
+
 ## [2.4.0] - 2026-01-22
 
 ### Added
