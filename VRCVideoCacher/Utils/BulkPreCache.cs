@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using Serilog;
+using VRCVideoCacher.YTDL;
 
 namespace VRCVideoCacher;
 
@@ -32,23 +33,73 @@ public class BulkPreCache
     {
         foreach (var url in ConfigManager.Config.PreCacheUrls)
         {
+            // Check if it's a direct video URL (YouTube, etc.) - pre-cache via yt-dlp
+            if (IsVideoUrl(url))
+            {
+                Log.Information("Pre-caching video URL: {Url}", url);
+                try
+                {
+                    var videoInfo = await VideoId.GetVideoId(url, false);
+                    if (videoInfo != null)
+                    {
+                        VideoDownloader.QueueDownload(videoInfo, videoInfo.Domain);
+                    }
+                    else
+                    {
+                        Log.Warning("Failed to get video info for {Url}", url);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Failed to pre-cache video {Url}: {Error}", url, ex.Message);
+                }
+                continue;
+            }
+
+            // Otherwise treat as JSON file list endpoint
             using var response = await HttpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)
             {
                 Log.Information("Failed to download {Url}: {ResponseStatusCode}", url, response.StatusCode);
-                return;
+                continue;
             }
 
             var content = await response.Content.ReadAsStringAsync();
-            var files = JsonConvert.DeserializeObject<List<DownloadInfo>>(content);
-            if (files == null || files.Count == 0)
+
+            // Check if response looks like JSON
+            if (string.IsNullOrWhiteSpace(content) || (!content.TrimStart().StartsWith("[") && !content.TrimStart().StartsWith("{")))
             {
-                Log.Information("No files to download for {URL}", url);
-                return;
+                Log.Warning("Invalid response from {Url} - expected JSON but got something else", url);
+                continue;
             }
-            await DownloadVideos(files);
-            Log.Information("All {count} files for {URL} are up to date.", files.Count, url);
+
+            try
+            {
+                var files = JsonConvert.DeserializeObject<List<DownloadInfo>>(content);
+                if (files == null || files.Count == 0)
+                {
+                    Log.Information("No files to download for {URL}", url);
+                    continue;
+                }
+                await DownloadVideos(files);
+                Log.Information("All {count} files for {URL} are up to date.", files.Count, url);
+            }
+            catch (JsonException ex)
+            {
+                Log.Error("Failed to parse JSON from {Url}: {Error}", url, ex.Message);
+            }
         }
+    }
+
+    private static bool IsVideoUrl(string url)
+    {
+        return url.Contains("youtube.com/watch") ||
+               url.Contains("youtu.be/") ||
+               url.Contains("twitch.tv/") ||
+               url.Contains("vimeo.com/") ||
+               url.EndsWith(".mp4") ||
+               url.EndsWith(".webm") ||
+               url.EndsWith(".mkv");
     }
 
     private static async Task DownloadVideos(List<DownloadInfo> files)

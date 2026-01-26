@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.4.2] - 2026-01-27
+
+### Fixed
+- PreCacheUrls now properly supports YouTube and other video URLs (not just JSON endpoints)
+
 ## [2.4.1] - 2026-01-27
 
 ### Fixed
