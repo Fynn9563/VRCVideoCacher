@@ -1,12 +1,14 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json;
 using Serilog;
 using VRCVideoCacher.Database;
 using VRCVideoCacher.Models;
+using VRCVideoCacher.Services;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace VRCVideoCacher.YTDL;
 
@@ -102,7 +104,12 @@ public class VideoId
             url.StartsWith("https://eu2.vrdancing.club") ||
             url.StartsWith("https://na2-lq.vrdancing.club"))
         {
+            var uri = new Uri(url);
+            var code = Path.GetFileNameWithoutExtension(uri.LocalPath);
+            var vrddata = await VRDancingAPIService.GetVideoInfo(code);
+            
             var videoId = HashUrl(url);
+            DatabaseManager.AddTitleCache(videoId, $"{vrddata.Song}");
             return new VideoInfo
             {
                 VideoUrl = url,
