@@ -3,12 +3,12 @@
 public static class AdminCheck
 {
     private const string AdminTitleWarning = " - RUNNING AS AN ADMINISTRATOR!";
-    public const string AdminBypassArg = "--admin-bypass-warning";
+    public const string AdminBypassArg = "--bypass-admin-warning";
     public const string AdminWarningMessage =
         "⚠ WARNING: You are running VRCVideoCacher as an administrator. " +
         "This is not recommended for security reasons. " +
         "Please run the application with standard user privileges. " +
-        "\r\n\r\nIf you really need it, please use \"--admin-bypass-warning\" to bypass this warning.";
+        $"\r\n\r\nIf you really need it, please use \"{AdminBypassArg}\" to bypass this warning.";
 
     private static bool _isBypassArguementPresent;
 
