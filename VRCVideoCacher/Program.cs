@@ -64,7 +64,7 @@ internal sealed class Program
         }
 
         // Don't run backend if admin warning is shown
-        if (AdminCheck.ShouldShowAdminWarning())
+        if (!AdminCheck.ShouldShowAdminWarning())
         {
             // Start backend on background thread
             Task.Run(async () =>
