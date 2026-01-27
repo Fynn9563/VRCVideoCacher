@@ -6,6 +6,8 @@ using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using VRCVideoCacher.ViewModels;
 using VRCVideoCacher.Views;
+using System.Security.Principal;
+using VRCVideoCacher.Utils;
 
 namespace VRCVideoCacher;
 
@@ -24,6 +26,15 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            if (AdminCheck.ShouldShowAdminWarning())
+            {
+                var adminWindow = new PopupWindow(AdminCheck.AdminWarningMessage);
+                desktop.MainWindow = adminWindow;
+                adminWindow.Closed += (_, _) => desktop.Shutdown();
+                adminWindow.Show();
+                return;
+            }
+
             // Avoid duplicate validations from both Avalonia and the CommunityToolkit
             BindingPlugins.DataValidators.RemoveAt(0);
 

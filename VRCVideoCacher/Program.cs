@@ -7,6 +7,7 @@ using Serilog.Templates;
 using Serilog.Templates.Themes;
 using VRCVideoCacher.API;
 using VRCVideoCacher.Services;
+using VRCVideoCacher.Utils;
 using VRCVideoCacher.YTDL;
 
 namespace VRCVideoCacher;
@@ -25,6 +26,8 @@ internal sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        AdminCheck.SetupArguements(args);
+
         var processes = Process.GetProcessesByName("VRCVideoCacher");
         if (processes.Length > 1)
         {
@@ -38,7 +41,7 @@ internal sealed class Program
         if (args.Contains("--nogui"))
         {
             // Run backend only (console mode)
-            InitVRCVideoCacher().GetAwaiter().GetResult();
+            InitVRCVideoCacher(false).GetAwaiter().GetResult();
             return;
         }
 
@@ -55,29 +58,35 @@ internal sealed class Program
             .WriteTo.Sink(new UiLogSink())
             .CreateLogger();
 
-        // Start backend on background thread
-        Task.Run(async () =>
+        if (AdminCheck.IsRunningAsAdmin())
         {
-            try
-            {
-                await InitVRCVideoCacher();
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Backend error "+ex.Message+" "+ex.StackTrace);
-            }
-        });
+            Logger.Warning("Application is running with administrator privileges. This is not recommended for security reasons.");
+        }
 
-        // Give the backend a moment to initialize
-        Thread.Sleep(1000);
+        // Don't run backend if admin warning is shown
+        if (AdminCheck.ShouldShowAdminWarning())
+        {
+            // Start backend on background thread
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await InitVRCVideoCacher(true);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Backend error " + ex.Message + " " + ex.StackTrace);
+                }
+            });
+        }
 
         // Start the UI
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
-    public static async Task InitVRCVideoCacher()
+    public static async Task InitVRCVideoCacher(bool hasGui)
     {
-        try { Console.Title = $"VRCVideoCacher v{Version}"; } catch { /* GUI mode, no console */ }
+        try { Console.Title = $"VRCVideoCacher v{Version}{AdminCheck.GetAdminTitleWarning()}"; } catch { /* GUI mode, no console */ }
 
         // Only configure logger if not already configured (e.g., by UI)
         if (Log.Logger.GetType().Name == "SilentLogger")
@@ -93,8 +102,14 @@ internal sealed class Program
         const string natsumi = "Natsumi";
         const string haxy = "Haxy";
         Logger.Information("VRCVideoCacher version {Version} created by {Elly}, {Natsumi}, {Haxy}", Version, elly, natsumi, haxy);
-        
-        Directory.CreateDirectory(DataPath);
+
+        if (!hasGui && AdminCheck.ShouldShowAdminWarning())
+        {
+            Logger.Error(AdminCheck.AdminWarningMessage);
+            Environment.Exit(0);
+        }
+
+            Directory.CreateDirectory(DataPath);
         await Updater.CheckForUpdates();
         Updater.Cleanup();
         if (Environment.CommandLine.Contains("--Reset"))
