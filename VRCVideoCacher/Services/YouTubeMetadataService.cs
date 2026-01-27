@@ -1,26 +1,20 @@
-using System.Collections.Concurrent;
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
+using VRCVideoCacher.Database;
+using VRCVideoCacher.Database.Models;
 
 namespace VRCVideoCacher.Services;
-
-[JsonSerializable(typeof(Dictionary<string, string>))]
-internal partial class MetadataJsonContext : JsonSerializerContext
-{
-}
 
 public static class YouTubeMetadataService
 {
     private static readonly HttpClient HttpClient = new()
     {
+        DefaultRequestHeaders = { { "User-Agent", "VRCVideoCacher" } },
         Timeout = TimeSpan.FromSeconds(10)
     };
-
-    private static readonly ConcurrentDictionary<string, string> TitleCache = new();
-    private static readonly string CacheDir = Path.Combine(VRCVideoCacher.Program.DataPath, "MetadataCache");
-    private static readonly string TitleCacheFile = Path.Combine(CacheDir, "titles.json");
+    
+    private static readonly string CacheDir = Path.Combine(Program.DataPath, "MetadataCache");
     private static readonly string ThumbnailCacheDir = Path.Combine(CacheDir, "thumbnails");
-    private static bool _cacheLoaded;
 
     static YouTubeMetadataService()
     {
@@ -28,55 +22,16 @@ public static class YouTubeMetadataService
         Directory.CreateDirectory(ThumbnailCacheDir);
     }
 
-    private static void LoadCacheFromDisk()
-    {
-        if (_cacheLoaded) return;
-        _cacheLoaded = true;
-
-        try
-        {
-            if (File.Exists(TitleCacheFile))
-            {
-                var json = File.ReadAllText(TitleCacheFile);
-                var cached = JsonSerializer.Deserialize(json, MetadataJsonContext.Default.DictionaryStringString);
-                if (cached != null)
-                {
-                    foreach (var kvp in cached)
-                    {
-                        TitleCache.TryAdd(kvp.Key, kvp.Value);
-                    }
-                }
-            }
-        }
-        catch
-        {
-            // Ignore cache load errors
-        }
-    }
-
-    private static void SaveCacheToDisk()
-    {
-        try
-        {
-            var dict = TitleCache.ToDictionary(k => k.Key, v => v.Value);
-            var json = JsonSerializer.Serialize(dict, MetadataJsonContext.Default.DictionaryStringString);
-            File.WriteAllText(TitleCacheFile, json);
-        }
-        catch
-        {
-            // Ignore cache save errors
-        }
-    }
-
     public static async Task<string?> GetVideoTitleAsync(string videoId)
     {
         if (string.IsNullOrEmpty(videoId))
             return null;
 
-        LoadCacheFromDisk();
-
-        // Check cache first
-        if (TitleCache.TryGetValue(videoId, out var cachedTitle))
+        var cachedTitle = await DatabaseManager.Database.TitleCache
+            .Where(tc => tc.Id == videoId)
+            .Select(tc => tc.Title)
+            .FirstOrDefaultAsync();
+        if (!string.IsNullOrEmpty(cachedTitle))
             return cachedTitle;
 
         try
@@ -85,16 +40,14 @@ public static class YouTubeMetadataService
             var response = await HttpClient.GetStringAsync(url);
 
             using var doc = JsonDocument.Parse(response);
-            if (doc.RootElement.TryGetProperty("title", out var titleElement))
-            {
-                var title = titleElement.GetString();
-                if (!string.IsNullOrEmpty(title))
-                {
-                    TitleCache[videoId] = title;
-                    SaveCacheToDisk();
-                    return title;
-                }
-            }
+            if (!doc.RootElement.TryGetProperty("title", out var titleElement))
+                return null;
+            var title = titleElement.GetString();
+            if (string.IsNullOrEmpty(title))
+                return null;
+
+            DatabaseManager.AddTitleCache(videoId, title);
+            return title;
         }
         catch
         {
@@ -104,7 +57,7 @@ public static class YouTubeMetadataService
         return null;
     }
 
-    public static string GetThumbnailPath(string videoId)
+    private static string GetThumbnailPath(string videoId)
     {
         return Path.Combine(ThumbnailCacheDir, $"{videoId}.jpg");
     }

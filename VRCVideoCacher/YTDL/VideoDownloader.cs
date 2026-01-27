@@ -52,19 +52,27 @@ public class VideoDownloader
             OnDownloadStarted?.Invoke(queueItem);
 
             var success = false;
-            switch (queueItem.UrlType)
+            try
             {
-                case UrlType.YouTube:
-                    success = await DownloadYouTubeVideo(queueItem);
-                    break;
-                case UrlType.PyPyDance:
-                case UrlType.VRDancing:
-                    success = await DownloadVideoWithId(queueItem);
-                    break;
-                case UrlType.Other:
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
+                switch (queueItem.UrlType)
+                {
+                    case UrlType.YouTube:
+                        success = await DownloadYouTubeVideo(queueItem);
+                        break;
+                    case UrlType.PyPyDance:
+                    case UrlType.VRDancing:
+                        success = await DownloadVideoWithId(queueItem);
+                        break;
+                    case UrlType.Other:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Exception during download: {Ex}", ex.Message);
+                success = false;
             }
 
             OnDownloadCompleted?.Invoke(queueItem, success);

@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Serilog;
+using VRCVideoCacher.Database;
 using VRCVideoCacher.Models;
 
 namespace VRCVideoCacher.YTDL;
@@ -20,6 +21,9 @@ internal class YtdlpVideoInfo
 
     [JsonPropertyName("is_live")]
     public bool? IsLive { get; set; }
+    
+    [JsonPropertyName("title")]
+    public string? Name { get; set; }
 }
 
 [JsonSerializable(typeof(YtdlpVideoInfo))]
@@ -181,6 +185,9 @@ public class VideoId
         var data = JsonSerializer.Deserialize(rawData, VideoIdJsonContext.Default.YtdlpVideoInfo);
         if (data?.Id is null || data.Duration is null)
             throw new Exception("Failed to get video ID");
+        
+        DatabaseManager.AddTitleCache(data.Id, data.Name);
+        
         if (data.IsLive == true)
             throw new Exception("Failed to get video ID: Video is a stream");
         if (data.Duration > ConfigManager.Config.CacheYouTubeMaxLength * 60)

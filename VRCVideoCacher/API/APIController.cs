@@ -2,6 +2,7 @@ using System.Text;
 using EmbedIO;
 using EmbedIO.Routing;
 using EmbedIO.WebApi;
+using VRCVideoCacher.Database;
 using VRCVideoCacher.Models;
 using VRCVideoCacher.YTDL;
 
@@ -87,6 +88,7 @@ public class ApiController : WebApiController
             Log.Information("Failed to get Video Info for URL: {URL}", requestUrl);
             return;
         }
+        DatabaseManager.AddPlayHistory(videoInfo);
 
         if (source == "resonite")
         {
