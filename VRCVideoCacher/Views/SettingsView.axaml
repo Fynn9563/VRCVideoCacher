@@ -97,6 +97,7 @@
 
                     <CheckBox IsChecked="{Binding CachePyPyDance}" Content="Cache PyPyDance Videos"/>
                     <CheckBox IsChecked="{Binding CacheVRDancing}" Content="Cache VRDancing Videos"/>
+                    <CheckBox IsChecked="{Binding CacheOnly}" Content="Only use Cached Videos"/>
                 </StackPanel>
             </Border>
 

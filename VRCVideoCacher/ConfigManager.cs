@@ -134,5 +134,6 @@ public class ConfigModel
     public bool AutoUpdate = true;
     public string[] PreCacheUrls = [];
     public bool CookieSetupCompleted = false;
+    public bool CacheOnly = false;
 }
 // ReSharper restore InconsistentNaming

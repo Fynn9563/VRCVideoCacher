@@ -112,6 +112,13 @@ public class ApiController : WebApiController
             return;
         }
 
+        if (ConfigManager.Config.CacheOnly)
+        {
+            Log.Information("Cache Only Mode Enabled: Bypassing.");
+            await HttpContext.SendStringAsync(string.Empty, "text/plain", Encoding.UTF8);
+            return;
+        }
+
         if (requestUrl.StartsWith("https://mightygymcdn.nyc3.cdn.digitaloceanspaces.com"))
         {
             Log.Information("URL Is Mighty Gym: Bypassing.");
