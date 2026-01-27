@@ -6,7 +6,7 @@ public static class Versions
 {
     private static readonly string VersionPath = Path.Combine(Program.DataPath, "version.json");
     public static VersionJson CurrentVersion = new();
-    
+
     static Versions()
     {
         var oldVersionFile = Path.Combine(Program.DataPath, "yt-dlp.version.txt");
@@ -34,7 +34,7 @@ public static class Versions
         }
         Save();
     }
-    
+
     public static void Save()
     {
         File.WriteAllText(VersionPath, JsonConvert.SerializeObject(CurrentVersion, Formatting.Indented));

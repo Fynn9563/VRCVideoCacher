@@ -25,7 +25,7 @@ public class VideoDownloader
 
     // Current download tracking
     private static VideoInfo? _currentDownload;
-    
+
     static VideoDownloader()
     {
         TempDownloadMp4Path = Path.Combine(CacheManager.CachePath, "_tempVideo.mp4");
@@ -78,7 +78,7 @@ public class VideoDownloader
             _currentDownload = null;
         }
     }
-    
+
     public static void QueueDownload(VideoInfo videoInfo)
     {
         if (DownloadQueue.Any(x => x.VideoId == videoInfo.VideoId &&
@@ -127,11 +127,11 @@ public class VideoDownloader
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
-        
+
         var audioArg = string.IsNullOrEmpty(ConfigManager.Config.ytdlDubLanguage)
             ? "+ba[acodec=opus][ext=webm]"
             : $"+(ba[acodec=opus][ext=webm][language={ConfigManager.Config.ytdlDubLanguage}]/ba[acodec=opus][ext=webm])";
-        
+
         var audioArgPotato = string.IsNullOrEmpty(ConfigManager.Config.ytdlDubLanguage)
             ? "+ba[ext=m4a]"
             : $"+(ba[ext=m4a][language={ConfigManager.Config.ytdlDubLanguage}]/ba[ext=m4a])";
@@ -149,7 +149,7 @@ public class VideoDownloader
                 StandardErrorEncoding = Encoding.UTF8,
             }
         };
-        
+
         if (videoInfo.DownloadFormat == DownloadFormat.Webm)
         {
             // process.StartInfo.Arguments = $"--encoding utf-8 -q -o \"{TempDownloadMp4Path}\" -f \"bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec~='^(avc|h264)']+ba[ext=m4a]/bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec!=av01][vcodec!=vp9.2][protocol^=http]\" --no-playlist --remux-video mp4 --no-progress {cookieArg} {additionalArgs} -- \"{videoId}\"";
@@ -175,7 +175,7 @@ public class VideoDownloader
             return false;
         }
         Thread.Sleep(100);
-        
+
         var fileName = $"{videoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
         var filePath = Path.Combine(CacheManager.CachePath, fileName);
         if (File.Exists(filePath))
@@ -248,7 +248,7 @@ public class VideoDownloader
         fileStream.Close();
         response.Dispose();
         await Task.Delay(10);
-        
+
         var fileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
         var filePath = Path.Combine(CacheManager.CachePath, fileName);
         if (File.Exists(TempDownloadMp4Path))

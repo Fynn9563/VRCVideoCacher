@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using VRCVideoCacher.Models;
 using VRCVideoCacher.Services;
 
 namespace VRCVideoCacher.ViewModels;

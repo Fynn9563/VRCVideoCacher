@@ -2,7 +2,6 @@
 using System.Globalization;
 using Serilog;
 using ValveKeyValue;
-using VRCVideoCacher;
 
 namespace VRCVideoCacher;
 
@@ -17,7 +16,7 @@ public class FileTools
 
     static FileTools()
     {
-        string resoPath; 
+        string resoPath;
         if (!string.IsNullOrEmpty(ConfigManager.Config.ResonitePath))
             resoPath = ConfigManager.Config.ResonitePath;
         else
@@ -28,16 +27,16 @@ public class FileTools
 
         string localLowPath;
         if (OperatingSystem.IsWindows())
-        { 
+        {
             localLowPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "Low";
         }
         else if (OperatingSystem.IsLinux())
-        { 
-            var compatPath = GetCompatPath("438100") ?? throw new Exception("Unable to find VRChat compat data"); 
+        {
+            var compatPath = GetCompatPath("438100") ?? throw new Exception("Unable to find VRChat compat data");
             localLowPath = Path.Join(compatPath, "pfx/drive_c/users/steamuser/AppData/LocalLow");
         }
         else
-        { 
+        {
             throw new NotImplementedException("Unknown platform");
         }
         YtdlPathVrc = Path.Join(localLowPath, "VRChat/VRChat/Tools/yt-dlp.exe");
@@ -199,7 +198,7 @@ public class FileTools
     {
         if (!File.Exists(backupPath))
             return;
-        
+
         Log.Information("Restoring yt-dlp...");
         if (File.Exists(ytdlPath))
         {

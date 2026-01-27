@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -50,7 +49,7 @@ public class VideoId
             return false;
         }
     }
-    
+
     private static string HashUrl(string url)
     {
         return Convert.ToBase64String(
@@ -60,11 +59,11 @@ public class VideoId
             .Replace("+", "")
             .Replace("=", "");
     }
-    
+
     public static async Task<VideoInfo?> GetVideoId(string url, bool avPro)
     {
         url = url.Trim();
-        
+
         if (url.StartsWith("http://api.pypy.dance/video"))
         {
             try
@@ -94,7 +93,7 @@ public class VideoId
                 return null;
             }
         }
-        
+
         if (url.StartsWith("https://na2.vrdancing.club") ||
             url.StartsWith("https://eu2.vrdancing.club") ||
             url.StartsWith("https://na2-lq.vrdancing.club"))
@@ -108,14 +107,14 @@ public class VideoId
                 DownloadFormat = DownloadFormat.MP4
             };
         }
-        
+
         if (IsYouTubeUrl(url))
         {
             var videoId = string.Empty;
             var match = YoutubeRegex.Match(url);
             if (match.Success)
             {
-                videoId = match.Groups[1].Value; 
+                videoId = match.Groups[1].Value;
             }
             else if (url.StartsWith("https://www.youtube.com/shorts/") ||
                      url.StartsWith("https://youtube.com/shorts/"))
@@ -210,7 +209,7 @@ public class VideoId
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
-        
+
         var languageArg = string.IsNullOrEmpty(ConfigManager.Config.ytdlDubLanguage)
             ? string.Empty
             : $" -f [language={ConfigManager.Config.ytdlDubLanguage}]";
@@ -223,7 +222,7 @@ public class VideoId
         error = error.Trim();
         await process.WaitForExitAsync();
         Log.Information("Started yt-dlp with args: {args}", process.StartInfo.Arguments);
-        
+
         if (process.ExitCode != 0)
         {
             if (error.Contains("Sign in to confirm you’re not a bot"))
@@ -232,9 +231,9 @@ public class VideoId
             return string.Empty;
         }
 
-        return  output;
+        return output;
     }
-    
+
     // High bitrate video (1080)
     // https://www.youtube.com/watch?v=DzQwWlbnZvo
 
@@ -270,11 +269,11 @@ public class VideoId
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
-        
+
         var languageArg = string.IsNullOrEmpty(ConfigManager.Config.ytdlDubLanguage)
             ? string.Empty
             : $"[language={ConfigManager.Config.ytdlDubLanguage}]/(mp4/best)[height<=?1080][height>=?64][width>=?64]";
-        
+
         if (avPro)
         {
             process.StartInfo.Arguments = $"--encoding utf-8 -f \"(mp4/best)[height<=?1080][height>=?64][width>=?64]{languageArg}\" --impersonate=\"safari\" --extractor-args=\"youtube:player_client=web\" --no-playlist --no-warnings {cookieArg} {additionalArgs} --get-url \"{url}\"";
@@ -283,7 +282,7 @@ public class VideoId
         {
             process.StartInfo.Arguments = $"--encoding utf-8 -f \"(mp4/best)[vcodec!=av01][vcodec!=vp9.2][height<=?1080][height>=?64][width>=?64][protocol^=http]\" --no-playlist --no-warnings {cookieArg} {additionalArgs} --get-url \"{url}\"";
         }
-        
+
         process.Start();
         var output = await process.StandardOutput.ReadToEndAsync();
         output = output.Trim();
@@ -291,7 +290,7 @@ public class VideoId
         error = error.Trim();
         await process.WaitForExitAsync();
         Log.Information("Started yt-dlp with args: {args}", process.StartInfo.Arguments);
-        
+
         if (process.ExitCode != 0)
         {
             if (error.Contains("Sign in to confirm you’re not a bot"))

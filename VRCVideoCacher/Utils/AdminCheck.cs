@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace VRCVideoCacher.Utils
+﻿namespace VRCVideoCacher.Utils
 {
     public static class AdminCheck
     {
         private const string AdminTitleWarning = " - RUNNING AS AN ADMINISTRATOR!";
         public const string AdminBypassArg = "--admin-bypass-warning";
-        public const string AdminWarningMessage = 
+        public const string AdminWarningMessage =
             "⚠ WARNING: You are running VRCVideoCacher as an administrator. " +
             "This is not recommended for security reasons. " +
             "Please run the application with standard user privileges. " +

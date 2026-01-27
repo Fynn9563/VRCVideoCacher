@@ -28,7 +28,7 @@ public class CacheManager
             CachePath = ConfigManager.Config.CachedAssetPath;
         else
             CachePath = Path.Combine(Program.CurrentProcessPath, ConfigManager.Config.CachedAssetPath);
-        
+
         Log.Debug("Using cache path {CachePath}", CachePath);
         BuildCache();
     }
@@ -41,15 +41,15 @@ public class CacheManager
         var cachePath = Environment.GetEnvironmentVariable("XDG_CACHE_HOME");
         if (string.IsNullOrEmpty(cachePath))
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache");
-        
+
         return Path.Combine(cachePath, "VRCVideoCacher");
     }
-    
+
     public static void Init()
     {
         TryFlushCache();
     }
-    
+
     private static void BuildCache()
     {
         CachedAssets.Clear();
@@ -61,12 +61,12 @@ public class CacheManager
             AddToCache(file);
         }
     }
-    
+
     private static void TryFlushCache()
     {
         if (ConfigManager.Config.CacheMaxSizeInGb <= 0f)
             return;
-        
+
         var maxCacheSize = (long)(ConfigManager.Config.CacheMaxSizeInGb * 1024f * 1024f * 1024f);
         var cacheSize = GetCacheSize();
         if (cacheSize < maxCacheSize)
@@ -108,7 +108,7 @@ public class CacheManager
         OnCacheChanged?.Invoke(fileName, CacheChangeType.Added);
         TryFlushCache();
     }
-    
+
     private static long GetCacheSize()
     {
         var totalSize = 0L;

@@ -27,7 +27,7 @@ public class BulkPreCache
             .AddSeconds(LastModified);
         public string FilePath => Path.Combine(CacheManager.CachePath, FileName);
     }
-    
+
     public static async Task DownloadFileList()
     {
         foreach (var url in ConfigManager.Config.PreCacheUrls)
@@ -89,7 +89,7 @@ public class BulkPreCache
             }
         }
     }
-    
+
     private static async Task DownloadFile(DownloadInfo fileInfo)
     {
         using var response = await HttpClient.GetAsync(fileInfo.Url);

@@ -15,7 +15,7 @@ public class WinGet
         { "AV1 Video Extension", "9mvzqvxjbq9v" },
         { "Dolby Digital Plus decoder for PC OEMs", "9nvjqjbdkn97" }
     };
-    
+
     [SupportedOSPlatform("windows")]
     public static async Task TryInstallPackages()
     {
@@ -107,7 +107,7 @@ public class WinGet
             await process.WaitForExitAsync();
             if (process.ExitCode != 0 && !string.IsNullOrEmpty(error))
                 throw new Exception($"Installation failed with exit code {process.ExitCode}. Error: {error}");
-            
+
             var packageName = WingetPackages.FirstOrDefault(x => x.Value == packageId).Key;
             if (process.ExitCode == 0)
                 Log.Information("Successfully installed package: {packageName}", packageName);

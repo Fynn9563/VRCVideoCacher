@@ -22,7 +22,7 @@ internal sealed class Program
         ? CurrentProcessPath
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VRCVideoCacher");
     public static event Action? OnCookiesUpdated;
-    
+
     [STAThread]
     public static void Main(string[] args)
     {
@@ -36,7 +36,7 @@ internal sealed class Program
         }
         foreach (var process in processes)
             process.Dispose();
-        
+
         // Check for --nogui flag
         if (args.Contains("--nogui"))
         {
@@ -109,7 +109,7 @@ internal sealed class Program
             Environment.Exit(0);
         }
 
-            Directory.CreateDirectory(DataPath);
+        Directory.CreateDirectory(DataPath);
         await Updater.CheckForUpdates();
         Updater.Cleanup();
         if (Environment.CommandLine.Contains("--Reset"))
@@ -152,16 +152,16 @@ internal sealed class Program
 
         if (YtdlManager.GlobalYtdlConfigExists())
             Logger.Error("Global yt-dlp config file found in \"%AppData%\\yt-dlp\". Please delete it to avoid conflicts with VRCVideoCacher.");
-        
+
         await Task.Delay(-1);
     }
-    
+
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
             .LogToTrace();
-    
+
     public static bool IsCookiesEnabledAndValid()
     {
         if (!ConfigManager.Config.ytdlUseCookies)
@@ -169,7 +169,7 @@ internal sealed class Program
 
         if (!File.Exists(YtdlManager.CookiesPath))
             return false;
-        
+
         var cookies = File.ReadAllText(YtdlManager.CookiesPath);
         return IsCookiesValid(cookies);
     }
@@ -189,7 +189,7 @@ internal sealed class Program
     {
         return GetEmbeddedResource("VRCVideoCacher.yt-dlp-stub.exe");
     }
-    
+
     private static Stream GetEmbeddedResource(string resourceName)
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -208,7 +208,7 @@ internal sealed class Program
         stream.Dispose();
         return ComputeBinaryContentHash(ms.ToArray());
     }
-    
+
     public static string ComputeBinaryContentHash(byte[] base64)
     {
         return Convert.ToBase64String(SHA256.HashData(base64));
@@ -219,7 +219,7 @@ internal sealed class Program
         FileTools.RestoreAllYtdl();
         Logger.Information("Exiting...");
     }
-    
+
     public static void NotifyCookiesUpdated()
     {
         OnCookiesUpdated?.Invoke();

@@ -1,5 +1,5 @@
-using Newtonsoft.Json;
 using System.Runtime.InteropServices;
+using Newtonsoft.Json;
 using Serilog;
 using SharpCompress.Readers;
 using VRCVideoCacher.Models;
@@ -31,10 +31,10 @@ public class YtdlManager
             YtdlPath = ConfigManager.Config.ytdlPath;
         else
             YtdlPath = Path.Combine(Program.DataPath, ConfigManager.Config.ytdlPath);
-        
+
         Log.Debug("Using ytdl path: {YtdlPath}", YtdlPath);
     }
-    
+
     public static void StartYtdlDownloadThread()
     {
         Task.Run(YtdlDownloadTask);
@@ -96,7 +96,7 @@ public class YtdlManager
 
         Directory.CreateDirectory(ConfigManager.UtilsPath);
         var denoPath = Path.Combine(ConfigManager.UtilsPath, OperatingSystem.IsWindows() ? "deno.exe" : "deno");
-        
+
         using var apiResponse = await HttpClient.GetAsync(DenoApiUrl);
         if (!apiResponse.IsSuccessStatusCode)
         {
@@ -110,7 +110,7 @@ public class YtdlManager
             Log.Error("Failed to parse deno release response.");
             return;
         }
-        
+
         var currentDenoVersion = Versions.CurrentVersion.deno;
         if (!File.Exists(denoPath))
             currentDenoVersion = "Not Installed";
@@ -172,7 +172,7 @@ public class YtdlManager
         {
             if (reader.Entry.Key == null || reader.Entry.IsDirectory)
                 continue;
-            
+
             Log.Debug("Extracting file {Name} ({Size} bytes)", reader.Entry.Key, reader.Entry.Size);
             var path = Path.Combine(ConfigManager.UtilsPath, reader.Entry.Key);
             await using var outputStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -307,12 +307,12 @@ public class YtdlManager
             Log.Error("Failed to extract ffmpeg files.");
             return;
         }
-        
+
         Versions.CurrentVersion.ffmpeg = latestVersion;
         Versions.Save();
         Log.Information("FFmpeg downloaded and extracted.");
     }
-    
+
     private static async Task DownloadYtdl(GitHubRelease json)
     {
         if (File.Exists(YtdlPath) && File.GetAttributes(YtdlPath).HasFlag(FileAttributes.ReadOnly))
@@ -364,7 +364,7 @@ public class YtdlManager
         }
         throw new Exception("Failed to download YT-DLP");
     }
-    
+
     private static readonly List<string> YtdlConfigPaths =
     [
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "yt-dlp.conf"),
@@ -379,12 +379,12 @@ public class YtdlManager
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".yt-dlp/config"),
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".yt-dlp/config.txt"),
     ];
-    
+
     public static bool GlobalYtdlConfigExists()
     {
         return YtdlConfigPaths.Any(File.Exists);
     }
-    
+
     public static void DeleteGlobalYtdlConfig()
     {
         foreach (var configPath in YtdlConfigPaths)

@@ -1,6 +1,5 @@
 using Newtonsoft.Json;
 using Serilog;
-using VRCVideoCacher;
 using VRCVideoCacher.YTDL;
 
 // ReSharper disable FieldCanBeMadeReadOnly.Global
@@ -40,7 +39,7 @@ public class ConfigManager
             UtilsPath = Path.Combine(UtilsPath, "Utils");
 
         Directory.CreateDirectory(UtilsPath);
-        
+
         Log.Information("Loaded config.");
         TrySaveConfig();
     }
@@ -57,7 +56,7 @@ public class ConfigManager
         Log.Information("Config saved.");
         OnConfigChanged?.Invoke();
     }
-    
+
     private static bool GetUserConfirmation(string prompt, bool defaultValue)
     {
         var defaultOption = defaultValue ? "Y/n" : "y/N";
@@ -71,7 +70,7 @@ public class ConfigManager
     private static void FirstRun()
     {
         Log.Information("It appears this is your first time running VRCVideoCacher. Let's create a basic config file.");
-        
+
         var autoSetup = GetUserConfirmation("Would you like to use VRCVideoCacher for only fixing YouTube videos?", true);
         if (autoSetup)
         {
