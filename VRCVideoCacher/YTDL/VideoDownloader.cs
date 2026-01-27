@@ -44,7 +44,7 @@ public class VideoDownloader
                 continue;
             }
 
-            DownloadQueue.TryPeek(out var queueItem);
+            DownloadQueue.TryDequeue(out var queueItem);
             if (queueItem == null)
                 continue;
 
@@ -55,16 +55,11 @@ public class VideoDownloader
             switch (queueItem.UrlType)
             {
                 case UrlType.YouTube:
-                    if (ConfigManager.Config.CacheYouTube)
-                        success = await DownloadYouTubeVideo(queueItem);
+                    success = await DownloadYouTubeVideo(queueItem);
                     break;
                 case UrlType.PyPyDance:
-                    if (ConfigManager.Config.CachePyPyDance)
-                        success = await DownloadVideoWithId(queueItem);
-                    break;
                 case UrlType.VRDancing:
-                    if (ConfigManager.Config.CacheVRDancing)
-                        success = await DownloadVideoWithId(queueItem);
+                    success = await DownloadVideoWithId(queueItem);
                     break;
                 case UrlType.Other:
                     break;
@@ -72,7 +67,6 @@ public class VideoDownloader
                     throw new ArgumentOutOfRangeException();
             }
 
-            DownloadQueue.TryDequeue(out _);
             OnDownloadCompleted?.Invoke(queueItem, success);
             OnQueueChanged?.Invoke();
             _currentDownload = null;
@@ -87,7 +81,21 @@ public class VideoDownloader
             // Log.Information("URL is already in the download queue.");
             return;
         }
+        if (_currentDownload != null &&
+            _currentDownload.VideoId == videoInfo.VideoId &&
+            _currentDownload.DownloadFormat == videoInfo.DownloadFormat)
+        {
+            // Log.Information("URL is already being downloaded.");
+            return;
+        }
+
         DownloadQueue.Enqueue(videoInfo);
+        OnQueueChanged?.Invoke();
+    }
+    
+    public static void ClearQueue()
+    {
+        DownloadQueue.Clear();
         OnQueueChanged?.Invoke();
     }
 

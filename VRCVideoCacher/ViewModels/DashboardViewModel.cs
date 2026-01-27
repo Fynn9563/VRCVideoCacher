@@ -49,14 +49,14 @@ public partial class DashboardViewModel : ViewModelBase
         VideoDownloader.OnDownloadCompleted += OnDownloadCompleted;
         VideoDownloader.OnQueueChanged += OnQueueChanged;
         ConfigManager.OnConfigChanged += OnConfigChanged;
-        VRCVideoCacher.Program.OnCookiesUpdated += OnCookiesUpdated;
+        Program.OnCookiesUpdated += OnCookiesUpdated;
     }
 
     private void OnCookiesUpdated()
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            CookiesValid = VRCVideoCacher.Program.IsCookiesEnabledAndValid();
+            CookiesValid = Program.IsCookiesEnabledAndValid();
         });
     }
 
@@ -65,7 +65,7 @@ public partial class DashboardViewModel : ViewModelBase
         Dispatcher.UIThread.InvokeAsync(RefreshCacheStats);
     }
 
-    private void OnDownloadStarted(VRCVideoCacher.Models.VideoInfo video)
+    private void OnDownloadStarted(Models.VideoInfo video)
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -73,7 +73,7 @@ public partial class DashboardViewModel : ViewModelBase
         });
     }
 
-    private void OnDownloadCompleted(VRCVideoCacher.Models.VideoInfo video, bool success)
+    private void OnDownloadCompleted(Models.VideoInfo video, bool success)
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -95,7 +95,7 @@ public partial class DashboardViewModel : ViewModelBase
         {
             ServerUrl = ConfigManager.Config.ytdlWebServerURL;
             MaxCacheSize = ConfigManager.Config.CacheMaxSizeInGb;
-            CookiesValid = VRCVideoCacher.Program.IsCookiesEnabledAndValid();
+            CookiesValid = Program.IsCookiesEnabledAndValid();
         });
     }
 
@@ -104,7 +104,7 @@ public partial class DashboardViewModel : ViewModelBase
     {
         RefreshCacheStats();
         DownloadQueueCount = VideoDownloader.GetQueueCount();
-        CookiesValid = VRCVideoCacher.Program.IsCookiesEnabledAndValid();
+        CookiesValid = Program.IsCookiesEnabledAndValid();
 
         var currentDownload = VideoDownloader.GetCurrentDownload();
         CurrentDownloadText = currentDownload != null
@@ -153,7 +153,7 @@ public partial class DashboardViewModel : ViewModelBase
             await window.ShowDialog(desktop.MainWindow!);
 
             // Refresh cookies status after dialog closes
-            CookiesValid = VRCVideoCacher.Program.IsCookiesEnabledAndValid();
+            CookiesValid = Program.IsCookiesEnabledAndValid();
         }
     }
 }

@@ -131,13 +131,13 @@ public class CacheManager
     public static void DeleteCacheItem(string fileName)
     {
         var filePath = Path.Combine(CachePath, fileName);
-        if (File.Exists(filePath))
-        {
-            File.Delete(filePath);
-            CachedAssets.TryRemove(fileName, out _);
-            OnCacheChanged?.Invoke(fileName, CacheChangeType.Removed);
-            Log.Information("Deleted cached video: {FileName}", fileName);
-        }
+        if (!File.Exists(filePath))
+            return;
+
+        File.Delete(filePath);
+        CachedAssets.TryRemove(fileName, out _);
+        OnCacheChanged?.Invoke(fileName, CacheChangeType.Removed);
+        Log.Information("Deleted cached video: {FileName}", fileName);
     }
 
     public static void ClearCache()
@@ -146,16 +146,16 @@ public class CacheManager
         foreach (var fileName in files)
         {
             var filePath = Path.Combine(CachePath, fileName);
-            if (File.Exists(filePath))
+            if (!File.Exists(filePath))
+                continue;
+
+            try
             {
-                try
-                {
-                    File.Delete(filePath);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error("Failed to delete {FileName}: {Error}", fileName, ex.Message);
-                }
+                File.Delete(filePath);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to delete {FileName}: {Error}", fileName, ex.Message);
             }
         }
         CachedAssets.Clear();

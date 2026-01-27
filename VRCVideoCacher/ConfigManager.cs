@@ -125,7 +125,7 @@ public class ConfigModel
     public bool CacheYouTube = false;
     public int CacheYouTubeMaxResolution = 1080;
     public int CacheYouTubeMaxLength = 120;
-    public float CacheMaxSizeInGb = 0;
+    public float CacheMaxSizeInGb = 10f;
     public bool CachePyPyDance = false;
     public bool CacheVRDancing = false;
     public bool PatchResonite = false;
