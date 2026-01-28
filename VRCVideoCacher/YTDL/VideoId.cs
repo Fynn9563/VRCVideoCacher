@@ -101,15 +101,12 @@ public class VideoId
         }
 
         if (url.StartsWith("https://na2.vrdancing.club") ||
-            url.StartsWith("https://eu2.vrdancing.club") ||
-            url.StartsWith("https://na2-lq.vrdancing.club"))
+            url.StartsWith("https://eu2.vrdancing.club"))
         {
             var uri = new Uri(url);
             var code = Path.GetFileNameWithoutExtension(uri.LocalPath);
-            var vrddata = await VRDancingAPIService.GetVideoInfo(code);
-            
             var videoId = HashUrl(url);
-            DatabaseManager.AddTitleCache(videoId, $"{vrddata.Song}");
+            await VRDancingAPIService.DownloadVRDancingMeta(code, videoId);
             return new VideoInfo
             {
                 VideoUrl = url,
