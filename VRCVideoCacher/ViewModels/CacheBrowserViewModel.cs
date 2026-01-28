@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using VRCVideoCacher.Database;
 using VRCVideoCacher.Services;
 
 namespace VRCVideoCacher.ViewModels;
@@ -29,25 +30,24 @@ public partial class CacheItemViewModel : ViewModelBase
 
     public async Task LoadMetadataAsync()
     {
-        // Load title
-        var title = await YouTubeMetadataService.GetVideoTitleAsync(VideoId);
-        if (!string.IsNullOrEmpty(title))
+        // Load from DB
+        var videoInfo = await DatabaseManager.Database.VideoInfoCache.FindAsync(VideoId);
+        if (VideoId.Length == 11 && string.IsNullOrEmpty(videoInfo?.Title))
+            videoInfo = await YouTubeMetadataService.GetVideoTitleAsync(VideoId);
+        
+        if (!string.IsNullOrEmpty(videoInfo?.Title))
         {
-            Title = title;
+            Title = videoInfo.Title;
             OnPropertyChanged(nameof(DisplayTitle));
         }
 
-        // Load and cache thumbnail
-        var thumbnailPath = await YouTubeMetadataService.GetCachedThumbnailAsync(VideoId);
+        // Load thumbnail
+        var thumbnailPath = ThumbnailManager.GetThumbnail(VideoId);
+        if (VideoId.Length == 11 && string.IsNullOrEmpty(thumbnailPath))
+            thumbnailPath = await YouTubeMetadataService.GetThumbnail(VideoId);
+
         if (!string.IsNullOrEmpty(thumbnailPath))
-        {
             ThumbnailSource = thumbnailPath;
-        }
-        else
-        {
-            // Fallback to remote URL if caching failed
-            ThumbnailSource = $"https://img.youtube.com/vi/{VideoId}/mqdefault.jpg";
-        }
     }
 
     [RelayCommand]

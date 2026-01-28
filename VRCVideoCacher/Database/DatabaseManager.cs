@@ -30,21 +30,30 @@ public static class DatabaseManager
         Database.SaveChanges();
     }
 
-    public static void AddTitleCache(string id, string? title)
+    public static void AddVideoInfoCache(VideoInfoCache videoInfoCache)
     {
-        if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(id))
+        if (string.IsNullOrEmpty(videoInfoCache.Id))
             return;
-
-        var existing = Database.TitleCache.Find(id);
-        if (existing != null)
-            return;
-
-        var titleCache = new TitleCache
+        
+        var existingCache = Database.VideoInfoCache.Find(videoInfoCache.Id);
+        if (existingCache != null)
         {
-            Id = id,
-            Title = title
-        };
-        Database.TitleCache.Add(titleCache);
+            if (string.IsNullOrEmpty(existingCache.Title) &&
+                !string.IsNullOrEmpty(videoInfoCache.Title))
+                existingCache.Title = videoInfoCache.Title;
+
+            if (string.IsNullOrEmpty(existingCache.Author) &&
+                !string.IsNullOrEmpty(videoInfoCache.Author))
+                existingCache.Author = videoInfoCache.Author;
+
+            if (existingCache.Duration == null &&
+                videoInfoCache.Duration != null)
+                existingCache.Duration = videoInfoCache.Duration;
+        }
+        else
+        {
+            Database.VideoInfoCache.Add(videoInfoCache);
+        }
         Database.SaveChanges();
     }
 }

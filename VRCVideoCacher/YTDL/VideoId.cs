@@ -1,37 +1,16 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using Newtonsoft.Json;
+using System.Web;
 using Serilog;
 using VRCVideoCacher.Database;
+using VRCVideoCacher.Database.Models;
 using VRCVideoCacher.Models;
 using VRCVideoCacher.Services;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace VRCVideoCacher.YTDL;
-
-// JSON model for yt-dlp video info
-internal class YtdlpVideoInfo
-{
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
-
-    [JsonPropertyName("duration")]
-    public double? Duration { get; set; }
-
-    [JsonPropertyName("is_live")]
-    public bool? IsLive { get; set; }
-    
-    [JsonPropertyName("title")]
-    public string? Name { get; set; }
-}
-
-[JsonSerializable(typeof(YtdlpVideoInfo))]
-internal partial class VideoIdJsonContext : JsonSerializerContext
-{
-}
 
 public class VideoId
 {
@@ -70,7 +49,8 @@ public class VideoId
     {
         url = url.Trim();
 
-        if (url.StartsWith("http://api.pypy.dance/video"))
+        if (url.StartsWith("http://api.pypy.dance/video") ||
+            url.StartsWith("https://api.pypy.dance/video"))
         {
             try
             {
@@ -85,6 +65,12 @@ public class VideoId
                 var uri = new Uri(videoUrl);
                 var fileName = Path.GetFileName(uri.LocalPath);
                 var pypyVideoId = !fileName.Contains('.') ? fileName : fileName.Split('.')[0];
+
+                var pypyUri = new Uri(url);
+                var query = HttpUtility.ParseQueryString(pypyUri.Query);
+                int.TryParse(query.Get("id"), out var idInt);
+                await PyPyDanceApiService.DownloadMetadata(idInt, pypyVideoId);
+
                 return new VideoInfo
                 {
                     VideoUrl = videoUrl,
@@ -106,7 +92,7 @@ public class VideoId
             var uri = new Uri(url);
             var code = Path.GetFileNameWithoutExtension(uri.LocalPath);
             var videoId = HashUrl(url);
-            await VRDancingAPIService.DownloadVRDancingMeta(code, videoId);
+            await VRDancingAPIService.DownloadMetadata(code, videoId);
             return new VideoInfo
             {
                 VideoUrl = url,
@@ -143,7 +129,7 @@ public class VideoId
                 VideoUrl = url,
                 VideoId = videoId,
                 UrlType = UrlType.YouTube,
-                DownloadFormat = avPro ? DownloadFormat.Webm : DownloadFormat.MP4,
+                DownloadFormat = avPro ? DownloadFormat.Webm : DownloadFormat.MP4
             };
         }
 
@@ -153,7 +139,7 @@ public class VideoId
             VideoUrl = url,
             VideoId = urlHash,
             UrlType = UrlType.Other,
-            DownloadFormat = DownloadFormat.MP4,
+            DownloadFormat = DownloadFormat.MP4
         };
     }
 
@@ -190,8 +176,15 @@ public class VideoId
         if (data?.Id is null || data.Duration is null)
             throw new Exception("Failed to get video ID");
         
-        DatabaseManager.AddTitleCache(data.Id, data.Name);
-        
+        DatabaseManager.AddVideoInfoCache(new VideoInfoCache
+        {
+            Id = data.Id,
+            Title = data.Name,
+            Author = data.Author,
+            Duration = data.Duration,
+            Type = UrlType.YouTube
+        });
+
         if (data.IsLive == true)
             throw new Exception("Failed to get video ID: Video is a stream");
         if (data.Duration > ConfigManager.Config.CacheYouTubeMaxLength * 60)

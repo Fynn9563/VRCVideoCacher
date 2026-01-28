@@ -1,7 +1,7 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using VRCVideoCacher.Database;
 using VRCVideoCacher.Database.Models;
+using VRCVideoCacher.Models;
 
 namespace VRCVideoCacher.Services;
 
@@ -12,27 +12,11 @@ public static class YouTubeMetadataService
         DefaultRequestHeaders = { { "User-Agent", "VRCVideoCacher" } },
         Timeout = TimeSpan.FromSeconds(10)
     };
-    
-    private static readonly string CacheDir = Path.Combine(Program.DataPath, "MetadataCache");
-    private static readonly string ThumbnailCacheDir = Path.Combine(CacheDir, "thumbnails");
 
-    static YouTubeMetadataService()
-    {
-        Directory.CreateDirectory(CacheDir);
-        Directory.CreateDirectory(ThumbnailCacheDir);
-    }
-
-    public static async Task<string?> GetVideoTitleAsync(string videoId)
+    public static async Task<VideoInfoCache?> GetVideoTitleAsync(string videoId)
     {
         if (string.IsNullOrEmpty(videoId))
             return null;
-
-        var cachedTitle = await DatabaseManager.Database.TitleCache
-            .Where(tc => tc.Id == videoId)
-            .Select(tc => tc.Title)
-            .FirstOrDefaultAsync();
-        if (!string.IsNullOrEmpty(cachedTitle))
-            return cachedTitle;
 
         try
         {
@@ -43,11 +27,20 @@ public static class YouTubeMetadataService
             if (!doc.RootElement.TryGetProperty("title", out var titleElement))
                 return null;
             var title = titleElement.GetString();
-            if (string.IsNullOrEmpty(title))
+            doc.RootElement.TryGetProperty("author_name", out var authorElement);
+            var author = authorElement.GetString();
+            if (string.IsNullOrEmpty(title) || string.IsNullOrEmpty(author))
                 return null;
 
-            DatabaseManager.AddTitleCache(videoId, title);
-            return title;
+            var videoInfo = new VideoInfoCache
+            {
+                Id = videoId,
+                Title = title,
+                Author = author,
+                Type = UrlType.YouTube
+            };
+            DatabaseManager.AddVideoInfoCache(videoInfo);
+            return videoInfo;
         }
         catch
         {
@@ -57,34 +50,20 @@ public static class YouTubeMetadataService
         return null;
     }
 
-    private static string GetThumbnailPath(string videoId)
-    {
-        return Path.Combine(ThumbnailCacheDir, $"{videoId}.jpg");
-    }
-
-    public static async Task<string?> GetCachedThumbnailAsync(string videoId)
+    public static async Task<string?> GetThumbnail(string videoId)
     {
         if (string.IsNullOrEmpty(videoId))
             return null;
 
-        var localPath = GetThumbnailPath(videoId);
-
-        // Return cached thumbnail if exists
+        var localPath = ThumbnailManager.GetThumbnailPath(videoId);
         if (File.Exists(localPath))
             return localPath;
+        
+        var url = $"https://img.youtube.com/vi/{videoId}/mqdefault.jpg";
+        var thumbnailPath = await ThumbnailManager.TrySaveThumbnail(videoId, url);
+        if (!string.IsNullOrEmpty(thumbnailPath))
+            return thumbnailPath;
 
-        // Download and cache thumbnail
-        try
-        {
-            var url = $"https://img.youtube.com/vi/{videoId}/mqdefault.jpg";
-            var imageBytes = await HttpClient.GetByteArrayAsync(url);
-            await File.WriteAllBytesAsync(localPath, imageBytes);
-            return localPath;
-        }
-        catch
-        {
-            // Fall back to remote URL
-            return null;
-        }
+        return url;
     }
 }

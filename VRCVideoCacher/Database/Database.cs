@@ -9,7 +9,7 @@ public class Database : DbContext
     private static readonly string DbPath = Path.Join(CacheDir, "database.db");
     
     public DbSet<History> PlayHistory { get; set; }
-    public DbSet<TitleCache> TitleCache { get; set; }
+    public DbSet<VideoInfoCache> VideoInfoCache { get; set; }
     
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
