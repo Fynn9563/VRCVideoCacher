@@ -56,4 +56,12 @@ public static class DatabaseManager
         }
         Database.SaveChanges();
     }
+    
+    public static List<History> GetPlayHistory(int limit = 50)
+    {
+        return Database.PlayHistory
+            .OrderByDescending(h => h.Timestamp)
+            .Take(limit)
+            .ToList();
+    }
 }

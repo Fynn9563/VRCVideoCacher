@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using Serilog;
+using VRCVideoCacher.Database;
 using VRCVideoCacher.Models;
+using VRCVideoCacher.Services;
 
 namespace VRCVideoCacher;
 
@@ -72,6 +74,7 @@ public class CacheManager
         if (cacheSize < maxCacheSize)
             return;
 
+        var recentPlayHistory = DatabaseManager.GetPlayHistory();
         var oldestFiles = CachedAssets.OrderBy(x => x.Value.LastModified).ToList();
         while (cacheSize >= maxCacheSize && oldestFiles.Count > 0)
         {
@@ -81,6 +84,15 @@ public class CacheManager
             {
                 File.Delete(filePath);
                 cacheSize -= oldestFile.Value.Size;
+                
+                // delete thumbnail if not in recent history
+                var videoId = Path.GetFileNameWithoutExtension(oldestFile.Value.FileName);
+                if (recentPlayHistory.All(h => h.Id != videoId))
+                {
+                    var thumbnailPath = ThumbnailManager.GetThumbnailPath(videoId);
+                    if (File.Exists(thumbnailPath))
+                        File.Delete(thumbnailPath);
+                }
             }
             CachedAssets.TryRemove(oldestFile.Key, out _);
             oldestFiles.RemoveAt(0);
@@ -142,6 +154,7 @@ public class CacheManager
 
     public static void ClearCache()
     {
+        var recentPlayHistory = DatabaseManager.GetPlayHistory();
         var files = CachedAssets.Keys.ToList();
         foreach (var fileName in files)
         {
@@ -152,6 +165,15 @@ public class CacheManager
             try
             {
                 File.Delete(filePath);
+                
+                // delete thumbnail if not in recent history
+                var videoId = Path.GetFileNameWithoutExtension(fileName);
+                if (recentPlayHistory.All(h => h.Id != videoId))
+                {
+                    var thumbnailPath = ThumbnailManager.GetThumbnailPath(videoId);
+                    if (File.Exists(thumbnailPath))
+                        File.Delete(thumbnailPath);
+                }
             }
             catch (Exception ex)
             {
