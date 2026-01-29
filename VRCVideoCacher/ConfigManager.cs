@@ -55,6 +55,7 @@ public class ConfigManager
         File.WriteAllText(ConfigFilePath, JsonConvert.SerializeObject(Config, Formatting.Indented));
         Log.Information("Config saved.");
         OnConfigChanged?.Invoke();
+        CacheManager.TryFlushCache();
     }
 
     private static bool GetUserConfirmation(string prompt, bool defaultValue)

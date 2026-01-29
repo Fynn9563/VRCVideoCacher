@@ -64,7 +64,7 @@ public class CacheManager
         }
     }
 
-    private static void TryFlushCache()
+    public static void TryFlushCache()
     {
         if (ConfigManager.Config.CacheMaxSizeInGb <= 0f)
             return;
