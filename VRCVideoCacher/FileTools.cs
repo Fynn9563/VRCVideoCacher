@@ -86,31 +86,32 @@ public class FileTools
             throw new InvalidOperationException("GetCompatPath is only supported on Linux");
 
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var vdfPaths = SteamPaths
+            .Select(path => Path.Join(home, path, "steamapps/libraryfolders.vdf"))
+            .Where(File.Exists)
+            .ToList();
 
-        var steamPaths = SteamPaths.Select(path => Path.Join(home, path))
-            .Where(Path.Exists);
-        var steam = steamPaths.First();
-        if (!Path.Exists(steam))
+        if (vdfPaths.Count == 0)
         {
-            Log.Error("Steam folder doesn't exist!");
+            Log.Error("No Steam folder exists!");
             return null;
         }
 
-        Log.Debug("Using steam path: {Steam}", steam);
-        var libraryFolders = Path.Join(steam, "steamapps/libraryfolders.vdf");
-        var stream = File.OpenRead(libraryFolders);
-
-        KVObject data = KVSerializer.Create(KVSerializationFormat.KeyValues1Text).Deserialize(stream);
-
         List<string> libraryPaths = [];
-        foreach (var folder in data)
+        foreach (var libraryFolders in vdfPaths)
         {
-            // var label = folder["label"]?.ToString(CultureInfo.InvariantCulture);
-            // var name = string.IsNullOrEmpty(label) ? folder.Name : label;
-            // See https://github.com/ValveResourceFormat/ValveKeyValue/issues/30#issuecomment-1581924891
-            var apps = (IEnumerable<KVObject>)folder["apps"];
-            if (apps.Any(app => app.Name == appid))
-                libraryPaths.Add(folder["path"].ToString(CultureInfo.InvariantCulture));
+            Log.Debug("Checking Steam libraryfolders.vdf at {Path}", libraryFolders);
+            var stream = File.OpenRead(libraryFolders);
+            KVObject data = KVSerializer.Create(KVSerializationFormat.KeyValues1Text).Deserialize(stream);
+            foreach (var folder in data)
+            {
+                // var label = folder["label"]?.ToString(CultureInfo.InvariantCulture);
+                // var name = string.IsNullOrEmpty(label) ? folder.Name : label;
+                // See https://github.com/ValveResourceFormat/ValveKeyValue/issues/30#issuecomment-1581924891
+                var apps = (IEnumerable<KVObject>)folder["apps"];
+                if (apps.Any(app => app.Name == appid))
+                    libraryPaths.Add(folder["path"].ToString(CultureInfo.InvariantCulture));
+            }
         }
 
         var paths = libraryPaths
