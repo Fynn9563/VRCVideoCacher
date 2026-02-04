@@ -29,7 +29,17 @@ public class ConfigManager
         }
         else
         {
-            Config = JsonConvert.DeserializeObject<ConfigModel>(File.ReadAllText(ConfigFilePath)) ?? new ConfigModel();
+            try
+            {
+                Config = JsonConvert.DeserializeObject<ConfigModel>(File.ReadAllText(ConfigFilePath)) ??
+                         new ConfigModel();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to load config, creating new one...");
+                Config = new ConfigModel();
+                FirstRun();
+            }
         }
         if (Config.ytdlWebServerURL.EndsWith('/'))
             Config.ytdlWebServerURL = Config.ytdlWebServerURL.TrimEnd('/');
