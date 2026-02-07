@@ -150,7 +150,7 @@ public class FileTools
 
     public static void BackupAllYtdl()
     {
-        if (ConfigManager.Config.PatchVRC)
+        if (ConfigManager.Config.PatchVrChat)
             BackupAndReplaceYtdl(YtdlPathVrc, BackupPathVrc);
         if (ConfigManager.Config.PatchResonite)
             BackupAndReplaceYtdl(YtdlPathReso, BackupPathReso);

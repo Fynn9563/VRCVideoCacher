@@ -37,7 +37,7 @@ public partial class DashboardViewModel : ViewModelBase
 
     public DashboardViewModel()
     {
-        ServerUrl = ConfigManager.Config.ytdlWebServerURL;
+        ServerUrl = ConfigManager.Config.YtdlpWebServerURL;
         MaxCacheSize = ConfigManager.Config.CacheMaxSizeInGb;
 
         // Initial data load
@@ -93,7 +93,7 @@ public partial class DashboardViewModel : ViewModelBase
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            ServerUrl = ConfigManager.Config.ytdlWebServerURL;
+            ServerUrl = ConfigManager.Config.YtdlpWebServerURL;
             MaxCacheSize = ConfigManager.Config.CacheMaxSizeInGb;
             CookiesValid = Program.IsCookiesEnabledAndValid();
         });

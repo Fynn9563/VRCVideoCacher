@@ -87,12 +87,12 @@ public partial class SettingsViewModel : ViewModelBase
     {
         var config = ConfigManager.Config;
 
-        WebServerUrl = config.ytdlWebServerURL;
-        YtdlPath = config.ytdlPath;
-        YtdlUseCookies = config.ytdlUseCookies;
-        YtdlAutoUpdate = config.ytdlAutoUpdate;
-        YtdlAdditionalArgs = config.ytdlAdditionalArgs;
-        YtdlDubLanguage = config.ytdlDubLanguage;
+        WebServerUrl = config.YtdlpWebServerURL;
+        YtdlPath = config.YtdlpPath;
+        YtdlUseCookies = config.YtdlpUseCookies;
+        YtdlAutoUpdate = config.YtdlpAutoUpdate;
+        YtdlAdditionalArgs = config.YtdlpAdditionalArgs;
+        YtdlDubLanguage = config.YtdlpDubLanguage;
         CachedAssetPath = config.CachedAssetPath;
         CacheYouTube = config.CacheYouTube;
         CacheYouTubeMaxResolution = config.CacheYouTubeMaxResolution;
@@ -102,8 +102,8 @@ public partial class SettingsViewModel : ViewModelBase
         CacheVRDancing = config.CacheVRDancing;
         CacheOnly = config.CacheOnly;
         PatchResonite = config.PatchResonite;
-        PatchVRC = config.PatchVRC;
-        AutoUpdate = config.AutoUpdate;
+        PatchVRC = config.PatchVrChat;
+        AutoUpdate = config.AutoUpdateVrcVideoCacher;
 
         BlockedUrls.Clear();
         foreach (var url in config.BlockedUrls)
@@ -138,12 +138,12 @@ public partial class SettingsViewModel : ViewModelBase
     {
         var config = ConfigManager.Config;
 
-        config.ytdlWebServerURL = WebServerUrl;
-        config.ytdlPath = YtdlPath;
-        config.ytdlUseCookies = YtdlUseCookies;
-        config.ytdlAutoUpdate = YtdlAutoUpdate;
-        config.ytdlAdditionalArgs = YtdlAdditionalArgs;
-        config.ytdlDubLanguage = YtdlDubLanguage;
+        config.YtdlpWebServerURL = WebServerUrl;
+        config.YtdlpPath = YtdlPath;
+        config.YtdlpUseCookies = YtdlUseCookies;
+        config.YtdlpAutoUpdate = YtdlAutoUpdate;
+        config.YtdlpAdditionalArgs = YtdlAdditionalArgs;
+        config.YtdlpDubLanguage = YtdlDubLanguage;
         config.CachedAssetPath = CachedAssetPath;
         config.CacheYouTube = CacheYouTube;
         config.CacheYouTubeMaxResolution = CacheYouTubeMaxResolution;
@@ -152,8 +152,8 @@ public partial class SettingsViewModel : ViewModelBase
         config.CachePyPyDance = CachePyPyDance;
         config.CacheVRDancing = CacheVRDancing;
         config.PatchResonite = PatchResonite;
-        config.PatchVRC = PatchVRC;
-        config.AutoUpdate = AutoUpdate;
+        config.PatchVrChat = PatchVRC;
+        config.AutoUpdateVrcVideoCacher = AutoUpdate;
         config.BlockedUrls = BlockedUrls.ToArray();
         config.BlockRedirect = BlockRedirect;
 

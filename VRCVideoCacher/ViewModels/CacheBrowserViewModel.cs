@@ -68,7 +68,7 @@ public partial class CacheItemViewModel : ViewModelBase
     [RelayCommand]
     private async Task CopyUrl()
     {
-        var url = $"{ConfigManager.Config.ytdlWebServerURL}/{FileName}";
+        var url = $"{ConfigManager.Config.YtdlpWebServerURL}/{FileName}";
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
         {
             var clipboard = desktop.MainWindow?.Clipboard;

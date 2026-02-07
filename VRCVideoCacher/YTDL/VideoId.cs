@@ -145,7 +145,7 @@ public class VideoId
 
     public static async Task<string> TryGetYouTubeVideoId(string url)
     {
-        var additionalArgs = ConfigManager.Config.ytdlAdditionalArgs;
+        var additionalArgs = ConfigManager.Config.YtdlpAdditionalArgs;
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
@@ -209,14 +209,14 @@ public class VideoId
             }
         };
 
-        var additionalArgs = ConfigManager.Config.ytdlAdditionalArgs;
+        var additionalArgs = ConfigManager.Config.YtdlpAdditionalArgs;
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
 
-        var languageArg = string.IsNullOrEmpty(ConfigManager.Config.ytdlDubLanguage)
+        var languageArg = string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage)
             ? string.Empty
-            : $" -f [language={ConfigManager.Config.ytdlDubLanguage}]";
+            : $" -f [language={ConfigManager.Config.YtdlpDubLanguage}]";
         process.StartInfo.Arguments = $"--flat-playlist -i -J -s --no-playlist {languageArg} --impersonate=\"safari\" --extractor-args=\"youtube:player_client=web\" --no-warnings {cookieArg} {additionalArgs} {url}";
 
         process.Start();
@@ -269,14 +269,14 @@ public class VideoId
 
         // yt-dlp -f best/bestvideo[height<=?720]+bestaudio --no-playlist --no-warnings --get-url https://youtu.be/GoSo8YOKSAE
         var url = videoInfo.VideoUrl;
-        var additionalArgs = ConfigManager.Config.ytdlAdditionalArgs;
+        var additionalArgs = ConfigManager.Config.YtdlpAdditionalArgs;
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
 
-        var languageArg = string.IsNullOrEmpty(ConfigManager.Config.ytdlDubLanguage)
+        var languageArg = string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage)
             ? string.Empty
-            : $"[language={ConfigManager.Config.ytdlDubLanguage}]/(mp4/best)[height<=?1080][height>=?64][width>=?64]";
+            : $"[language={ConfigManager.Config.YtdlpDubLanguage}]/(mp4/best)[height<=?1080][height>=?64][width>=?64]";
 
         if (avPro)
         {

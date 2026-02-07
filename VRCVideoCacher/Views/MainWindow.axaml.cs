@@ -19,7 +19,7 @@ public partial class MainWindow : Window
 
         // Check if we should show the cookie setup wizard
         // Show if: cookies are enabled, setup not completed, and cookies not already valid
-        if (ConfigManager.Config.ytdlUseCookies &&
+        if (ConfigManager.Config.YtdlpUseCookies &&
             !ConfigManager.Config.CookieSetupCompleted &&
             !VRCVideoCacher.Program.IsCookiesEnabledAndValid())
         {

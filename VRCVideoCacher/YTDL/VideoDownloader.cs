@@ -139,18 +139,18 @@ public class VideoDownloader
 
         Log.Information("Downloading YouTube Video: {URL}", url);
 
-        var additionalArgs = ConfigManager.Config.ytdlAdditionalArgs;
+        var additionalArgs = ConfigManager.Config.YtdlpAdditionalArgs;
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
 
-        var audioArg = string.IsNullOrEmpty(ConfigManager.Config.ytdlDubLanguage)
+        var audioArg = string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage)
             ? "+ba[acodec=opus][ext=webm]"
-            : $"+(ba[acodec=opus][ext=webm][language={ConfigManager.Config.ytdlDubLanguage}]/ba[acodec=opus][ext=webm])";
+            : $"+(ba[acodec=opus][ext=webm][language={ConfigManager.Config.YtdlpDubLanguage}]/ba[acodec=opus][ext=webm])";
 
-        var audioArgPotato = string.IsNullOrEmpty(ConfigManager.Config.ytdlDubLanguage)
+        var audioArgPotato = string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage)
             ? "+ba[ext=m4a]"
-            : $"+(ba[ext=m4a][language={ConfigManager.Config.ytdlDubLanguage}]/ba[ext=m4a])";
+            : $"+(ba[ext=m4a][language={ConfigManager.Config.YtdlpDubLanguage}]/ba[ext=m4a])";
 
         var process = new Process
         {
@@ -226,7 +226,7 @@ public class VideoDownloader
         }
 
         CacheManager.AddToCache(fileName);
-        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{fileName}");
+        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerURL}/{fileName}");
         return true;
     }
 
@@ -282,7 +282,7 @@ public class VideoDownloader
         }
 
         CacheManager.AddToCache(fileName);
-        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{fileName}");
+        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerURL}/{fileName}");
         return true;
     }
 }

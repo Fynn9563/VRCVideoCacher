@@ -17,7 +17,7 @@ public class WebServer
         if (!File.Exists(indexPath))
             File.WriteAllText(indexPath, "VRCVideoCacher");
 
-        _server = CreateWebServer(ConfigManager.Config.ytdlWebServerURL);
+        _server = CreateWebServer(ConfigManager.Config.YtdlpWebServerURL);
         _server.RunAsync();
     }
 

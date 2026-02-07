@@ -25,12 +25,12 @@ public class YtdlManager
         CookiesPath = Path.Combine(Program.DataPath, "youtube_cookies.txt");
 
         // try to locate in PATH
-        if (string.IsNullOrEmpty(ConfigManager.Config.ytdlPath))
+        if (string.IsNullOrEmpty(ConfigManager.Config.YtdlpPath))
             YtdlPath = FileTools.LocateFile(OperatingSystem.IsWindows() ? "yt-dlp.exe" : "yt-dlp") ?? throw new FileNotFoundException("Unable to find yt-dlp");
-        else if (Path.IsPathRooted(ConfigManager.Config.ytdlPath))
-            YtdlPath = ConfigManager.Config.ytdlPath;
+        else if (Path.IsPathRooted(ConfigManager.Config.YtdlpPath))
+            YtdlPath = ConfigManager.Config.YtdlpPath;
         else
-            YtdlPath = Path.Combine(Program.DataPath, ConfigManager.Config.ytdlPath);
+            YtdlPath = Path.Combine(Program.DataPath, ConfigManager.Config.YtdlpPath);
 
         Log.Debug("Using ytdl path: {YtdlPath}", YtdlPath);
     }

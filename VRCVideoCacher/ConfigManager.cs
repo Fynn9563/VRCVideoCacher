@@ -41,10 +41,10 @@ public class ConfigManager
                 FirstRun();
             }
         }
-        if (Config.ytdlWebServerURL.EndsWith('/'))
-            Config.ytdlWebServerURL = Config.ytdlWebServerURL.TrimEnd('/');
+        if (Config.YtdlpWebServerURL.EndsWith('/'))
+            Config.YtdlpWebServerURL = Config.YtdlpWebServerURL.TrimEnd('/');
 
-        UtilsPath = Path.GetDirectoryName(Config.ytdlPath) ?? string.Empty;
+        UtilsPath = Path.GetDirectoryName(Config.YtdlpPath) ?? string.Empty;
         if (!UtilsPath.EndsWith("Utils"))
             UtilsPath = Path.Combine(UtilsPath, "Utils");
 
@@ -124,27 +124,36 @@ public class ConfigManager
 // ReSharper disable InconsistentNaming
 public class ConfigModel
 {
-    public string ytdlWebServerURL = "http://localhost:9696";
-    public string ytdlPath = OperatingSystem.IsWindows() ? "Utils\\yt-dlp.exe" : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VRCVideoCacher/Utils/yt-dlp");
-    public bool ytdlUseCookies = true;
-    public bool ytdlAutoUpdate = true;
-    public string ytdlAdditionalArgs = string.Empty;
-    public string ytdlDubLanguage = string.Empty;
+    // yt-dlp
+    public string YtdlpWebServerURL = "http://localhost:9696";
+    public string YtdlpPath = OperatingSystem.IsWindows() ? "Utils\\yt-dlp.exe" : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VRCVideoCacher/Utils/yt-dlp");
+    public bool YtdlpUseCookies = true;
+    public bool YtdlpAutoUpdate = true;
+    public string YtdlpAdditionalArgs = string.Empty;
+    public string YtdlpDubLanguage = string.Empty;
+
+    // Caching
     public string CachedAssetPath = "";
-    public string[] BlockedUrls = ["https://na2.vrdancing.club/sampleurl.mp4"];
-    public string BlockRedirect = "https://www.youtube.com/watch?v=byv2bKekeWQ";
+    public float CacheMaxSizeInGb = 10f;
     public bool CacheYouTube = false;
     public int CacheYouTubeMaxResolution = 1080;
     public int CacheYouTubeMaxLength = 120;
-    public float CacheMaxSizeInGb = 10f;
     public bool CachePyPyDance = false;
     public bool CacheVRDancing = false;
+    public bool CacheOnly = false;
+
+    // Cache Rules
+    public string[] BlockedUrls = ["https://na2.vrdancing.club/sampleurl.mp4"];
+    public string BlockRedirect = "https://www.youtube.com/watch?v=byv2bKekeWQ";
+    public string[] PreCacheUrls = [];
+
+    // Patching
     public bool PatchResonite = false;
     public string ResonitePath = "";
-    public bool PatchVRC = true;
-    public bool AutoUpdate = true;
-    public string[] PreCacheUrls = [];
+    public bool PatchVrChat = true;
+
+    // Video Cacher
+    public bool AutoUpdateVrcVideoCacher = true;
     public bool CookieSetupCompleted = false;
-    public bool CacheOnly = false;
 }
 // ReSharper restore InconsistentNaming

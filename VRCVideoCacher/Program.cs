@@ -130,7 +130,7 @@ internal sealed class Program
 
         DatabaseManager.Init();
 
-        if (ConfigManager.Config.ytdlAutoUpdate && !string.IsNullOrEmpty(ConfigManager.Config.ytdlPath))
+        if (ConfigManager.Config.YtdlpAutoUpdate && !string.IsNullOrEmpty(ConfigManager.Config.YtdlpPath))
         {
             await YtdlManager.TryDownloadYtdlp();
             YtdlManager.StartYtdlDownloadThread();
@@ -144,7 +144,7 @@ internal sealed class Program
         FileTools.BackupAllYtdl();
         await BulkPreCache.DownloadFileList();
 
-        if (ConfigManager.Config.ytdlUseCookies && !IsCookiesEnabledAndValid())
+        if (ConfigManager.Config.YtdlpUseCookies && !IsCookiesEnabledAndValid())
             Logger.Warning("No cookies found, please use the browser extension to send cookies or disable \"ytdlUseCookies\" in config.");
 
         CacheManager.Init();
@@ -167,7 +167,7 @@ internal sealed class Program
 
     public static bool IsCookiesEnabledAndValid()
     {
-        if (!ConfigManager.Config.ytdlUseCookies)
+        if (!ConfigManager.Config.YtdlpUseCookies)
             return false;
 
         if (!File.Exists(YtdlManager.CookiesPath))

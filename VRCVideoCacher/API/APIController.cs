@@ -39,7 +39,7 @@ public class ApiController : WebApiController
 
         Log.Information("Received Youtube cookies from browser extension.");
         Program.NotifyCookiesUpdated();
-        if (!ConfigManager.Config.ytdlUseCookies)
+        if (!ConfigManager.Config.YtdlpUseCookies)
             Log.Warning("Config is NOT set to use cookies from browser extension.");
     }
 
@@ -101,7 +101,7 @@ public class ApiController : WebApiController
         if (isCached)
         {
             File.SetLastWriteTimeUtc(filePath, DateTime.UtcNow);
-            var url = $"{ConfigManager.Config.ytdlWebServerURL}/{fileName}";
+            var url = $"{ConfigManager.Config.YtdlpWebServerURL}/{fileName}";
             Log.Information("Responding with Cached URL: {URL}", url);
             await HttpContext.SendStringAsync(url, "text/plain", Encoding.UTF8);
             return;

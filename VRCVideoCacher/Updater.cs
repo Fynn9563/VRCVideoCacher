@@ -54,7 +54,7 @@ public class Updater
             return;
         }
         Log.Information("Update available: {Version}", latestVersion);
-        if (ConfigManager.Config.AutoUpdate)
+        if (ConfigManager.Config.AutoUpdateVrcVideoCacher)
         {
             await UpdateAsync(latestRelease);
             return;
