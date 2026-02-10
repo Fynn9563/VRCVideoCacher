@@ -30,7 +30,7 @@ public partial class DashboardViewModel : ViewModelBase
     private int _downloadQueueCount;
 
     [ObservableProperty]
-    private bool _cookiesValid;
+    private string _cookieStatus = "Not Set";
 
     [ObservableProperty]
     private string _currentDownloadText = "None";
@@ -54,10 +54,7 @@ public partial class DashboardViewModel : ViewModelBase
 
     private void OnCookiesUpdated()
     {
-        Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            CookiesValid = Program.IsCookiesEnabledAndValid();
-        });
+        _ = ValidateCookiesAsync();
     }
 
     private void OnCacheChanged(string fileName, CacheChangeType changeType)
@@ -95,8 +92,8 @@ public partial class DashboardViewModel : ViewModelBase
         {
             ServerUrl = ConfigManager.Config.YtdlpWebServerURL;
             MaxCacheSize = ConfigManager.Config.CacheMaxSizeInGb;
-            CookiesValid = Program.IsCookiesEnabledAndValid();
         });
+        _ = ValidateCookiesAsync();
     }
 
     [RelayCommand]
@@ -104,12 +101,13 @@ public partial class DashboardViewModel : ViewModelBase
     {
         RefreshCacheStats();
         DownloadQueueCount = VideoDownloader.GetQueueCount();
-        CookiesValid = Program.IsCookiesEnabledAndValid();
 
         var currentDownload = VideoDownloader.GetCurrentDownload();
         CurrentDownloadText = currentDownload != null
             ? $"{currentDownload.UrlType}: {currentDownload.VideoId}"
             : "None";
+
+        _ = ValidateCookiesAsync();
     }
 
     private void RefreshCacheStats()
@@ -137,6 +135,28 @@ public partial class DashboardViewModel : ViewModelBase
         }
     }
 
+    private async Task ValidateCookiesAsync()
+    {
+        if (!Program.IsCookiesEnabledAndValid())
+        {
+            Dispatcher.UIThread.Post(() => CookieStatus = "Not Set");
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() => CookieStatus = "Checking...");
+
+        var result = await Program.ValidateCookiesAsync();
+        Dispatcher.UIThread.Post(() =>
+        {
+            CookieStatus = result switch
+            {
+                true => "Valid",
+                false => "Expired",
+                null => "Unknown"
+            };
+        });
+    }
+
     [RelayCommand]
     private async Task SetupCookieExtension()
     {
@@ -153,7 +173,7 @@ public partial class DashboardViewModel : ViewModelBase
             await window.ShowDialog(desktop.MainWindow!);
 
             // Refresh cookies status after dialog closes
-            CookiesValid = Program.IsCookiesEnabledAndValid();
+            _ = ValidateCookiesAsync();
         }
     }
 }
