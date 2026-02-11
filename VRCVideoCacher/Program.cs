@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using System.Reflection;
 using System.Security.Cryptography;
 using Avalonia;
@@ -186,6 +187,60 @@ internal sealed class Program
             return true;
 
         return false;
+    }
+    
+    public static async Task<bool?> ValidateCookiesAsync()
+    {
+        if (!IsCookiesEnabledAndValid())
+            return null;
+
+        try
+        {
+            var cookieContainer = new CookieContainer();
+            var lines = await File.ReadAllLinesAsync(YtdlManager.CookiesPath);
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
+                    continue;
+
+                var parts = line.Split('\t');
+                if (parts.Length < 7)
+                    continue;
+
+                try
+                {
+                    var domain = parts[0];
+                    var path = parts[2];
+                    var secure = parts[3].Equals("TRUE", StringComparison.OrdinalIgnoreCase);
+                    var name = parts[5];
+                    var value = parts[6];
+
+                    cookieContainer.Add(new Cookie(name, value, path, domain) { Secure = secure });
+                }
+                catch
+                {
+                    // Skip malformed cookie lines
+                }
+            }
+
+            using var handler = new HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+                CookieContainer = cookieContainer,
+                UseCookies = true
+            };
+            using var client = new HttpClient(handler);
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var response = await client.GetAsync("https://www.youtube.com/account", cts.Token);
+            return response.StatusCode == HttpStatusCode.OK;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning("Failed to validate cookies online: {Error}", ex.Message);
+            return null;
+        }
     }
 
     public static Stream GetYtDlpStub()

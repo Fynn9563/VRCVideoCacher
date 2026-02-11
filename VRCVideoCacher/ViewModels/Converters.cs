@@ -16,19 +16,6 @@ public class BoolToStatusConverter : IValueConverter
         => throw new NotImplementedException();
 }
 
-public class BoolToValidConverter : IValueConverter
-{
-    public static readonly BoolToValidConverter Instance = new();
-
-    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        return value is true ? "Valid" : "Not Set";
-    }
-
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => throw new NotImplementedException();
-}
-
 public class FileSizeConverter : IValueConverter
 {
     public static readonly FileSizeConverter Instance = new();
