@@ -69,7 +69,11 @@ public class VideoId
                 var pypyUri = new Uri(url);
                 var query = HttpUtility.ParseQueryString(pypyUri.Query);
                 int.TryParse(query.Get("id"), out var idInt);
-                await PyPyDanceApiService.DownloadMetadata(idInt, pypyVideoId);
+                _ = Task.Run(async () =>
+                {
+                    await PyPyDanceApiService.DownloadMetadata(idInt, pypyVideoId);
+                });
+                
 
                 return new VideoInfo
                 {
@@ -92,7 +96,10 @@ public class VideoId
             var uri = new Uri(url);
             var code = Path.GetFileNameWithoutExtension(uri.LocalPath);
             var videoId = HashUrl(url);
-            await VRDancingAPIService.DownloadMetadata(code, videoId);
+            _ = Task.Run(async () =>
+            {
+                await VRDancingAPIService.DownloadMetadata(code, videoId);
+            });
             return new VideoInfo
             {
                 VideoUrl = url,
