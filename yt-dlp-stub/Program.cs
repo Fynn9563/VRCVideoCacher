@@ -37,7 +37,8 @@ internal static class Program
                 continue;
             }
 
-            if (arg.Contains("-J"))
+            // --flat-playlist -i -J -s --no-playlist
+            if (arg.Contains("--flat-playlist"))
             {
                 source = "resonite";
                 continue;
