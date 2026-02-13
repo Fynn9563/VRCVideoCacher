@@ -178,7 +178,7 @@ public class VideoDownloader
             CacheManager.EnsureCustomDomainDirectory(customDomain);
         }
 
-        Log.Information("Queued download: {VideoId} ({Type}, streaming={IsStreaming})", videoInfo.VideoId, videoInfo.UrlType, videoInfo.IsStreaming);
+        Log.Information("Queued {Type} download: {VideoId}", videoInfo.UrlType, videoInfo.VideoId);
         DownloadQueue.Enqueue(new DownloadQueueItem
         {
             VideoInfo = videoInfo,

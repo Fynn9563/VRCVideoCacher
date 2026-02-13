@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.6.1] - 2026-02-14
+
+### Fixed
+- YouTube-specific yt-dlp args leaked to non-YouTube URLs in Resonite mode
+- Custom domain streaming prefetch failing to load
+
+### Changed
+- Download queue log includes URL type (e.g., `Queued YouTube download: "id"`)
+
 ## [2.6.0] - 2026-02-14
 
 ### Added

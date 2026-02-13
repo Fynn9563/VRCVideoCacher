@@ -254,14 +254,16 @@ public class VideoId
         };
 
         var additionalArgs = ConfigManager.Config.YtdlpAdditionalArgs;
+        var isYouTube = IsYouTubeUrl(url);
         var cookieArg = string.Empty;
-        if (Program.IsCookiesEnabledAndValid())
+        if (isYouTube && Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
 
+        var youtubeArgs = isYouTube ? "--impersonate=\"safari\" --extractor-args=\"youtube:player_client=web\"" : "";
         var languageArg = string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage)
             ? string.Empty
             : $" -f [language={ConfigManager.Config.YtdlpDubLanguage}]";
-        process.StartInfo.Arguments = $"--flat-playlist -i -J -s --no-playlist {languageArg} --impersonate=\"safari\" --extractor-args=\"youtube:player_client=web\" --no-warnings {cookieArg} {additionalArgs} {url}";
+        process.StartInfo.Arguments = $"--flat-playlist -i -J -s --no-playlist {languageArg} {youtubeArgs} --no-warnings {cookieArg} {additionalArgs} {url}";
 
         process.Start();
         var output = await process.StandardOutput.ReadToEndAsync();
@@ -314,8 +316,9 @@ public class VideoId
         // yt-dlp -f best/bestvideo[height<=?720]+bestaudio --no-playlist --no-warnings --get-url https://youtu.be/GoSo8YOKSAE
         var url = videoInfo.VideoUrl;
         var additionalArgs = YtdlArgsHelper.GetYtdlArgs();
+        var isYouTube = videoInfo.UrlType == UrlType.YouTube;
         var cookieArg = string.Empty;
-        if (Program.IsCookiesEnabledAndValid())
+        if (isYouTube && Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
 
         var maxRes = ConfigManager.Config.CacheYouTubeMaxResolution;
@@ -325,11 +328,12 @@ public class VideoId
 
         if (avPro)
         {
-            process.StartInfo.Arguments = $"--encoding utf-8 -f \"(mp4/best)[height<=?{maxRes}][height>=?64][width>=?64]{languageArg}\" --impersonate=\"safari\" --extractor-args=\"youtube:player_client=web\" --no-playlist --no-warnings {cookieArg} {additionalArgs} --get-url \"{url}\"";
+            var youtubeArgs = isYouTube ? "--impersonate=\"safari\" --extractor-args=\"youtube:player_client=web\"" : "";
+            process.StartInfo.Arguments = $"--encoding utf-8 -f \"(mp4/best)[height<=?{maxRes}][height>=?64][width>=?64]{languageArg}\" {youtubeArgs} --no-playlist --no-warnings {cookieArg} {additionalArgs} --get-url \"{url}\"";
         }
         else
         {
-            var codecFilter = videoInfo.UrlType == UrlType.YouTube ? "[vcodec!=av01][vcodec!=vp9.2]" : "";
+            var codecFilter = isYouTube ? "[vcodec!=av01][vcodec!=vp9.2]" : "";
             process.StartInfo.Arguments = $"--encoding utf-8 -f \"(mp4/best){codecFilter}[height<=?{maxRes}][height>=?64][width>=?64][protocol^=http]\" --no-playlist --no-warnings {cookieArg} {additionalArgs} --get-url \"{url}\"";
         }
 

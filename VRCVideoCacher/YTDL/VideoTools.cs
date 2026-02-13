@@ -5,7 +5,7 @@ public class VideoTools
     private static readonly Serilog.ILogger Log = Program.Logger.ForContext<VideoTools>();
     private static readonly HttpClient HttpClient = new();
 
-    public static async Task<bool> Prefetch(string videoUrl, int maxRetryCount = 7)
+    public static async Task<bool> Prefetch(string videoUrl, int maxRetryCount = 7, string? userAgent = null, string? referer = null)
     {
         // If the URL is invalid, skip prefetching
         if (string.IsNullOrWhiteSpace(videoUrl) || !Uri.IsWellFormedUriString(videoUrl, UriKind.RelativeOrAbsolute))
@@ -22,6 +22,10 @@ public class VideoTools
         // - Use GET for M3U8 to extract the direct stream URL
         string? firstM3U8Url = null;
         using var prefetchRequest = new HttpRequestMessage(isM3U8 ? HttpMethod.Get : HttpMethod.Head, videoUrl);
+        if (userAgent != null)
+            prefetchRequest.Headers.TryAddWithoutValidation("User-Agent", userAgent);
+        if (referer != null)
+            prefetchRequest.Headers.Referrer = new Uri(referer);
         using var prefetchResponse = await HttpClient.SendAsync(prefetchRequest);
         Log.Information("Video prefetch request returned status code {status}.", (int)prefetchResponse.StatusCode);
 
@@ -40,6 +44,10 @@ public class VideoTools
         for (var i = 0; i < maxRetryCount; i++)
         {
             using var m3u8Request = new HttpRequestMessage(HttpMethod.Head, firstM3U8Url);
+            if (userAgent != null)
+                m3u8Request.Headers.TryAddWithoutValidation("User-Agent", userAgent);
+            if (referer != null)
+                m3u8Request.Headers.Referrer = new Uri(referer);
             using var m3u8Response = await HttpClient.SendAsync(m3u8Request);
             statusCode = (int)m3u8Response.StatusCode;
 

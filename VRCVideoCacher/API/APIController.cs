@@ -154,7 +154,10 @@ public class ApiController : WebApiController
         if (videoInfo.UrlType == UrlType.CustomDomain && videoInfo.IsStreaming)
         {
             Log.Information("Custom domain streaming URL, using direct URL: {URL}", videoInfo.VideoUrl);
-            await VideoTools.Prefetch(videoInfo.VideoUrl, YoutubePrefetchMaxRetries);
+            var streamUri = new Uri(videoInfo.VideoUrl);
+            var streamReferer = $"{streamUri.Scheme}://{streamUri.Host}/";
+            await VideoTools.Prefetch(videoInfo.VideoUrl, YoutubePrefetchMaxRetries,
+                "NSPlayer/12.00.19041.6926 WMFSDK/12.00.19041.6926", streamReferer);
             await HttpContext.SendStringAsync(videoInfo.VideoUrl, "text/plain", Encoding.UTF8);
             VideoDownloader.QueueDownload(videoInfo, customDomain);
             return;
@@ -190,7 +193,10 @@ public class ApiController : WebApiController
         }
         else if (videoInfo.UrlType == UrlType.CustomDomain)
         {
-            await VideoTools.Prefetch(response, YoutubePrefetchMaxRetries);
+            var cdUri = new Uri(videoInfo.VideoUrl);
+            var cdReferer = $"{cdUri.Scheme}://{cdUri.Host}/";
+            await VideoTools.Prefetch(response, YoutubePrefetchMaxRetries,
+                "NSPlayer/12.00.19041.6926 WMFSDK/12.00.19041.6926", cdReferer);
         }
 
         Log.Information("Responding with URL: {URL}", response);
