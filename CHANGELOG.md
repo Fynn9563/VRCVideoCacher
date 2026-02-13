@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.5.1] - 2026-02-13
+
+### Fixed
+- `CacheYouTubeMaxResolution` setting ignored in URL resolution path (was hardcoded to 1080p)
+- YouTube-specific codec filters (`vcodec!=av01`, `vcodec!=vp9.2`) applied to non-YouTube URLs (e.g., Twitch), causing 500 errors
+- Potato mode (Unity player) download ignoring max resolution setting (now respects config, capped at 1080p)
+
 ## [2.5.0] - 2026-02-13
 
 ### Added
