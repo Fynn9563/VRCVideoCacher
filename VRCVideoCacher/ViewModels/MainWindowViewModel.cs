@@ -43,17 +43,22 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void UpdateCacheStatus()
     {
-        var size = CacheManager.GetTotalCacheSize();
+        var totalSize = CacheManager.GetTotalCacheSize();
         var maxSize = ConfigManager.Config.CacheMaxSizeInGb;
 
         if (maxSize > 0)
         {
             var maxBytes = (long)(maxSize * 1024 * 1024 * 1024);
-            CacheStatusText = $"Cache: {FormatSize(size)} / {FormatSize(maxBytes)}";
+            var evictableSize = CacheManager.GetEvictableCacheSize();
+
+            if (evictableSize != totalSize)
+                CacheStatusText = $"Cache: {FormatSize(evictableSize)} / {FormatSize(maxBytes)} ({FormatSize(totalSize)} total)";
+            else
+                CacheStatusText = $"Cache: {FormatSize(totalSize)} / {FormatSize(maxBytes)}";
         }
         else
         {
-            CacheStatusText = $"Cache: {FormatSize(size)}";
+            CacheStatusText = $"Cache: {FormatSize(totalSize)}";
         }
     }
 

@@ -153,20 +153,30 @@ public class CacheManager
             return;
 
         var maxCacheSize = (long)(ConfigManager.Config.CacheMaxSizeInGb * 1024f * 1024f * 1024f);
-        var cacheSize = GetCacheSize();
-        if (cacheSize < maxCacheSize)
+
+        // Only measure non-protected content against the limit — protected categories are exempt
+        var evictableSize = CachedAssets
+            .Where(x => !IsEvictionProtected(x.Value.FileName))
+            .Sum(x => x.Value.Size);
+        if (evictableSize < maxCacheSize)
             return;
 
         var recentPlayHistory = DatabaseManager.GetPlayHistory();
-        var oldestFiles = CachedAssets.OrderBy(x => x.Value.LastModified).ToList();
-        while (cacheSize >= maxCacheSize && oldestFiles.Count > 0)
+        // Evict by category priority (YouTube first, custom domains last), oldest-first within each
+        // Skip categories that are protected from eviction
+        var oldestFiles = CachedAssets
+            .Where(x => !IsEvictionProtected(x.Value.FileName))
+            .OrderBy(x => GetEvictionPriority(x.Value.FileName))
+            .ThenBy(x => x.Value.LastModified)
+            .ToList();
+        while (evictableSize >= maxCacheSize && oldestFiles.Count > 0)
         {
             var oldestFile = oldestFiles.First();
             var filePath = Path.Combine(CachePath, oldestFile.Value.FileName);
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
-                cacheSize -= oldestFile.Value.Size;
+                evictableSize -= oldestFile.Value.Size;
 
                 // delete thumbnail if not in recent history
                 var videoId = Path.GetFileNameWithoutExtension(oldestFile.Value.FileName);
@@ -206,6 +216,32 @@ public class CacheManager
         TryFlushCache();
     }
 
+    /// <summary>
+    /// Checks if a cached file's category is protected from eviction.
+    /// </summary>
+    private static bool IsEvictionProtected(string relativePath)
+    {
+        var config = ConfigManager.Config;
+        if (relativePath.StartsWith(YouTubeSubdir) && config.EvictionProtectYouTube) return true;
+        if (relativePath.StartsWith(PyPyDanceSubdir) && config.EvictionProtectPyPyDance) return true;
+        if (relativePath.StartsWith(VRDancingSubdir) && config.EvictionProtectVRDancing) return true;
+        if (relativePath.StartsWith(CustomDomainsSubdir) && config.EvictionProtectCustomDomains) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Returns eviction priority for cache flush. Lower = evicted first.
+    /// YouTube (0) → PyPyDance (1) → VRDancing (2) → CustomDomains (3)
+    /// </summary>
+    private static int GetEvictionPriority(string relativePath)
+    {
+        if (relativePath.StartsWith(YouTubeSubdir)) return 0;
+        if (relativePath.StartsWith(PyPyDanceSubdir)) return 1;
+        if (relativePath.StartsWith(VRDancingSubdir)) return 2;
+        if (relativePath.StartsWith(CustomDomainsSubdir)) return 3;
+        return 4;
+    }
+
     private static long GetCacheSize()
     {
         var totalSize = 0L;
@@ -223,7 +259,32 @@ public class CacheManager
 
     public static long GetTotalCacheSize() => GetCacheSize();
 
+    public static long GetEvictableCacheSize() =>
+        CachedAssets.Where(x => !IsEvictionProtected(x.Value.FileName)).Sum(x => x.Value.Size);
+
     public static int GetCachedVideoCount() => CachedAssets.Count;
+
+    public static Dictionary<string, long> GetCategorySizes()
+    {
+        var sizes = new Dictionary<string, long>
+        {
+            [YouTubeSubdir] = 0,
+            [PyPyDanceSubdir] = 0,
+            [VRDancingSubdir] = 0,
+            [CustomDomainsSubdir] = 0
+        };
+
+        foreach (var cache in CachedAssets)
+        {
+            var name = cache.Value.FileName;
+            if (name.StartsWith(YouTubeSubdir)) sizes[YouTubeSubdir] += cache.Value.Size;
+            else if (name.StartsWith(PyPyDanceSubdir)) sizes[PyPyDanceSubdir] += cache.Value.Size;
+            else if (name.StartsWith(VRDancingSubdir)) sizes[VRDancingSubdir] += cache.Value.Size;
+            else if (name.StartsWith(CustomDomainsSubdir)) sizes[CustomDomainsSubdir] += cache.Value.Size;
+        }
+
+        return sizes;
+    }
 
     public static void DeleteCacheItem(string fileName)
     {

@@ -169,6 +169,12 @@ public class ConfigModel
     public bool CacheCustomDomainsEnabled = false;
     public string[] CacheCustomDomains = [];
 
+    // Eviction protection - skip these categories during cache flush
+    public bool EvictionProtectYouTube = false;
+    public bool EvictionProtectPyPyDance = false;
+    public bool EvictionProtectVRDancing = false;
+    public bool EvictionProtectCustomDomains = false;
+
     // Clear cache on exit
     public bool ClearYouTubeCacheOnExit = false;
     public bool ClearPyPyDanceCacheOnExit = false;

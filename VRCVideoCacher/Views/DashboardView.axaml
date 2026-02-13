@@ -47,6 +47,31 @@
                                        Foreground="#888888" FontSize="12"
                                        IsVisible="{Binding MaxCacheSize, Converter={x:Static vm:GreaterThanZeroConverter.Instance}}"/>
                         </StackPanel>
+                        <!-- Per-category breakdown -->
+                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,3,0,0"
+                                    IsVisible="{Binding ShowYouTubeSize}">
+                            <TextBlock Text="YouTube:" Foreground="#666666" FontSize="11"/>
+                            <TextBlock Text="{Binding YouTubeCacheSize, Converter={x:Static vm:FileSizeConverter.Instance}}"
+                                       Foreground="#666666" FontSize="11"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,1,0,0"
+                                    IsVisible="{Binding ShowPyPyDanceSize}">
+                            <TextBlock Text="PyPyDance:" Foreground="#666666" FontSize="11"/>
+                            <TextBlock Text="{Binding PyPyDanceCacheSize, Converter={x:Static vm:FileSizeConverter.Instance}}"
+                                       Foreground="#666666" FontSize="11"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,1,0,0"
+                                    IsVisible="{Binding ShowVRDancingSize}">
+                            <TextBlock Text="VRDancing:" Foreground="#666666" FontSize="11"/>
+                            <TextBlock Text="{Binding VrDancingCacheSize, Converter={x:Static vm:FileSizeConverter.Instance}}"
+                                       Foreground="#666666" FontSize="11"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,1,0,0"
+                                    IsVisible="{Binding ShowCustomDomainsSize}">
+                            <TextBlock Text="Custom Domains:" Foreground="#666666" FontSize="11"/>
+                            <TextBlock Text="{Binding CustomDomainsCacheSize, Converter={x:Static vm:FileSizeConverter.Instance}}"
+                                       Foreground="#666666" FontSize="11"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 

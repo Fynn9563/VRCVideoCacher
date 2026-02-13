@@ -1,5 +1,45 @@
 # Changelog
 
+## [2.5.0] - 2026-02-13
+
+### Added
+- EF Core SQLite database for video metadata cache and play history
+- Admin check - warns when running with elevated privileges
+- Cache only mode - serve only cached content without downloading
+- Cookie validation on dashboard - checks cookies online and shows Valid/Expired status
+- PyPyDance API service for fetching song metadata and thumbnails
+- VRDancing API service for fetching dance metadata and thumbnails
+- Embedded thumbnail extraction from media files using TagLibSharp
+- OS-level video thumbnail extraction (Windows Shell API, Linux freedesktop/D-Bus)
+- Audio-only file detection including `.mp4` files with no video stream
+- Generic popup window for error messages
+- Trim cache automatically when max size setting is changed
+- Delete associated thumbnails when removing cached videos (preserves recently played)
+- Per-category cache size breakdown on Dashboard (YouTube, PyPyDance, VRDancing, Custom Domains)
+- Eviction protection settings - protect specific categories from cache eviction
+- Tooltips and description text on all settings for better discoverability
+
+### Changed
+- Config properties renamed to PascalCase (e.g., `ytdlPath` → `YtdlpPath`)
+- Default cache max size changed to 10 GB
+- Cache eviction priority: YouTube first, then PyPyDance, VRDancing, custom domains last
+- Converted to scoped namespaces throughout codebase
+- Thumbnails managed via ThumbnailManager instead of YouTubeMetadataService
+- Reorganized ConfigModel with categorized sections
+- Status bar shows evictable vs limit when eviction protection is active, with total in parentheses
+
+### Fixed
+- `-J` flag in URL causing yt-dlp to output JSON instead of downloading
+- Accidentally blocking API calls
+- Config file corruption handling (recreates on JSON parse failure)
+- Linux Steam folder detection (handle multiple and empty folders)
+- AVPro prefetch retry when initial prefetch fails
+- BlockRedirect UI binding
+- Nullable warnings in VRDancingAPIService
+- Suppressed IL2037 EF Core trimming warning
+- Absolute path for winget on Windows
+- Cache eviction counting protected content toward the max size limit
+
 ## [2.4.2] - 2026-01-27
 
 ### Fixed

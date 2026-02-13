@@ -35,6 +35,32 @@ public partial class DashboardViewModel : ViewModelBase
     [ObservableProperty]
     private string _currentDownloadText = "None";
 
+    // Per-category cache sizes
+    [ObservableProperty]
+    private long _youTubeCacheSize;
+
+    [ObservableProperty]
+    private long _pyPyDanceCacheSize;
+
+    [ObservableProperty]
+    private long _vrDancingCacheSize;
+
+    [ObservableProperty]
+    private long _customDomainsCacheSize;
+
+    // Visibility flags (only show enabled categories)
+    [ObservableProperty]
+    private bool _showYouTubeSize;
+
+    [ObservableProperty]
+    private bool _showPyPyDanceSize;
+
+    [ObservableProperty]
+    private bool _showVRDancingSize;
+
+    [ObservableProperty]
+    private bool _showCustomDomainsSize;
+
     public DashboardViewModel()
     {
         ServerUrl = ConfigManager.Config.YtdlpWebServerURL;
@@ -92,6 +118,7 @@ public partial class DashboardViewModel : ViewModelBase
         {
             ServerUrl = ConfigManager.Config.YtdlpWebServerURL;
             MaxCacheSize = ConfigManager.Config.CacheMaxSizeInGb;
+            RefreshCategoryVisibility();
         });
         _ = ValidateCookiesAsync();
     }
@@ -119,6 +146,23 @@ public partial class DashboardViewModel : ViewModelBase
         if (assets.ContainsKey("index.html"))
             count--;
         CachedVideoCount = count;
+
+        var sizes = CacheManager.GetCategorySizes();
+        YouTubeCacheSize = sizes["YouTube"];
+        PyPyDanceCacheSize = sizes["PyPyDance"];
+        VrDancingCacheSize = sizes["VRDancing"];
+        CustomDomainsCacheSize = sizes["CustomDomains"];
+
+        RefreshCategoryVisibility();
+    }
+
+    private void RefreshCategoryVisibility()
+    {
+        var config = ConfigManager.Config;
+        ShowYouTubeSize = config.CacheYouTube;
+        ShowPyPyDanceSize = config.CachePyPyDance;
+        ShowVRDancingSize = config.CacheVRDancing;
+        ShowCustomDomainsSize = config.CacheCustomDomainsEnabled;
     }
 
     [RelayCommand]

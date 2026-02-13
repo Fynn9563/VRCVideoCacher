@@ -58,6 +58,19 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _cacheOnly;
 
+    // Eviction Protection
+    [ObservableProperty]
+    private bool _evictionProtectYouTube;
+
+    [ObservableProperty]
+    private bool _evictionProtectPyPyDance;
+
+    [ObservableProperty]
+    private bool _evictionProtectVRDancing;
+
+    [ObservableProperty]
+    private bool _evictionProtectCustomDomains;
+
     // Patching
     [ObservableProperty]
     private bool _patchResonite;
@@ -141,6 +154,10 @@ public partial class SettingsViewModel : ViewModelBase
         CachePyPyDance = config.CachePyPyDance;
         CacheVRDancing = config.CacheVRDancing;
         CacheOnly = config.CacheOnly;
+        EvictionProtectYouTube = config.EvictionProtectYouTube;
+        EvictionProtectPyPyDance = config.EvictionProtectPyPyDance;
+        EvictionProtectVRDancing = config.EvictionProtectVRDancing;
+        EvictionProtectCustomDomains = config.EvictionProtectCustomDomains;
         PatchResonite = config.PatchResonite;
         PatchVRC = config.PatchVrChat;
         AutoUpdate = config.AutoUpdateVrcVideoCacher;
@@ -209,6 +226,10 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnAutoUpdateChanged(bool value) => HasChanges = true;
     partial void OnYtdlArgsOverrideChanged(string value) => HasChanges = true;
     partial void OnCacheCustomDomainsEnabledChanged(bool value) => HasChanges = true;
+    partial void OnEvictionProtectYouTubeChanged(bool value) => HasChanges = true;
+    partial void OnEvictionProtectPyPyDanceChanged(bool value) => HasChanges = true;
+    partial void OnEvictionProtectVRDancingChanged(bool value) => HasChanges = true;
+    partial void OnEvictionProtectCustomDomainsChanged(bool value) => HasChanges = true;
     partial void OnClearYouTubeCacheOnExitChanged(bool value) => HasChanges = true;
     partial void OnClearPyPyDanceCacheOnExitChanged(bool value) => HasChanges = true;
     partial void OnClearVRDancingCacheOnExitChanged(bool value) => HasChanges = true;
@@ -233,6 +254,10 @@ public partial class SettingsViewModel : ViewModelBase
         config.CacheMaxSizeInGb = CacheMaxSizeInGb;
         config.CachePyPyDance = CachePyPyDance;
         config.CacheVRDancing = CacheVRDancing;
+        config.EvictionProtectYouTube = EvictionProtectYouTube;
+        config.EvictionProtectPyPyDance = EvictionProtectPyPyDance;
+        config.EvictionProtectVRDancing = EvictionProtectVRDancing;
+        config.EvictionProtectCustomDomains = EvictionProtectCustomDomains;
         config.PatchResonite = PatchResonite;
         config.PatchVrChat = PatchVRC;
         config.AutoUpdateVrcVideoCacher = AutoUpdate;
