@@ -51,7 +51,7 @@ public class VideoDownloader
                 continue;
             }
 
-            DownloadQueue.TryPeek(out var queueItem);
+            DownloadQueue.TryDequeue(out var queueItem);
             if (queueItem == null)
                 continue;
 
@@ -61,51 +61,56 @@ public class VideoDownloader
             OnDownloadStarted?.Invoke(videoInfo);
 
             var success = false;
-            switch (videoInfo.UrlType)
+            try
             {
-                case UrlType.YouTube:
-                    if (ConfigManager.Config.CacheYouTube)
+                switch (videoInfo.UrlType)
+                {
+                    case UrlType.YouTube:
                         success = await DownloadYouTubeVideo(videoInfo);
-                    break;
-                case UrlType.PyPyDance:
-                    if (ConfigManager.Config.CachePyPyDance)
+                        break;
+                    case UrlType.PyPyDance:
+                    case UrlType.VRDancing:
                         success = await DownloadVideoWithId(videoInfo, customDomain);
-                    break;
-                case UrlType.VRDancing:
-                    if (ConfigManager.Config.CacheVRDancing)
-                        success = await DownloadVideoWithId(videoInfo, customDomain);
-                    break;
-                case UrlType.CustomDomain:
-                    if (ConfigManager.Config.CacheCustomDomains.Length > 0)
-                    {
+                        break;
+                    case UrlType.CustomDomain:
                         if (videoInfo.IsStreaming)
                             success = await DownloadCustomDomainWithYtdlp(videoInfo);
                         else
                             success = await DownloadVideoWithId(videoInfo, customDomain);
-                    }
-                    break;
-                case UrlType.Other:
-                    // Check if this is a custom domain URL
-                    if (!string.IsNullOrEmpty(customDomain))
-                        success = await DownloadVideoWithId(videoInfo, customDomain);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
+                        break;
+                    case UrlType.Other:
+                        if (!string.IsNullOrEmpty(customDomain))
+                            success = await DownloadVideoWithId(videoInfo, customDomain);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Exception during download: {Ex}", ex.Message);
+                success = false;
             }
 
-            DownloadQueue.TryDequeue(out _);
             OnDownloadCompleted?.Invoke(videoInfo, success);
             OnQueueChanged?.Invoke();
             _currentDownload = null;
         }
     }
-    
+
     public static void QueueDownload(VideoInfo videoInfo, string? customDomain = null)
     {
         if (DownloadQueue.Any(x => x.VideoInfo.VideoId == videoInfo.VideoId &&
                                    x.VideoInfo.DownloadFormat == videoInfo.DownloadFormat))
         {
             // Log.Information("URL is already in the download queue.");
+            return;
+        }
+        if (_currentDownload != null &&
+            _currentDownload.VideoId == videoInfo.VideoId &&
+            _currentDownload.DownloadFormat == videoInfo.DownloadFormat)
+        {
+            // Log.Information("URL is already being downloaded.");
             return;
         }
 
@@ -120,6 +125,12 @@ public class VideoDownloader
             VideoInfo = videoInfo,
             CustomDomain = customDomain
         });
+        OnQueueChanged?.Invoke();
+    }
+
+    public static void ClearQueue()
+    {
+        DownloadQueue.Clear();
         OnQueueChanged?.Invoke();
     }
 
@@ -155,18 +166,18 @@ public class VideoDownloader
 
         Log.Information("Downloading YouTube Video: {URL}", url);
 
-        var additionalArgs = YtdlArgsHelper.GetYtdlArgs();
+        var additionalArgs = ConfigManager.Config.YtdlpAdditionalArgs;
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
-        
-        var audioArg = string.IsNullOrEmpty(ConfigManager.Config.ytdlDubLanguage)
+
+        var audioArg = string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage)
             ? "+ba[acodec=opus][ext=webm]"
-            : $"+(ba[acodec=opus][ext=webm][language={ConfigManager.Config.ytdlDubLanguage}]/ba[acodec=opus][ext=webm])";
-        
-        var audioArgPotato = string.IsNullOrEmpty(ConfigManager.Config.ytdlDubLanguage)
+            : $"+(ba[acodec=opus][ext=webm][language={ConfigManager.Config.YtdlpDubLanguage}]/ba[acodec=opus][ext=webm])";
+
+        var audioArgPotato = string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage)
             ? "+ba[ext=m4a]"
-            : $"+(ba[ext=m4a][language={ConfigManager.Config.ytdlDubLanguage}]/ba[ext=m4a])";
+            : $"+(ba[ext=m4a][language={ConfigManager.Config.YtdlpDubLanguage}]/ba[ext=m4a])";
 
         var process = new Process
         {
@@ -181,7 +192,7 @@ public class VideoDownloader
                 StandardErrorEncoding = Encoding.UTF8,
             }
         };
-        
+
         if (videoInfo.DownloadFormat == DownloadFormat.Webm)
         {
             // process.StartInfo.Arguments = $"--encoding utf-8 -q -o \"{TempDownloadMp4Path}\" -f \"bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec~='^(avc|h264)']+ba[ext=m4a]/bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec!=av01][vcodec!=vp9.2][protocol^=http]\" --no-playlist --remux-video mp4 --no-progress {cookieArg} {additionalArgs} -- \"{videoId}\"";
@@ -201,13 +212,13 @@ public class VideoDownloader
         if (process.ExitCode != 0)
         {
             Log.Error("Failed to download YouTube Video: {exitCode} {URL} {error}", process.ExitCode, url, error);
-            if (error.Contains("Sign in to confirm you’re not a bot"))
+            if (error.Contains("Sign in to confirm you're not a bot"))
                 Log.Error("Fix this error by following these instructions: https://github.com/clienthax/VRCVideoCacherBrowserExtension");
 
             return false;
         }
         Thread.Sleep(100);
-        
+
         var fileName = $"{videoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
         var subdirPath = CacheManager.GetSubdirectoryPath(UrlType.YouTube);
         var filePath = Path.Combine(subdirPath, fileName);
@@ -244,7 +255,7 @@ public class VideoDownloader
 
         CacheManager.AddToCache(fileName, UrlType.YouTube);
         var relativeUrl = CacheManager.GetRelativePath(UrlType.YouTube, fileName);
-        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativeUrl}");
+        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerURL}/{relativeUrl}");
         return true;
     }
 
@@ -282,7 +293,7 @@ public class VideoDownloader
         fileStream.Close();
         response.Dispose();
         await Task.Delay(10);
-        
+
         var fileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
         var subdirPath = CacheManager.GetSubdirectoryPath(videoInfo.UrlType, videoInfo.Domain);
 
@@ -307,7 +318,7 @@ public class VideoDownloader
 
         CacheManager.AddToCache(fileName, videoInfo.UrlType, videoInfo.Domain);
         var relativeUrl = CacheManager.GetRelativePath(videoInfo.UrlType, fileName, videoInfo.Domain);
-        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativeUrl}");
+        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerURL}/{relativeUrl}");
         return true;
     }
 
@@ -385,7 +396,7 @@ public class VideoDownloader
 
         CacheManager.AddToCache(fileName, UrlType.CustomDomain, videoInfo.Domain);
         var relativeUrl = CacheManager.GetRelativePath(UrlType.CustomDomain, fileName, videoInfo.Domain);
-        Log.Information("Streaming Video Downloaded: {URL}", $"{ConfigManager.Config.ytdlWebServerURL}/{relativeUrl}");
+        Log.Information("Streaming Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerURL}/{relativeUrl}");
         return true;
     }
 }

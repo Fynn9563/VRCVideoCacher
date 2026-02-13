@@ -18,7 +18,7 @@
                 <Button Command="{Binding OpenInExplorerCommand}" ToolTip.Tip="Open Folder">
                     <mi:MaterialIcon Kind="FolderOpen" Width="20" Height="20"/>
                 </Button>
-                <Button Command="{Binding DeleteAllCommand}" ToolTip.Tip="Clear All Cache" Background="#CF6679">
+                <Button Command="{Binding DeleteAllCommand}" ToolTip.Tip="Delete All Cache" Background="#CF6679">
                     <mi:MaterialIcon Kind="DeleteSweep" Width="20" Height="20"/>
                 </Button>
             </StackPanel>

@@ -1,12 +1,14 @@
 using Newtonsoft.Json;
+using Serilog;
 
 namespace VRCVideoCacher.Models;
 
-public static class Versions
+public class Versions
 {
+    private static readonly ILogger Log = Program.Logger.ForContext<Versions>();
     private static readonly string VersionPath = Path.Combine(Program.DataPath, "version.json");
-    public static VersionJson CurrentVersion = new();
-    
+    public static readonly VersionJson CurrentVersion = new();
+
     static Versions()
     {
         var oldVersionFile = Path.Combine(Program.DataPath, "yt-dlp.version.txt");
@@ -23,18 +25,23 @@ public static class Versions
             return;
         }
 
-        VersionJson? versions = null;
         if (File.Exists(VersionPath))
-            versions = JsonConvert.DeserializeObject<VersionJson>(File.ReadAllText(VersionPath));
-
-        if (versions != null)
         {
-            CurrentVersion = versions;
-            return;
+            try
+            {
+                CurrentVersion = JsonConvert.DeserializeObject<VersionJson>(File.ReadAllText(VersionPath)) ??
+                                 new VersionJson();
+                return;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to parse version file, it may be corrupted. Recreating...");
+            }
         }
+
         Save();
     }
-    
+
     public static void Save()
     {
         File.WriteAllText(VersionPath, JsonConvert.SerializeObject(CurrentVersion, Formatting.Indented));

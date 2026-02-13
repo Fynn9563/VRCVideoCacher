@@ -141,4 +141,11 @@ public partial class DownloadQueueViewModel : ViewModelBase
             StatusMessage = $"Error: {ex.Message}";
         }
     }
+    
+    [RelayCommand]
+    private void ClearQueue()
+    {
+        VideoDownloader.ClearQueue();
+        StatusMessage = "Download queue cleared";
+    }
 }

@@ -1,4 +1,3 @@
-using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -31,14 +30,14 @@ public partial class DashboardViewModel : ViewModelBase
     private int _downloadQueueCount;
 
     [ObservableProperty]
-    private bool _cookiesValid;
+    private string _cookieStatus = "Not Set";
 
     [ObservableProperty]
     private string _currentDownloadText = "None";
 
     public DashboardViewModel()
     {
-        ServerUrl = ConfigManager.Config.ytdlWebServerURL;
+        ServerUrl = ConfigManager.Config.YtdlpWebServerURL;
         MaxCacheSize = ConfigManager.Config.CacheMaxSizeInGb;
 
         // Initial data load
@@ -50,15 +49,12 @@ public partial class DashboardViewModel : ViewModelBase
         VideoDownloader.OnDownloadCompleted += OnDownloadCompleted;
         VideoDownloader.OnQueueChanged += OnQueueChanged;
         ConfigManager.OnConfigChanged += OnConfigChanged;
-        VRCVideoCacher.Program.OnCookiesUpdated += OnCookiesUpdated;
+        Program.OnCookiesUpdated += OnCookiesUpdated;
     }
 
     private void OnCookiesUpdated()
     {
-        Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            CookiesValid = VRCVideoCacher.Program.IsCookiesEnabledAndValid();
-        });
+        _ = ValidateCookiesAsync();
     }
 
     private void OnCacheChanged(string fileName, CacheChangeType changeType)
@@ -66,7 +62,7 @@ public partial class DashboardViewModel : ViewModelBase
         Dispatcher.UIThread.InvokeAsync(RefreshCacheStats);
     }
 
-    private void OnDownloadStarted(VRCVideoCacher.Models.VideoInfo video)
+    private void OnDownloadStarted(Models.VideoInfo video)
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -74,7 +70,7 @@ public partial class DashboardViewModel : ViewModelBase
         });
     }
 
-    private void OnDownloadCompleted(VRCVideoCacher.Models.VideoInfo video, bool success)
+    private void OnDownloadCompleted(Models.VideoInfo video, bool success)
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -94,10 +90,10 @@ public partial class DashboardViewModel : ViewModelBase
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            ServerUrl = ConfigManager.Config.ytdlWebServerURL;
+            ServerUrl = ConfigManager.Config.YtdlpWebServerURL;
             MaxCacheSize = ConfigManager.Config.CacheMaxSizeInGb;
-            CookiesValid = VRCVideoCacher.Program.IsCookiesEnabledAndValid();
         });
+        _ = ValidateCookiesAsync();
     }
 
     [RelayCommand]
@@ -105,12 +101,13 @@ public partial class DashboardViewModel : ViewModelBase
     {
         RefreshCacheStats();
         DownloadQueueCount = VideoDownloader.GetQueueCount();
-        CookiesValid = VRCVideoCacher.Program.IsCookiesEnabledAndValid();
 
         var currentDownload = VideoDownloader.GetCurrentDownload();
         CurrentDownloadText = currentDownload != null
             ? $"{currentDownload.UrlType}: {currentDownload.VideoId}"
             : "None";
+
+        _ = ValidateCookiesAsync();
     }
 
     private void RefreshCacheStats()
@@ -138,6 +135,28 @@ public partial class DashboardViewModel : ViewModelBase
         }
     }
 
+    private async Task ValidateCookiesAsync()
+    {
+        if (!Program.IsCookiesEnabledAndValid())
+        {
+            Dispatcher.UIThread.Post(() => CookieStatus = "Not Set");
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() => CookieStatus = "Checking...");
+
+        var result = await Program.ValidateCookiesAsync();
+        Dispatcher.UIThread.Post(() =>
+        {
+            CookieStatus = result switch
+            {
+                true => "Valid",
+                false => "Expired",
+                null => "Unknown"
+            };
+        });
+    }
+
     [RelayCommand]
     private async Task SetupCookieExtension()
     {
@@ -154,7 +173,7 @@ public partial class DashboardViewModel : ViewModelBase
             await window.ShowDialog(desktop.MainWindow!);
 
             // Refresh cookies status after dialog closes
-            CookiesValid = VRCVideoCacher.Program.IsCookiesEnabledAndValid();
+            _ = ValidateCookiesAsync();
         }
     }
 }

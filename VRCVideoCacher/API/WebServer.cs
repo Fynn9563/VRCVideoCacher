@@ -10,17 +10,17 @@ public class WebServer
 {
     private static EmbedIO.WebServer? _server;
     public static readonly ILogger Log = Program.Logger.ForContext<WebServer>();
-    
+
     public static void Init()
     {
         var indexPath = Path.Combine(CacheManager.CachePath, "index.html");
         if (!File.Exists(indexPath))
             File.WriteAllText(indexPath, "VRCVideoCacher");
-        
-        _server = CreateWebServer(ConfigManager.Config.ytdlWebServerURL);
-        _server.RunAsync();  
+
+        _server = CreateWebServer(ConfigManager.Config.YtdlpWebServerURL);
+        _server.RunAsync();
     }
-    
+
     private static EmbedIO.WebServer CreateWebServer(string url)
     {
         try { Logger.UnregisterLogger<ConsoleLogger>(); } catch { /* Not registered */ }
@@ -33,7 +33,7 @@ public class WebServer
         };
         if (!urls.Contains(url))
             urls.Add(url);
-        
+
         var server = new EmbedIO.WebServer(o => o
                 .WithUrlPrefixes(urls)
                 .WithMode(HttpListenerMode.EmbedIO))
@@ -46,7 +46,7 @@ public class WebServer
         // Listen for state changes.
         server.StateChanged += (_, e) => $"WebServer State: {e.NewState}".Info();
         server.OnUnhandledException += OnUnhandledException;
-        server.OnHttpException += OnHttpException;  
+        server.OnHttpException += OnHttpException;
         return server;
     }
 

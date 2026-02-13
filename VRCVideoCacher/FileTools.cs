@@ -2,7 +2,6 @@
 using System.Globalization;
 using Serilog;
 using ValveKeyValue;
-using VRCVideoCacher;
 
 namespace VRCVideoCacher;
 
@@ -17,7 +16,7 @@ public class FileTools
 
     static FileTools()
     {
-        string resoPath; 
+        string resoPath;
         if (!string.IsNullOrEmpty(ConfigManager.Config.ResonitePath))
             resoPath = ConfigManager.Config.ResonitePath;
         else
@@ -28,16 +27,16 @@ public class FileTools
 
         string localLowPath;
         if (OperatingSystem.IsWindows())
-        { 
+        {
             localLowPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "Low";
         }
         else if (OperatingSystem.IsLinux())
-        { 
-            var compatPath = GetCompatPath("438100") ?? throw new Exception("Unable to find VRChat compat data"); 
+        {
+            var compatPath = GetCompatPath("438100") ?? throw new Exception("Unable to find VRChat compat data");
             localLowPath = Path.Join(compatPath, "pfx/drive_c/users/steamuser/AppData/LocalLow");
         }
         else
-        { 
+        {
             throw new NotImplementedException("Unknown platform");
         }
         YtdlPathVrc = Path.Join(localLowPath, "VRChat/VRChat/Tools/yt-dlp.exe");
@@ -87,31 +86,32 @@ public class FileTools
             throw new InvalidOperationException("GetCompatPath is only supported on Linux");
 
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var vdfPaths = SteamPaths
+            .Select(path => Path.Join(home, path, "steamapps/libraryfolders.vdf"))
+            .Where(File.Exists)
+            .ToList();
 
-        var steamPaths = SteamPaths.Select(path => Path.Join(home, path))
-            .Where(Path.Exists);
-        var steam = steamPaths.First();
-        if (!Path.Exists(steam))
+        if (vdfPaths.Count == 0)
         {
-            Log.Error("Steam folder doesn't exist!");
+            Log.Error("No Steam folder exists!");
             return null;
         }
 
-        Log.Debug("Using steam path: {Steam}", steam);
-        var libraryFolders = Path.Join(steam, "steamapps/libraryfolders.vdf");
-        var stream = File.OpenRead(libraryFolders);
-
-        KVObject data = KVSerializer.Create(KVSerializationFormat.KeyValues1Text).Deserialize(stream);
-
         List<string> libraryPaths = [];
-        foreach (var folder in data)
+        foreach (var libraryFolders in vdfPaths)
         {
-            // var label = folder["label"]?.ToString(CultureInfo.InvariantCulture);
-            // var name = string.IsNullOrEmpty(label) ? folder.Name : label;
-            // See https://github.com/ValveResourceFormat/ValveKeyValue/issues/30#issuecomment-1581924891
-            var apps = (IEnumerable<KVObject>)folder["apps"];
-            if (apps.Any(app => app.Name == appid))
-                libraryPaths.Add(folder["path"].ToString(CultureInfo.InvariantCulture));
+            Log.Debug("Checking Steam libraryfolders.vdf at {Path}", libraryFolders);
+            var stream = File.OpenRead(libraryFolders);
+            KVObject data = KVSerializer.Create(KVSerializationFormat.KeyValues1Text).Deserialize(stream);
+            foreach (var folder in data)
+            {
+                // var label = folder["label"]?.ToString(CultureInfo.InvariantCulture);
+                // var name = string.IsNullOrEmpty(label) ? folder.Name : label;
+                // See https://github.com/ValveResourceFormat/ValveKeyValue/issues/30#issuecomment-1581924891
+                var apps = (IEnumerable<KVObject>)folder["apps"];
+                if (apps.Any(app => app.Name == appid))
+                    libraryPaths.Add(folder["path"].ToString(CultureInfo.InvariantCulture));
+            }
         }
 
         var paths = libraryPaths
@@ -150,7 +150,7 @@ public class FileTools
 
     public static void BackupAllYtdl()
     {
-        if (ConfigManager.Config.PatchVRC)
+        if (ConfigManager.Config.PatchVrChat)
             BackupAndReplaceYtdl(YtdlPathVrc, BackupPathVrc);
         if (ConfigManager.Config.PatchResonite)
             BackupAndReplaceYtdl(YtdlPathReso, BackupPathReso);
@@ -199,7 +199,7 @@ public class FileTools
     {
         if (!File.Exists(backupPath))
             return;
-        
+
         Log.Information("Restoring yt-dlp...");
         if (File.Exists(ytdlPath))
         {

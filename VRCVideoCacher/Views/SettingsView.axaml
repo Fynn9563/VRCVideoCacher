@@ -101,6 +101,7 @@
 
                     <CheckBox IsChecked="{Binding CachePyPyDance}" Content="Cache PyPyDance Videos"/>
                     <CheckBox IsChecked="{Binding CacheVRDancing}" Content="Cache VRDancing Videos"/>
+                    <CheckBox IsChecked="{Binding CacheOnly}" Content="Only use Cached Videos"/>
                 </StackPanel>
             </Border>
 
@@ -213,12 +214,6 @@
                     <StackPanel>
                         <TextBlock Text="Advanced Settings" FontWeight="SemiBold" FontSize="16"/>
                         <TextBlock Text="For power users only - modify at your own risk" Foreground="#f0ad4e" FontSize="12"/>
-                    </StackPanel>
-
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="AVPro Override"/>
-                        <TextBlock Text="Force browser impersonation mode (true) or disable it (false)" Foreground="#888" FontSize="12"/>
-                        <ComboBox ItemsSource="{Binding AvproOverrideOptions}" SelectedItem="{Binding AvproOverride}"/>
                     </StackPanel>
 
                     <StackPanel Spacing="5">

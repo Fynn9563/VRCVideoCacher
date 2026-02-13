@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Serilog;
+using VRCVideoCacher.Database;
 using VRCVideoCacher.Models;
 using VRCVideoCacher.Services;
 
@@ -17,7 +18,7 @@ public class CacheManager
     private static readonly ILogger Log = Program.Logger.ForContext<CacheManager>();
     private static readonly ConcurrentDictionary<string, VideoCache> CachedAssets = new();
     public static readonly string CachePath;
-    private static readonly string LockFilePath;
+    private static readonly string LockFilePath = Path.Combine(Program.DataPath, ".cache.lock");
 
     // Events for UI
     public static event Action<string, CacheChangeType>? OnCacheChanged;
@@ -36,8 +37,6 @@ public class CacheManager
             CachePath = ConfigManager.Config.CachedAssetPath;
         else
             CachePath = Path.Combine(Program.CurrentProcessPath, ConfigManager.Config.CachedAssetPath);
-
-        LockFilePath = Path.Combine(Program.DataPath, ".cache_lock");
 
         Log.Debug("Using cache path {CachePath}", CachePath);
         CreateSubdirectories();
@@ -88,101 +87,14 @@ public class CacheManager
         var cachePath = Environment.GetEnvironmentVariable("XDG_CACHE_HOME");
         if (string.IsNullOrEmpty(cachePath))
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache");
-        
+
         return Path.Combine(cachePath, "VRCVideoCacher");
     }
-    
+
     public static void Init()
     {
         CreateLockFile();
         TryFlushCache();
-    }
-
-    private static void CheckAndClearPreviousSession()
-    {
-        if (File.Exists(LockFilePath))
-        {
-            Log.Information("Detected unclean shutdown from previous session. Checking if cache needs clearing...");
-            ClearCacheIfNeeded();
-            File.Delete(LockFilePath);
-        }
-    }
-
-    private static void CreateLockFile()
-    {
-        try
-        {
-            File.WriteAllText(LockFilePath, DateTime.UtcNow.ToString("O"));
-            Log.Debug("Created cache lock file");
-        }
-        catch (Exception ex)
-        {
-            Log.Warning("Failed to create lock file: {Message}", ex.Message);
-        }
-    }
-
-    private static void ClearCacheIfNeeded()
-    {
-        var directoriesToClear = new List<(UrlType type, string path)>();
-
-        if (ConfigManager.Config.ClearYouTubeCacheOnExit)
-            directoriesToClear.Add((UrlType.YouTube, GetSubdirectoryPath(UrlType.YouTube)));
-        if (ConfigManager.Config.ClearPyPyDanceCacheOnExit)
-            directoriesToClear.Add((UrlType.PyPyDance, GetSubdirectoryPath(UrlType.PyPyDance)));
-        if (ConfigManager.Config.ClearVRDancingCacheOnExit)
-            directoriesToClear.Add((UrlType.VRDancing, GetSubdirectoryPath(UrlType.VRDancing)));
-
-        if (directoriesToClear.Count == 0 && ConfigManager.Config.ClearCustomDomainsOnExit.Length == 0)
-            return;
-
-        Log.Information("Clearing cache from previous session...");
-
-        foreach (var (type, path) in directoriesToClear)
-        {
-            try
-            {
-                if (Directory.Exists(path))
-                {
-                    var files = Directory.GetFiles(path);
-                    foreach (var file in files)
-                    {
-                        File.Delete(file);
-                    }
-                    Log.Information("Cleared {Type} cache ({Count} files)", type, files.Length);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Failed to clear {Type} cache: {Error}", type, ex.Message);
-            }
-        }
-
-        if (ConfigManager.Config.ClearCustomDomainsOnExit.Length > 0)
-        {
-            var customDomainsPath = Path.Combine(CachePath, "CustomDomains");
-            foreach (var domain in ConfigManager.Config.ClearCustomDomainsOnExit)
-            {
-                try
-                {
-                    var domainPath = Path.Combine(customDomainsPath, domain);
-                    if (Directory.Exists(domainPath))
-                    {
-                        var files = Directory.GetFiles(domainPath);
-                        foreach (var file in files)
-                        {
-                            File.Delete(file);
-                        }
-                        Log.Information("Cleared CustomDomain cache for {Domain} ({Count} files)", domain, files.Length);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Error("Failed to clear CustomDomain cache for {Domain}: {Error}", domain, ex.Message);
-                }
-            }
-        }
-
-        Log.Information("Cache cleanup from previous session completed.");
     }
 
     private static void BuildCache()
@@ -234,8 +146,8 @@ public class CacheManager
             AddToCache(fileName, UrlType.CustomDomain);
         }
     }
-    
-    private static void TryFlushCache()
+
+    public static void TryFlushCache()
     {
         if (ConfigManager.Config.CacheMaxSizeInGb <= 0f)
             return;
@@ -245,6 +157,7 @@ public class CacheManager
         if (cacheSize < maxCacheSize)
             return;
 
+        var recentPlayHistory = DatabaseManager.GetPlayHistory();
         var oldestFiles = CachedAssets.OrderBy(x => x.Value.LastModified).ToList();
         while (cacheSize >= maxCacheSize && oldestFiles.Count > 0)
         {
@@ -252,14 +165,16 @@ public class CacheManager
             var filePath = Path.Combine(CachePath, oldestFile.Value.FileName);
             if (File.Exists(filePath))
             {
-                try
+                File.Delete(filePath);
+                cacheSize -= oldestFile.Value.Size;
+
+                // delete thumbnail if not in recent history
+                var videoId = Path.GetFileNameWithoutExtension(oldestFile.Value.FileName);
+                if (recentPlayHistory.All(h => h.Id != videoId))
                 {
-                    File.Delete(filePath);
-                    cacheSize -= oldestFile.Value.Size;
-                }
-                catch (Exception ex)
-                {
-                    Log.Error("Failed to delete {FileName} during cache flush: {Error}", oldestFile.Value.FileName, ex.Message);
+                    var thumbnailPath = ThumbnailManager.GetThumbnailPath(videoId);
+                    if (File.Exists(thumbnailPath))
+                        File.Delete(thumbnailPath);
                 }
             }
             CachedAssets.TryRemove(oldestFile.Key, out _);
@@ -290,7 +205,7 @@ public class CacheManager
 
         TryFlushCache();
     }
-    
+
     private static long GetCacheSize()
     {
         var totalSize = 0L;
@@ -313,49 +228,58 @@ public class CacheManager
     public static void DeleteCacheItem(string fileName)
     {
         var filePath = Path.Combine(CachePath, fileName);
-        if (File.Exists(filePath))
+        if (!File.Exists(filePath))
+            return;
+
+        File.Delete(filePath);
+        CachedAssets.TryRemove(fileName, out _);
+        OnCacheChanged?.Invoke(fileName, CacheChangeType.Removed);
+        Log.Information("Deleted cached video: {FileName}", fileName);
+    }
+
+    public static void ClearCache()
+    {
+        var recentPlayHistory = DatabaseManager.GetPlayHistory();
+        var files = CachedAssets.Keys.ToList();
+        foreach (var fileName in files)
         {
+            var filePath = Path.Combine(CachePath, fileName);
+            if (!File.Exists(filePath))
+                continue;
+
             try
             {
                 File.Delete(filePath);
-                CachedAssets.TryRemove(fileName, out _);
-
-                // Delete associated thumbnail
-                var videoId = Path.GetFileNameWithoutExtension(Path.GetFileName(fileName));
-                YouTubeMetadataService.DeleteThumbnail(videoId);
-
-                OnCacheChanged?.Invoke(fileName, CacheChangeType.Removed);
-                Log.Information("Deleted cached video: {FileName}", fileName);
+                
+                // delete thumbnail if not in recent history
+                var videoId = Path.GetFileNameWithoutExtension(fileName);
+                if (recentPlayHistory.All(h => h.Id != videoId))
+                {
+                    var thumbnailPath = ThumbnailManager.GetThumbnailPath(videoId);
+                    if (File.Exists(thumbnailPath))
+                        File.Delete(thumbnailPath);
+                }
             }
             catch (Exception ex)
             {
                 Log.Error("Failed to delete {FileName}: {Error}", fileName, ex.Message);
             }
         }
-    }
-
-    public static void ClearCache()
-    {
-        var files = CachedAssets.Keys.ToList();
-        foreach (var fileName in files)
-        {
-            var filePath = Path.Combine(CachePath, fileName);
-            if (File.Exists(filePath))
-            {
-                try
-                {
-                    File.Delete(filePath);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error("Failed to delete {FileName}: {Error}", fileName, ex.Message);
-                }
-            }
-        }
         CachedAssets.Clear();
 
         // Clear all cached thumbnails
-        YouTubeMetadataService.ClearAllThumbnails();
+        try
+        {
+            if (Directory.Exists(ThumbnailManager.ThumbnailCacheDir))
+            {
+                foreach (var file in Directory.GetFiles(ThumbnailManager.ThumbnailCacheDir))
+                    File.Delete(file);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to clear thumbnails: {Error}", ex.Message);
+        }
 
         OnCacheChanged?.Invoke(string.Empty, CacheChangeType.Cleared);
         Log.Information("Cache cleared");
@@ -411,7 +335,9 @@ public class CacheManager
                     {
                         // Delete associated thumbnail
                         var videoId = Path.GetFileNameWithoutExtension(file);
-                        YouTubeMetadataService.DeleteThumbnail(videoId);
+                        var thumbnailPath = ThumbnailManager.GetThumbnailPath(videoId);
+                        if (File.Exists(thumbnailPath))
+                            File.Delete(thumbnailPath);
 
                         File.Delete(file);
                     }
@@ -440,7 +366,9 @@ public class CacheManager
                         {
                             // Delete associated thumbnail
                             var videoId = Path.GetFileNameWithoutExtension(file);
-                            YouTubeMetadataService.DeleteThumbnail(videoId);
+                            var thumbnailPath = ThumbnailManager.GetThumbnailPath(videoId);
+                            if (File.Exists(thumbnailPath))
+                                File.Delete(thumbnailPath);
 
                             File.Delete(file);
                         }
@@ -456,6 +384,34 @@ public class CacheManager
 
         Log.Information("Cache cleanup completed.");
         RemoveLockFile();
+    }
+
+    private static void CheckAndClearPreviousSession()
+    {
+        try
+        {
+            if (File.Exists(LockFilePath))
+            {
+                Log.Warning("Lock file found from previous session - previous session did not shut down cleanly");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Failed to check previous session lock file: {Message}", ex.Message);
+        }
+    }
+
+    private static void CreateLockFile()
+    {
+        try
+        {
+            File.WriteAllText(LockFilePath, DateTime.UtcNow.ToString("O"));
+            Log.Debug("Created cache lock file");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Failed to create lock file: {Message}", ex.Message);
+        }
     }
 
     private static void RemoveLockFile()

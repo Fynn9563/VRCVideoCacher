@@ -33,7 +33,7 @@ public class VideoTools
 
         if (firstM3U8Url == null)
             return true;
-        
+
         // If we have an M3U8 URL, perform HEAD requests to validate accessibility
         var statusCode = 0;
         const int wait = 1500;

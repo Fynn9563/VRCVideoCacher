@@ -9,9 +9,15 @@
         <!-- Header -->
         <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,20">
             <TextBlock Text="Download Queue" FontSize="24" FontWeight="Bold"/>
-            <Button Grid.Column="1" Command="{Binding RefreshQueueCommand}" ToolTip.Tip="Refresh">
-                <mi:MaterialIcon Kind="Refresh" Width="20" Height="20"/>
-            </Button>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                <Button Command="{Binding RefreshQueueCommand}" ToolTip.Tip="Refresh">
+                    <mi:MaterialIcon Kind="Refresh" Width="20" Height="20"/>
+                </Button>
+                <Button Command="{Binding ClearQueueCommand}" ToolTip.Tip="Clear Queue" Background="#CF6679">
+                    <mi:MaterialIcon Kind="DeleteSweep" Width="20" Height="20"/>
+                </Button>
+            </StackPanel>
         </Grid>
 
         <!-- Current Download -->
@@ -88,8 +94,5 @@
                            IsVisible="{Binding !QueuedDownloads.Count}"/>
             </Grid>
         </Border>
-
-        <!-- Status -->
-        <TextBlock Grid.Row="4" Text="{Binding CurrentStatus}" Margin="0,10,0,0" Foreground="#888888"/>
     </Grid>
 </UserControl>

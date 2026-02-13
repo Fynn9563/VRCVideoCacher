@@ -1,32 +1,16 @@
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using System.Web;
 using Serilog;
+using VRCVideoCacher.Database;
+using VRCVideoCacher.Database.Models;
 using VRCVideoCacher.Models;
+using VRCVideoCacher.Services;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace VRCVideoCacher.YTDL;
-
-// JSON model for yt-dlp video info
-internal class YtdlpVideoInfo
-{
-    [JsonPropertyName("id")]
-    public string? Id { get; set; }
-
-    [JsonPropertyName("duration")]
-    public double? Duration { get; set; }
-
-    [JsonPropertyName("is_live")]
-    public bool? IsLive { get; set; }
-}
-
-[JsonSerializable(typeof(YtdlpVideoInfo))]
-internal partial class VideoIdJsonContext : JsonSerializerContext
-{
-}
 
 public class VideoId
 {
@@ -50,7 +34,7 @@ public class VideoId
             return false;
         }
     }
-    
+
     private static string HashUrl(string url)
     {
         return Convert.ToBase64String(
@@ -60,12 +44,13 @@ public class VideoId
             .Replace("+", "")
             .Replace("=", "");
     }
-    
+
     public static async Task<VideoInfo?> GetVideoId(string url, bool avPro)
     {
         url = url.Trim();
-        
-        if (url.StartsWith("http://api.pypy.dance/video"))
+
+        if (url.StartsWith("http://api.pypy.dance/video") ||
+            url.StartsWith("https://api.pypy.dance/video"))
         {
             try
             {
@@ -80,6 +65,16 @@ public class VideoId
                 var uri = new Uri(videoUrl);
                 var fileName = Path.GetFileName(uri.LocalPath);
                 var pypyVideoId = !fileName.Contains('.') ? fileName : fileName.Split('.')[0];
+
+                var pypyUri = new Uri(url);
+                var query = HttpUtility.ParseQueryString(pypyUri.Query);
+                int.TryParse(query.Get("id"), out var idInt);
+                _ = Task.Run(async () =>
+                {
+                    await PyPyDanceApiService.DownloadMetadata(idInt, pypyVideoId);
+                });
+                
+
                 return new VideoInfo
                 {
                     VideoUrl = videoUrl,
@@ -94,12 +89,17 @@ public class VideoId
                 return null;
             }
         }
-        
+
         if (url.StartsWith("https://na2.vrdancing.club") ||
-            url.StartsWith("https://eu2.vrdancing.club") ||
-            url.StartsWith("https://na2-lq.vrdancing.club"))
+            url.StartsWith("https://eu2.vrdancing.club"))
         {
+            var uri = new Uri(url);
+            var code = Path.GetFileNameWithoutExtension(uri.LocalPath);
             var videoId = HashUrl(url);
+            _ = Task.Run(async () =>
+            {
+                await VRDancingAPIService.DownloadMetadata(code, videoId);
+            });
             return new VideoInfo
             {
                 VideoUrl = url,
@@ -145,13 +145,14 @@ public class VideoId
             }
         }
 
+
         if (IsYouTubeUrl(url))
         {
             var videoId = string.Empty;
             var match = YoutubeRegex.Match(url);
             if (match.Success)
             {
-                videoId = match.Groups[1].Value; 
+                videoId = match.Groups[1].Value;
             }
             else if (url.StartsWith("https://www.youtube.com/shorts/") ||
                      url.StartsWith("https://youtube.com/shorts/"))
@@ -172,7 +173,7 @@ public class VideoId
                 VideoUrl = url,
                 VideoId = videoId,
                 UrlType = UrlType.YouTube,
-                DownloadFormat = avPro ? DownloadFormat.Webm : DownloadFormat.MP4,
+                DownloadFormat = avPro ? DownloadFormat.Webm : DownloadFormat.MP4
             };
         }
 
@@ -182,7 +183,7 @@ public class VideoId
             VideoUrl = url,
             VideoId = urlHash,
             UrlType = UrlType.Other,
-            DownloadFormat = DownloadFormat.MP4,
+            DownloadFormat = DownloadFormat.MP4
         };
     }
 
@@ -218,6 +219,16 @@ public class VideoId
         var data = JsonSerializer.Deserialize(rawData, VideoIdJsonContext.Default.YtdlpVideoInfo);
         if (data?.Id is null || data.Duration is null)
             throw new Exception("Failed to get video ID");
+        
+        DatabaseManager.AddVideoInfoCache(new VideoInfoCache
+        {
+            Id = data.Id,
+            Title = data.Name,
+            Author = data.Author,
+            Duration = data.Duration,
+            Type = UrlType.YouTube
+        });
+
         if (data.IsLive == true)
             throw new Exception("Failed to get video ID: Video is a stream");
         if (data.Duration > ConfigManager.Config.CacheYouTubeMaxLength * 60)
@@ -242,14 +253,14 @@ public class VideoId
             }
         };
 
-        var additionalArgs = ConfigManager.Config.ytdlAdditionalArgs;
+        var additionalArgs = ConfigManager.Config.YtdlpAdditionalArgs;
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
-        
-        var languageArg = string.IsNullOrEmpty(ConfigManager.Config.ytdlDubLanguage)
+
+        var languageArg = string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage)
             ? string.Empty
-            : $" -f [language={ConfigManager.Config.ytdlDubLanguage}]";
+            : $" -f [language={ConfigManager.Config.YtdlpDubLanguage}]";
         process.StartInfo.Arguments = $"--flat-playlist -i -J -s --no-playlist {languageArg} --impersonate=\"safari\" --extractor-args=\"youtube:player_client=web\" --no-warnings {cookieArg} {additionalArgs} {url}";
 
         process.Start();
@@ -259,7 +270,7 @@ public class VideoId
         error = error.Trim();
         await process.WaitForExitAsync();
         Log.Information("Started yt-dlp with args: {args}", process.StartInfo.Arguments);
-        
+
         if (process.ExitCode != 0)
         {
             if (error.Contains("Sign in to confirm you’re not a bot"))
@@ -268,9 +279,9 @@ public class VideoId
             return string.Empty;
         }
 
-        return  output;
+        return output;
     }
-    
+
     // High bitrate video (1080)
     // https://www.youtube.com/watch?v=DzQwWlbnZvo
 
@@ -306,11 +317,11 @@ public class VideoId
         var cookieArg = string.Empty;
         if (Program.IsCookiesEnabledAndValid())
             cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
-        
-        var languageArg = string.IsNullOrEmpty(ConfigManager.Config.ytdlDubLanguage)
+
+        var languageArg = string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage)
             ? string.Empty
-            : $"[language={ConfigManager.Config.ytdlDubLanguage}]/(mp4/best)[height<=?1080][height>=?64][width>=?64]";
-        
+            : $"[language={ConfigManager.Config.YtdlpDubLanguage}]/(mp4/best)[height<=?1080][height>=?64][width>=?64]";
+
         if (avPro)
         {
             process.StartInfo.Arguments = $"--encoding utf-8 -f \"(mp4/best)[height<=?1080][height>=?64][width>=?64]{languageArg}\" --impersonate=\"safari\" --extractor-args=\"youtube:player_client=web\" --no-playlist --no-warnings {cookieArg} {additionalArgs} --get-url \"{url}\"";
@@ -319,7 +330,7 @@ public class VideoId
         {
             process.StartInfo.Arguments = $"--encoding utf-8 -f \"(mp4/best)[vcodec!=av01][vcodec!=vp9.2][height<=?1080][height>=?64][width>=?64][protocol^=http]\" --no-playlist --no-warnings {cookieArg} {additionalArgs} --get-url \"{url}\"";
         }
-        
+
         process.Start();
         var output = await process.StandardOutput.ReadToEndAsync();
         output = output.Trim();
@@ -327,7 +338,7 @@ public class VideoId
         error = error.Trim();
         await process.WaitForExitAsync();
         Log.Information("Started yt-dlp with args: {args}", process.StartInfo.Arguments);
-        
+
         if (process.ExitCode != 0)
         {
             if (error.Contains("Sign in to confirm you’re not a bot"))

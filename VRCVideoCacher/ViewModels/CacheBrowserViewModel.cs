@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using VRCVideoCacher.Database;
 using VRCVideoCacher.Models;
 using VRCVideoCacher.Services;
 using VRCVideoCacher.YTDL;
@@ -44,49 +45,24 @@ public partial class CacheItemViewModel : ViewModelBase
 
     public async Task LoadMetadataAsync()
     {
-        if (IsYouTube)
-        {
-            // Load YouTube title
-            var title = await YouTubeMetadataService.GetVideoTitleAsync(VideoId);
-            if (!string.IsNullOrEmpty(title))
-            {
-                Title = title;
-                OnPropertyChanged(nameof(DisplayTitle));
-            }
+        // Load from DB
+        var videoInfo = await DatabaseManager.Database.VideoInfoCache.FindAsync(VideoId);
+        if (VideoId.Length == 11 && string.IsNullOrEmpty(videoInfo?.Title))
+            videoInfo = await YouTubeMetadataService.GetVideoTitleAsync(VideoId);
 
-            // Load and cache YouTube thumbnail
-            var thumbnailPath = await YouTubeMetadataService.GetCachedThumbnailAsync(VideoId);
-            if (!string.IsNullOrEmpty(thumbnailPath))
-            {
-                ThumbnailSource = thumbnailPath;
-            }
-            else
-            {
-                // Fallback to remote URL if caching failed
-                ThumbnailSource = $"https://img.youtube.com/vi/{VideoId}/mqdefault.jpg";
-            }
-        }
-        else
+        if (!string.IsNullOrEmpty(videoInfo?.Title))
         {
-            // For non-YouTube videos, extract thumbnail from video file
-            var videoFilePath = Path.Combine(CacheManager.CachePath, FileName);
-            var thumbnailPath = await YouTubeMetadataService.ExtractVideoThumbnailAsync(videoFilePath, VideoId, Category);
-
-            if (thumbnailPath == YouTubeMetadataService.AudioOnlyMarker)
-            {
-                // File is audio-only (even if extension says .mp4) - show music icon
-                ShowMusicIcon = true;
-            }
-            else if (!string.IsNullOrEmpty(thumbnailPath))
-            {
-                ThumbnailSource = thumbnailPath;
-            }
-            else if (IsAudioFile)
-            {
-                // Fallback: show music icon for known audio extensions without thumbnails
-                ShowMusicIcon = true;
-            }
+            Title = videoInfo.Title;
+            OnPropertyChanged(nameof(DisplayTitle));
         }
+
+        // Load thumbnail
+        var thumbnailPath = ThumbnailManager.GetThumbnail(VideoId);
+        if (VideoId.Length == 11 && string.IsNullOrEmpty(thumbnailPath))
+            thumbnailPath = await YouTubeMetadataService.GetThumbnail(VideoId);
+
+        if (!string.IsNullOrEmpty(thumbnailPath))
+            ThumbnailSource = thumbnailPath;
     }
 
     [RelayCommand(CanExecute = nameof(IsYouTube))]
@@ -126,7 +102,7 @@ public partial class CacheItemViewModel : ViewModelBase
     [RelayCommand]
     private async Task CopyUrl()
     {
-        var url = $"{ConfigManager.Config.ytdlWebServerURL}/{FileName}";
+        var url = $"{ConfigManager.Config.YtdlpWebServerURL}/{FileName}";
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
         {
             var clipboard = desktop.MainWindow?.Clipboard;

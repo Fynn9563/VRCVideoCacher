@@ -1,6 +1,6 @@
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using VRCVideoCacher.Utils;
 
 namespace VRCVideoCacher.ViewModels;
 
@@ -14,6 +14,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _cacheStatusText = "Cache: 0 B";
+
+    [ObservableProperty]
+    private string _title = $"VRCVideoCacher v{Program.Version}";
 
     public DashboardViewModel Dashboard { get; }
     public SettingsViewModel Settings { get; }
@@ -30,6 +33,8 @@ public partial class MainWindowViewModel : ViewModelBase
         LogViewer = new LogViewerViewModel();
 
         _currentView = Dashboard;
+
+        _title += AdminCheck.GetAdminTitleWarning();
 
         // Subscribe to cache changes for status bar
         CacheManager.OnCacheChanged += (_, _) => UpdateCacheStatus();

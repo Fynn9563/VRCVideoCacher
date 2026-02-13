@@ -55,6 +55,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _cacheVRDancing;
 
+    [ObservableProperty]
+    private bool _cacheOnly;
+
     // Patching
     [ObservableProperty]
     private bool _patchResonite;
@@ -76,12 +79,6 @@ public partial class SettingsViewModel : ViewModelBase
     // Advanced Settings
     [ObservableProperty]
     private string _ytdlArgsOverride = string.Empty;
-
-    [ObservableProperty]
-    private string _avproOverride = "default";
-
-    // AvproOverride options for dropdown
-    public string[] AvproOverrideOptions { get; } = ["default", "true", "false"];
 
     // Custom Domains
     [ObservableProperty]
@@ -129,13 +126,13 @@ public partial class SettingsViewModel : ViewModelBase
     {
         var config = ConfigManager.Config;
 
-        WebServerUrl = config.ytdlWebServerURL;
-        YtdlPath = config.ytdlPath;
-        YtdlUseCookies = config.ytdlUseCookies;
+        WebServerUrl = config.YtdlpWebServerURL;
+        YtdlPath = config.YtdlpPath;
+        YtdlUseCookies = config.YtdlpUseCookies;
         CookieStatus = Program.GetCookieStatus();
-        YtdlAutoUpdate = config.ytdlAutoUpdate;
-        YtdlAdditionalArgs = config.ytdlAdditionalArgs;
-        YtdlDubLanguage = config.ytdlDubLanguage;
+        YtdlAutoUpdate = config.YtdlpAutoUpdate;
+        YtdlAdditionalArgs = config.YtdlpAdditionalArgs;
+        YtdlDubLanguage = config.YtdlpDubLanguage;
         CachedAssetPath = config.CachedAssetPath;
         CacheYouTube = config.CacheYouTube;
         CacheYouTubeMaxResolution = config.CacheYouTubeMaxResolution;
@@ -143,9 +140,10 @@ public partial class SettingsViewModel : ViewModelBase
         CacheMaxSizeInGb = config.CacheMaxSizeInGb;
         CachePyPyDance = config.CachePyPyDance;
         CacheVRDancing = config.CacheVRDancing;
+        CacheOnly = config.CacheOnly;
         PatchResonite = config.PatchResonite;
-        PatchVRC = config.PatchVRC;
-        AutoUpdate = config.AutoUpdate;
+        PatchVRC = config.PatchVrChat;
+        AutoUpdate = config.AutoUpdateVrcVideoCacher;
 
         // VRCX Auto-start (Windows only)
         if (OperatingSystem.IsWindows())
@@ -155,8 +153,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         // Advanced Settings
-        YtdlArgsOverride = config.ytdlArgsOverride;
-        AvproOverride = config.avproOverride;
+        YtdlArgsOverride = config.YtdlpArgsOverride;
 
         // Clear Cache on Exit
         ClearYouTubeCacheOnExit = config.ClearYouTubeCacheOnExit;
@@ -211,7 +208,6 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnPatchVRCChanged(bool value) => HasChanges = true;
     partial void OnAutoUpdateChanged(bool value) => HasChanges = true;
     partial void OnYtdlArgsOverrideChanged(string value) => HasChanges = true;
-    partial void OnAvproOverrideChanged(string value) => HasChanges = true;
     partial void OnCacheCustomDomainsEnabledChanged(bool value) => HasChanges = true;
     partial void OnClearYouTubeCacheOnExitChanged(bool value) => HasChanges = true;
     partial void OnClearPyPyDanceCacheOnExitChanged(bool value) => HasChanges = true;
@@ -224,12 +220,12 @@ public partial class SettingsViewModel : ViewModelBase
     {
         var config = ConfigManager.Config;
 
-        config.ytdlWebServerURL = WebServerUrl;
-        config.ytdlPath = YtdlPath;
-        config.ytdlUseCookies = YtdlUseCookies;
-        config.ytdlAutoUpdate = YtdlAutoUpdate;
-        config.ytdlAdditionalArgs = YtdlAdditionalArgs;
-        config.ytdlDubLanguage = YtdlDubLanguage;
+        config.YtdlpWebServerURL = WebServerUrl;
+        config.YtdlpPath = YtdlPath;
+        config.YtdlpUseCookies = YtdlUseCookies;
+        config.YtdlpAutoUpdate = YtdlAutoUpdate;
+        config.YtdlpAdditionalArgs = YtdlAdditionalArgs;
+        config.YtdlpDubLanguage = YtdlDubLanguage;
         config.CachedAssetPath = CachedAssetPath;
         config.CacheYouTube = CacheYouTube;
         config.CacheYouTubeMaxResolution = CacheYouTubeMaxResolution;
@@ -238,12 +234,11 @@ public partial class SettingsViewModel : ViewModelBase
         config.CachePyPyDance = CachePyPyDance;
         config.CacheVRDancing = CacheVRDancing;
         config.PatchResonite = PatchResonite;
-        config.PatchVRC = PatchVRC;
-        config.AutoUpdate = AutoUpdate;
+        config.PatchVrChat = PatchVRC;
+        config.AutoUpdateVrcVideoCacher = AutoUpdate;
 
         // Advanced Settings
-        config.ytdlArgsOverride = YtdlArgsOverride;
-        config.avproOverride = AvproOverride;
+        config.YtdlpArgsOverride = YtdlArgsOverride;
 
         // Clear Cache on Exit
         config.ClearYouTubeCacheOnExit = ClearYouTubeCacheOnExit;

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
@@ -7,7 +8,9 @@ using Serilog;
 using Serilog.Templates;
 using Serilog.Templates.Themes;
 using VRCVideoCacher.API;
+using VRCVideoCacher.Database;
 using VRCVideoCacher.Services;
+using VRCVideoCacher.Utils;
 using VRCVideoCacher.YTDL;
 
 namespace VRCVideoCacher;
@@ -27,6 +30,8 @@ internal sealed partial class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        AdminCheck.SetupArguements(args);
+
         var processes = Process.GetProcessesByName("VRCVideoCacher");
         if (processes.Length > 1)
         {
@@ -40,7 +45,7 @@ internal sealed partial class Program
         if (args.Contains("--nogui"))
         {
             // Run backend only (console mode)
-            InitVRCVideoCacher().GetAwaiter().GetResult();
+            InitVRCVideoCacher(false).GetAwaiter().GetResult();
             return;
         }
 
@@ -57,29 +62,35 @@ internal sealed partial class Program
             .WriteTo.Sink(new UiLogSink())
             .CreateLogger();
 
-        // Start backend on background thread
-        Task.Run(async () =>
+        if (AdminCheck.IsRunningAsAdmin())
         {
-            try
-            {
-                await InitVRCVideoCacher();
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Backend error "+ex.Message+" "+ex.StackTrace);
-            }
-        });
+            Logger.Warning("Application is running with administrator privileges. This is not recommended for security reasons.");
+        }
 
-        // Give the backend a moment to initialize
-        Thread.Sleep(1000);
+        // Don't run backend if admin warning is shown
+        if (!AdminCheck.ShouldShowAdminWarning())
+        {
+            // Start backend on background thread
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await InitVRCVideoCacher(true);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Backend error " + ex.Message + " " + ex.StackTrace);
+                }
+            });
+        }
 
         // Start the UI
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
-    public static async Task InitVRCVideoCacher()
+    public static async Task InitVRCVideoCacher(bool hasGui)
     {
-        try { Console.Title = $"VRCVideoCacher v{Version}"; } catch { /* GUI mode, no console */ }
+        try { Console.Title = $"VRCVideoCacher v{Version}{AdminCheck.GetAdminTitleWarning()}"; } catch { /* GUI mode, no console */ }
 
         // Only configure logger if not already configured (e.g., by UI)
         if (Log.Logger.GetType().Name == "SilentLogger")
@@ -97,7 +108,13 @@ internal sealed partial class Program
         const string fynn = "Fynn9563";
         Logger.Information("VRCVideoCacher version {Version} created by {Elly}, {Natsumi}, {Haxy}", Version, elly, natsumi, haxy);
         Logger.Information("Modified by {Fynn}", fynn);
-        
+
+        if (!hasGui && AdminCheck.ShouldShowAdminWarning())
+        {
+            Logger.Error(AdminCheck.AdminWarningMessage);
+            Environment.Exit(0);
+        }
+
         Directory.CreateDirectory(DataPath);
         await Updater.CheckForUpdates();
         Updater.Cleanup();
@@ -116,7 +133,9 @@ internal sealed partial class Program
 
         YtdlpHash = GetOurYtdlpHash();
 
-        if (ConfigManager.Config.ytdlAutoUpdate && !string.IsNullOrEmpty(ConfigManager.Config.ytdlPath))
+        DatabaseManager.Init();
+
+        if (ConfigManager.Config.YtdlpAutoUpdate && !string.IsNullOrEmpty(ConfigManager.Config.YtdlpPath))
         {
             await YtdlManager.TryDownloadYtdlp();
             YtdlManager.StartYtdlDownloadThread();
@@ -130,8 +149,8 @@ internal sealed partial class Program
         FileTools.BackupAllYtdl();
         await BulkPreCache.DownloadFileList();
 
-        if (ConfigManager.Config.ytdlUseCookies && !IsCookiesEnabledAndValid())
-            Logger.Warning("No cookies found, please use the browser extension to send cookies or disable \"ytdlUseCookies\" in config.");
+        if (ConfigManager.Config.YtdlpUseCookies && !IsCookiesEnabledAndValid())
+            Logger.Warning("No cookies found, please use the browser extension to send cookies or disable \"YtdlpUseCookies\" in config.");
         else if (IsCookiesEnabledAndValid())
             _ = FetchYouTubeUsernameAsync();
 
@@ -155,7 +174,7 @@ internal sealed partial class Program
 
     public static bool IsCookiesEnabledAndValid()
     {
-        if (!ConfigManager.Config.ytdlUseCookies)
+        if (!ConfigManager.Config.YtdlpUseCookies)
             return false;
 
         if (!File.Exists(YtdlManager.CookiesPath))
@@ -175,11 +194,65 @@ internal sealed partial class Program
 
         return false;
     }
+    
+    public static async Task<bool?> ValidateCookiesAsync()
+    {
+        if (!IsCookiesEnabledAndValid())
+            return null;
+
+        try
+        {
+            var cookieContainer = new CookieContainer();
+            var lines = await File.ReadAllLinesAsync(YtdlManager.CookiesPath);
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
+                    continue;
+
+                var parts = line.Split('\t');
+                if (parts.Length < 7)
+                    continue;
+
+                try
+                {
+                    var domain = parts[0];
+                    var path = parts[2];
+                    var secure = parts[3].Equals("TRUE", StringComparison.OrdinalIgnoreCase);
+                    var name = parts[5];
+                    var value = parts[6];
+
+                    cookieContainer.Add(new Cookie(name, value, path, domain) { Secure = secure });
+                }
+                catch
+                {
+                    // Skip malformed cookie lines
+                }
+            }
+
+            using var handler = new HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+                CookieContainer = cookieContainer,
+                UseCookies = true
+            };
+            using var client = new HttpClient(handler);
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var response = await client.GetAsync("https://www.youtube.com/account", cts.Token);
+            return response.StatusCode == HttpStatusCode.OK;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning("Failed to validate cookies online: {Error}", ex.Message);
+            return null;
+        }
+    }
 
     // Returns cookie status for display in Settings UI (only when cookies enabled)
     public static string GetCookieStatus()
     {
-        if (!ConfigManager.Config.ytdlUseCookies)
+        if (!ConfigManager.Config.YtdlpUseCookies)
             return string.Empty;
 
         if (!File.Exists(YtdlManager.CookiesPath))
