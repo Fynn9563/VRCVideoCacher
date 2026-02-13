@@ -1,10 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:VRCVideoCacher.ViewModels"
+        xmlns:viewModels="clr-namespace:VRCVideoCacher.ViewModels"
         xmlns:views="using:VRCVideoCacher.Views"
         xmlns:mi="using:Material.Icons.Avalonia"
         x:Class="VRCVideoCacher.Views.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
+        x:DataType="viewModels:MainWindowViewModel"
         Title="{Binding Title}"
         Icon="avares://VRCVideoCacher/Assets/icon.ico"
         Width="1000" Height="700"
@@ -12,7 +12,7 @@
         WindowStartupLocation="CenterScreen">
 
     <Design.DataContext>
-        <vm:MainWindowViewModel/>
+        <viewModels:MainWindowViewModel/>
     </Design.DataContext>
 
     <Grid RowDefinitions="*, Auto">
@@ -80,19 +80,19 @@
             <!-- Content Area -->
             <ContentControl Grid.Column="1" Content="{Binding CurrentView}" Margin="10">
                 <ContentControl.DataTemplates>
-                    <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+                    <DataTemplate DataType="{x:Type viewModels:DashboardViewModel}">
                         <views:DashboardView/>
                     </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+                    <DataTemplate DataType="{x:Type viewModels:SettingsViewModel}">
                         <views:SettingsView/>
                     </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:CacheBrowserViewModel}">
+                    <DataTemplate DataType="{x:Type viewModels:CacheBrowserViewModel}">
                         <views:CacheBrowserView/>
                     </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:DownloadQueueViewModel}">
+                    <DataTemplate DataType="{x:Type viewModels:DownloadQueueViewModel}">
                         <views:DownloadQueueView/>
                     </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:LogViewerViewModel}">
+                    <DataTemplate DataType="{x:Type viewModels:LogViewerViewModel}">
                         <views:LogViewerView/>
                     </DataTemplate>
                 </ContentControl.DataTemplates>

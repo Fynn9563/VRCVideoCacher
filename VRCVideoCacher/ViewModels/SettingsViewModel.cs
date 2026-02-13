@@ -41,7 +41,7 @@ public partial class SettingsViewModel : ViewModelBase
     private int _cacheYouTubeMaxResolution;
 
     // Resolution options for the dropdown
-    public int[] ResolutionOptions { get; } = [360, 720, 1080, 1440, 2160];
+    public int[] ResolutionOptions { get; } = [720, 1080, 1440, 2160];
 
     [ObservableProperty]
     private int _cacheYouTubeMaxLength;

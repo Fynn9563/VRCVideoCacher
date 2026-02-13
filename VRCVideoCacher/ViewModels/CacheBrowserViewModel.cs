@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using VRCVideoCacher.Database;
 using VRCVideoCacher.Models;
 using VRCVideoCacher.Services;
+using VRCVideoCacher.Utils;
 using VRCVideoCacher.YTDL;
 
 namespace VRCVideoCacher.ViewModels;
@@ -45,7 +46,9 @@ public partial class CacheItemViewModel : ViewModelBase
 
     public async Task LoadMetadataAsync()
     {
-        // Load from DB
+        var filePath = Path.Combine(CacheManager.CachePath, FileName);
+
+        // Load title from DB
         var videoInfo = await DatabaseManager.Database.VideoInfoCache.FindAsync(VideoId);
         if (VideoId.Length == 11 && string.IsNullOrEmpty(videoInfo?.Title))
             videoInfo = await YouTubeMetadataService.GetVideoTitleAsync(VideoId);
@@ -56,13 +59,34 @@ public partial class CacheItemViewModel : ViewModelBase
             OnPropertyChanged(nameof(DisplayTitle));
         }
 
-        // Load thumbnail
+        // Detect audio-only files early (including .mp4 with no video stream)
+        var isAudioOnly = File.Exists(filePath) && ThumbnailManager.IsAudioOnly(filePath);
+
+        // Load thumbnail - try cached, then YouTube API, then extract from file
         var thumbnailPath = ThumbnailManager.GetThumbnail(VideoId);
         if (VideoId.Length == 11 && string.IsNullOrEmpty(thumbnailPath))
             thumbnailPath = await YouTubeMetadataService.GetThumbnail(VideoId);
 
+        if (string.IsNullOrEmpty(thumbnailPath) && File.Exists(filePath))
+            thumbnailPath = ThumbnailManager.TryExtractEmbeddedThumbnail(VideoId, filePath);
+
+        // Shell thumbnails only for video files - audio-only files get the music icon instead
+        if (string.IsNullOrEmpty(thumbnailPath) && File.Exists(filePath) && !isAudioOnly)
+            thumbnailPath = ShellThumbnailExtractor.TryExtract(VideoId, filePath, ThumbnailManager.ThumbnailCacheDir);
+
+        // For audio-only files, ignore shell-generated thumbnails (e.g. generic video player icons)
+        if (isAudioOnly && !string.IsNullOrEmpty(thumbnailPath))
+        {
+            var ext = Path.GetExtension(thumbnailPath);
+            if (ext.Equals(".bmp", StringComparison.OrdinalIgnoreCase))
+                thumbnailPath = null; // Discard shell thumbnail for audio files
+        }
+
         if (!string.IsNullOrEmpty(thumbnailPath))
             ThumbnailSource = thumbnailPath;
+
+        if (isAudioOnly)
+            ShowMusicIcon = string.IsNullOrEmpty(ThumbnailSource);
     }
 
     [RelayCommand(CanExecute = nameof(IsYouTube))]

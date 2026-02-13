@@ -178,7 +178,15 @@ public class ApiController : WebApiController
             videoInfo.VideoUrl.StartsWith("https://manifest.googlevideo.com") ||
             videoInfo.VideoUrl.Contains("googlevideo.com"))
         {
-            await VideoTools.Prefetch(response, YoutubePrefetchMaxRetries);
+            var isPrefetchSuccessful = await VideoTools.Prefetch(response, YoutubePrefetchMaxRetries);
+
+            if (!isPrefetchSuccessful && avPro)
+            {
+                Log.Warning("Prefetch failed with AVPro, retrying without AVPro.");
+                avPro = false;
+                (response, success) = await VideoId.GetUrl(videoInfo, avPro);
+                await VideoTools.Prefetch(response, YoutubePrefetchMaxRetries);
+            }
         }
         else if (videoInfo.UrlType == UrlType.CustomDomain)
         {
