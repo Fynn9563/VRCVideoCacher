@@ -166,6 +166,7 @@ public class ConfigModel
     public bool CachePyPyDance = false;
     public bool CacheVRDancing = false;
     public bool CacheOnly = false;
+    public int MaxConcurrentDownloads = 2;
     public bool CacheCustomDomainsEnabled = false;
     public string[] CacheCustomDomains = [];
 

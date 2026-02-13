@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Serilog;
 using VRCVideoCacher.Models;
 
@@ -15,87 +17,146 @@ public class VideoDownloader
         DefaultRequestHeaders = { { "User-Agent", "VRCVideoCacher" } }
     };
     private static readonly ConcurrentQueue<DownloadQueueItem> DownloadQueue = new();
-    private static readonly string TempDownloadMp4Path;
-    private static readonly string TempDownloadWebmPath;
+    private static readonly ConcurrentDictionary<string, ActiveDownload> ActiveDownloads = new();
 
     // Events for UI
     public static event Action<VideoInfo>? OnDownloadStarted;
     public static event Action<VideoInfo, bool>? OnDownloadCompleted;
     public static event Action? OnQueueChanged;
+    public static event Action<VideoInfo, double, string>? OnDownloadProgress;
 
-    // Current download tracking
-    private static VideoInfo? _currentDownload;
-
-    // Internal class to track queue items with their custom domain
     private class DownloadQueueItem
     {
         public required VideoInfo VideoInfo { get; init; }
         public string? CustomDomain { get; init; }
     }
 
-    static VideoDownloader()
+    private class ActiveDownload
     {
-        TempDownloadMp4Path = Path.Combine(CacheManager.CachePath, "_tempVideo.mp4");
-        TempDownloadWebmPath = Path.Combine(CacheManager.CachePath, "_tempVideo.webm");
-        Task.Run(DownloadThread);
+        public required VideoInfo VideoInfo { get; init; }
+        public required CancellationTokenSource Cts { get; init; }
     }
 
-    private static async Task DownloadThread()
+    private class TempPaths
+    {
+        public required string Directory { get; init; }
+        public required string Mp4Path { get; init; }
+        public required string WebmPath { get; init; }
+    }
+
+    static VideoDownloader()
+    {
+        CleanupStaleTempDirectories();
+        Task.Run(DownloadDispatcher);
+    }
+
+    private static void CleanupStaleTempDirectories()
+    {
+        var tempRoot = Path.Combine(CacheManager.CachePath, "_temp");
+        if (!Directory.Exists(tempRoot)) return;
+        try { Directory.Delete(tempRoot, true); } catch { }
+    }
+
+    private static TempPaths CreateTempPaths()
+    {
+        var dir = Path.Combine(CacheManager.CachePath, "_temp", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        return new TempPaths
+        {
+            Directory = dir,
+            Mp4Path = Path.Combine(dir, "_tempVideo.mp4"),
+            WebmPath = Path.Combine(dir, "_tempVideo.webm")
+        };
+    }
+
+    private static void CleanupTempPaths(TempPaths paths)
+    {
+        try
+        {
+            if (Directory.Exists(paths.Directory))
+                Directory.Delete(paths.Directory, true);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Failed to cleanup temp directory: {ex}", ex.Message);
+        }
+    }
+
+    private static async Task DownloadDispatcher()
     {
         while (true)
         {
             await Task.Delay(100);
             if (DownloadQueue.IsEmpty)
-            {
-                _currentDownload = null;
-                continue;
-            }
-
-            DownloadQueue.TryDequeue(out var queueItem);
-            if (queueItem == null)
                 continue;
 
-            var videoInfo = queueItem.VideoInfo;
-            var customDomain = queueItem.CustomDomain;
-            _currentDownload = videoInfo;
-            OnDownloadStarted?.Invoke(videoInfo);
+            var max = Math.Max(1, ConfigManager.Config.MaxConcurrentDownloads);
+            if (ActiveDownloads.Count >= max)
+                continue;
 
-            var success = false;
-            try
-            {
-                switch (videoInfo.UrlType)
-                {
-                    case UrlType.YouTube:
-                        success = await DownloadYouTubeVideo(videoInfo);
-                        break;
-                    case UrlType.PyPyDance:
-                    case UrlType.VRDancing:
-                        success = await DownloadVideoWithId(videoInfo, customDomain);
-                        break;
-                    case UrlType.CustomDomain:
-                        if (videoInfo.IsStreaming)
-                            success = await DownloadCustomDomainWithYtdlp(videoInfo);
-                        else
-                            success = await DownloadVideoWithId(videoInfo, customDomain);
-                        break;
-                    case UrlType.Other:
-                        if (!string.IsNullOrEmpty(customDomain))
-                            success = await DownloadVideoWithId(videoInfo, customDomain);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Exception during download: {Ex}", ex.Message);
-                success = false;
-            }
+            if (!DownloadQueue.TryDequeue(out var queueItem))
+                continue;
 
-            OnDownloadCompleted?.Invoke(videoInfo, success);
-            OnQueueChanged?.Invoke();
-            _currentDownload = null;
+            _ = Task.Run(() => ProcessDownload(queueItem));
         }
+    }
+
+    private static async Task ProcessDownload(DownloadQueueItem queueItem)
+    {
+        var videoInfo = queueItem.VideoInfo;
+        var customDomain = queueItem.CustomDomain;
+        var downloadKey = $"{videoInfo.VideoId}:{videoInfo.DownloadFormat}";
+        var tempPaths = CreateTempPaths();
+        using var cts = new CancellationTokenSource();
+        var token = cts.Token;
+
+        ActiveDownloads.TryAdd(downloadKey, new ActiveDownload { VideoInfo = videoInfo, Cts = cts });
+        OnDownloadStarted?.Invoke(videoInfo);
+
+        var success = false;
+        try
+        {
+            switch (videoInfo.UrlType)
+            {
+                case UrlType.YouTube:
+                    success = await DownloadYouTubeVideo(videoInfo, tempPaths, token);
+                    break;
+                case UrlType.PyPyDance:
+                case UrlType.VRDancing:
+                    success = await DownloadVideoWithId(videoInfo, tempPaths, token, customDomain);
+                    break;
+                case UrlType.CustomDomain:
+                    if (videoInfo.IsStreaming)
+                        success = await DownloadCustomDomainWithYtdlp(videoInfo, tempPaths, token);
+                    else
+                        success = await DownloadVideoWithId(videoInfo, tempPaths, token, customDomain);
+                    break;
+                case UrlType.Other:
+                    if (!string.IsNullOrEmpty(customDomain))
+                        success = await DownloadVideoWithId(videoInfo, tempPaths, token, customDomain);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Log.Information("Download cancelled: {VideoId}", videoInfo.VideoId);
+            success = false;
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Exception during download: {Ex}", ex.Message);
+            success = false;
+        }
+        finally
+        {
+            CleanupTempPaths(tempPaths);
+        }
+
+        ActiveDownloads.TryRemove(downloadKey, out _);
+        OnDownloadCompleted?.Invoke(videoInfo, success);
+        OnQueueChanged?.Invoke();
     }
 
     public static void QueueDownload(VideoInfo videoInfo, string? customDomain = null)
@@ -103,23 +164,21 @@ public class VideoDownloader
         if (DownloadQueue.Any(x => x.VideoInfo.VideoId == videoInfo.VideoId &&
                                    x.VideoInfo.DownloadFormat == videoInfo.DownloadFormat))
         {
-            // Log.Information("URL is already in the download queue.");
+            Log.Information("Skipping queue: already queued ({VideoId})", videoInfo.VideoId);
             return;
         }
-        if (_currentDownload != null &&
-            _currentDownload.VideoId == videoInfo.VideoId &&
-            _currentDownload.DownloadFormat == videoInfo.DownloadFormat)
+        if (ActiveDownloads.ContainsKey($"{videoInfo.VideoId}:{videoInfo.DownloadFormat}"))
         {
-            // Log.Information("URL is already being downloaded.");
+            Log.Information("Skipping queue: already downloading ({VideoId})", videoInfo.VideoId);
             return;
         }
 
-        // Create custom domain directory if needed
         if (!string.IsNullOrEmpty(customDomain))
         {
             CacheManager.EnsureCustomDomainDirectory(customDomain);
         }
 
+        Log.Information("Queued download: {VideoId} ({Type}, streaming={IsStreaming})", videoInfo.VideoId, videoInfo.UrlType, videoInfo.IsStreaming);
         DownloadQueue.Enqueue(new DownloadQueueItem
         {
             VideoInfo = videoInfo,
@@ -137,9 +196,19 @@ public class VideoDownloader
     // Public accessors for UI
     public static IReadOnlyList<VideoInfo> GetQueueSnapshot() => DownloadQueue.Select(x => x.VideoInfo).ToArray();
     public static int GetQueueCount() => DownloadQueue.Count;
-    public static VideoInfo? GetCurrentDownload() => _currentDownload;
+    public static VideoInfo? GetCurrentDownload() => ActiveDownloads.Values.FirstOrDefault()?.VideoInfo;
+    public static IReadOnlyList<VideoInfo> GetActiveDownloads() => ActiveDownloads.Values.Select(x => x.VideoInfo).ToArray();
 
-    private static async Task<bool> DownloadYouTubeVideo(VideoInfo videoInfo)
+    public static void CancelDownload(string downloadKey)
+    {
+        if (ActiveDownloads.TryGetValue(downloadKey, out var active))
+        {
+            Log.Information("Cancelling download: {Key}", downloadKey);
+            active.Cts.Cancel();
+        }
+    }
+
+    private static async Task<bool> DownloadYouTubeVideo(VideoInfo videoInfo, TempPaths tempPaths, CancellationToken ct)
     {
         var url = videoInfo.VideoUrl;
         string? videoId;
@@ -151,17 +220,6 @@ public class VideoDownloader
         {
             Log.Error("Not downloading YouTube video: {URL} {ex}", url, ex.Message);
             return false;
-        }
-
-        if (File.Exists(TempDownloadMp4Path))
-        {
-            Log.Error("Temp file already exists, deleting...");
-            File.Delete(TempDownloadMp4Path);
-        }
-        if (File.Exists(TempDownloadWebmPath))
-        {
-            Log.Error("Temp file already exists, deleting...");
-            File.Delete(TempDownloadWebmPath);
         }
 
         Log.Information("Downloading YouTube Video: {URL}", url);
@@ -195,21 +253,22 @@ public class VideoDownloader
 
         if (videoInfo.DownloadFormat == DownloadFormat.Webm)
         {
-            // process.StartInfo.Arguments = $"--encoding utf-8 -q -o \"{TempDownloadMp4Path}\" -f \"bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec~='^(avc|h264)']+ba[ext=m4a]/bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec!=av01][vcodec!=vp9.2][protocol^=http]\" --no-playlist --remux-video mp4 --no-progress {cookieArg} {additionalArgs} -- \"{videoId}\"";
-            process.StartInfo.Arguments = $"--encoding utf-8 -q -o \"{TempDownloadWebmPath}\" -f \"bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec~='^av01'][ext=mp4][dynamic_range='SDR']{audioArg}/bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec~='vp9'][ext=webm][dynamic_range='SDR']{audioArg}\" --no-mtime --no-playlist --no-progress {cookieArg} {additionalArgs} -- \"{videoId}\"";
+            process.StartInfo.Arguments = $"--encoding utf-8 --newline --progress-template \"download:%(progress)j\" -o \"{tempPaths.WebmPath}\" -f \"bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec~='^av01'][ext=mp4][dynamic_range='SDR']{audioArg}/bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec~='vp9'][ext=webm][dynamic_range='SDR']{audioArg}\" --no-mtime --no-playlist {cookieArg} {additionalArgs} -- \"{videoId}\"";
         }
         else
         {
             // Potato mode.
             var potatoMaxRes = Math.Min(ConfigManager.Config.CacheYouTubeMaxResolution, 1080);
-            process.StartInfo.Arguments = $"--encoding utf-8 -q -o \"{TempDownloadMp4Path}\" -f \"bv*[height<={potatoMaxRes}][vcodec~='^(avc|h264)']{audioArgPotato}/bv*[height<={potatoMaxRes}][vcodec~='^av01'][dynamic_range='SDR']\" --no-mtime --no-playlist --remux-video mp4 --no-progress {cookieArg} {additionalArgs} -- \"{videoId}\"";
-            // $@"-f best/bestvideo[height<=?720]+bestaudio --no-playlist --no-warnings {url} " %(id)s.%(ext)s
+            process.StartInfo.Arguments = $"--encoding utf-8 --newline --progress-template \"download:%(progress)j\" -o \"{tempPaths.Mp4Path}\" -f \"bv*[height<={potatoMaxRes}][vcodec~='^(avc|h264)']{audioArgPotato}/bv*[height<={potatoMaxRes}][vcodec~='^av01'][dynamic_range='SDR']\" --no-mtime --no-playlist --remux-video mp4 {cookieArg} {additionalArgs} -- \"{videoId}\"";
         }
 
         process.Start();
-        await process.WaitForExitAsync();
-        var error = await process.StandardError.ReadToEndAsync();
-        error = error.Trim();
+        await using var reg = ct.Register(() => { try { process.Kill(true); } catch { } });
+        var stdoutTask = ReadStdoutWithProgress(process, line => ParseYtdlpProgress(line, videoInfo), ct);
+        var stderrTask = process.StandardError.ReadToEndAsync(ct);
+        await stdoutTask;
+        var error = (await stderrTask).Trim();
+        await process.WaitForExitAsync(ct);
         if (process.ExitCode != 0)
         {
             Log.Error("Failed to download YouTube Video: {exitCode} {URL} {error}", process.ExitCode, url, error);
@@ -226,27 +285,16 @@ public class VideoDownloader
         if (File.Exists(filePath))
         {
             Log.Error("File already exists, canceling...");
-            try
-            {
-                if (File.Exists(TempDownloadMp4Path))
-                    File.Delete(TempDownloadMp4Path);
-                if (File.Exists(TempDownloadWebmPath))
-                    File.Delete(TempDownloadWebmPath);
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Failed to delete temp file: {ex}", ex.Message);
-            }
             return false;
         }
 
-        if (File.Exists(TempDownloadMp4Path))
+        if (File.Exists(tempPaths.Mp4Path))
         {
-            File.Move(TempDownloadMp4Path, filePath);
+            File.Move(tempPaths.Mp4Path, filePath);
         }
-        else if (File.Exists(TempDownloadWebmPath))
+        else if (File.Exists(tempPaths.WebmPath))
         {
-            File.Move(TempDownloadWebmPath, filePath);
+            File.Move(tempPaths.WebmPath, filePath);
         }
         else
         {
@@ -260,27 +308,16 @@ public class VideoDownloader
         return true;
     }
 
-    private static async Task<bool> DownloadVideoWithId(VideoInfo videoInfo, string? customDomain = null)
+    private static async Task<bool> DownloadVideoWithId(VideoInfo videoInfo, TempPaths tempPaths, CancellationToken ct, string? customDomain = null)
     {
-        if (File.Exists(TempDownloadMp4Path))
-        {
-            Log.Error("Temp file already exists, deleting...");
-            File.Delete(TempDownloadMp4Path);
-        }
-        if (File.Exists(TempDownloadWebmPath))
-        {
-            Log.Error("Temp file already exists, deleting...");
-            File.Delete(TempDownloadWebmPath);
-        }
-
         Log.Information("Downloading Video: {URL}", videoInfo.VideoUrl);
         var url = videoInfo.VideoUrl;
-        var response = await HttpClient.GetAsync(url);
+        var response = await HttpClient.GetAsync(url, ct);
         if (response.StatusCode == HttpStatusCode.Redirect)
         {
             Log.Information("Redirected to: {URL}", response.Headers.Location);
             url = response.Headers.Location?.ToString();
-            response = await HttpClient.GetAsync(url);
+            response = await HttpClient.GetAsync(url, ct);
         }
         if (!response.IsSuccessStatusCode)
         {
@@ -288,9 +325,26 @@ public class VideoDownloader
             return false;
         }
 
-        await using var stream = await response.Content.ReadAsStreamAsync();
-        await using var fileStream = new FileStream(TempDownloadMp4Path, FileMode.Create, FileAccess.Write, FileShare.None);
-        await stream.CopyToAsync(fileStream);
+        var totalBytes = response.Content.Headers.ContentLength;
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        await using var fileStream = new FileStream(tempPaths.Mp4Path, FileMode.Create, FileAccess.Write, FileShare.None);
+        var buffer = new byte[81920];
+        long downloaded = 0;
+        int bytesRead;
+        while ((bytesRead = await stream.ReadAsync(buffer, ct)) > 0)
+        {
+            await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
+            downloaded += bytesRead;
+            if (totalBytes > 0)
+            {
+                var percent = (double)downloaded / totalBytes.Value * 100;
+                OnDownloadProgress?.Invoke(videoInfo, percent, $"{percent:F1}% — {FormatBytes(downloaded)} / {FormatBytes(totalBytes.Value)}");
+            }
+            else
+            {
+                OnDownloadProgress?.Invoke(videoInfo, -1, FormatBytes(downloaded));
+            }
+        }
         fileStream.Close();
         response.Dispose();
         await Task.Delay(10);
@@ -298,18 +352,17 @@ public class VideoDownloader
         var fileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
         var subdirPath = CacheManager.GetSubdirectoryPath(videoInfo.UrlType, videoInfo.Domain);
 
-        // Create domain subdirectory if it doesn't exist
         if (!string.IsNullOrEmpty(videoInfo.Domain))
             Directory.CreateDirectory(subdirPath);
 
         var filePath = Path.Combine(subdirPath, fileName);
-        if (File.Exists(TempDownloadMp4Path))
+        if (File.Exists(tempPaths.Mp4Path))
         {
-            File.Move(TempDownloadMp4Path, filePath);
+            File.Move(tempPaths.Mp4Path, filePath);
         }
-        else if (File.Exists(TempDownloadWebmPath))
+        else if (File.Exists(tempPaths.WebmPath))
         {
-            File.Move(TempDownloadWebmPath, filePath);
+            File.Move(tempPaths.WebmPath, filePath);
         }
         else
         {
@@ -323,16 +376,9 @@ public class VideoDownloader
         return true;
     }
 
-    private static async Task<bool> DownloadCustomDomainWithYtdlp(VideoInfo videoInfo)
+    private static async Task<bool> DownloadCustomDomainWithYtdlp(VideoInfo videoInfo, TempPaths tempPaths, CancellationToken ct)
     {
         var url = videoInfo.VideoUrl;
-
-        if (File.Exists(TempDownloadMp4Path))
-        {
-            Log.Error("Temp file already exists, deleting...");
-            File.Delete(TempDownloadMp4Path);
-        }
-
         Log.Information("Downloading Streaming Video: {URL}", url);
 
         var process = new Process
@@ -349,23 +395,34 @@ public class VideoDownloader
             }
         };
 
-        process.StartInfo.Arguments = $"--encoding utf-8 -q -o \"{TempDownloadMp4Path}\" --no-playlist --no-progress -- \"{url}\"";
+        var uri = new Uri(url);
+        var referer = $"{uri.Scheme}://{uri.Host}/";
+        process.StartInfo.Arguments = $"--encoding utf-8 --newline --progress-template \"download:%(progress)j\" -o \"{tempPaths.Mp4Path}\" --user-agent \"NSPlayer/12.00.19041.6926 WMFSDK/12.00.19041.6926\" --referer \"{referer}\" --no-playlist -- \"{url}\"";
 
         process.Start();
-        await process.WaitForExitAsync();
-        var error = await process.StandardError.ReadToEndAsync();
-        error = error.Trim();
+        await using var reg = ct.Register(() => { try { process.Kill(true); } catch { } });
+        var stdoutTask = ReadStdoutWithProgress(process, line => ParseYtdlpProgress(line, videoInfo), ct);
+        var stderrTask = process.StandardError.ReadToEndAsync(ct);
+        await stdoutTask;
+        var error = (await stderrTask).Trim();
+        await process.WaitForExitAsync(ct);
         if (process.ExitCode != 0)
         {
-            Log.Error("Failed to download streaming video: {exitCode} {URL} {error}", process.ExitCode, url, error);
-            return false;
+            ct.ThrowIfCancellationRequested();
+            Log.Warning("yt-dlp failed ({exitCode}): {error}", process.ExitCode, error);
+            Log.Information("Trying ffmpeg fallback for: {URL}", url);
+            var ffmpegSuccess = await DownloadStreamingWithFfmpeg(url, tempPaths);
+            if (!ffmpegSuccess)
+            {
+                Log.Error("Failed to download streaming video (yt-dlp and ffmpeg both failed): {URL}", url);
+                return false;
+            }
         }
         Thread.Sleep(10);
 
         var fileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
         var subdirPath = CacheManager.GetSubdirectoryPath(UrlType.CustomDomain, videoInfo.Domain);
 
-        // Create domain subdirectory if it doesn't exist
         if (!string.IsNullOrEmpty(videoInfo.Domain))
             Directory.CreateDirectory(subdirPath);
 
@@ -373,21 +430,12 @@ public class VideoDownloader
         if (File.Exists(filePath))
         {
             Log.Error("File already exists, canceling...");
-            try
-            {
-                if (File.Exists(TempDownloadMp4Path))
-                    File.Delete(TempDownloadMp4Path);
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Failed to delete temp file: {ex}", ex.Message);
-            }
             return false;
         }
 
-        if (File.Exists(TempDownloadMp4Path))
+        if (File.Exists(tempPaths.Mp4Path))
         {
-            File.Move(TempDownloadMp4Path, filePath);
+            File.Move(tempPaths.Mp4Path, filePath);
         }
         else
         {
@@ -399,5 +447,110 @@ public class VideoDownloader
         var relativeUrl = CacheManager.GetRelativePath(UrlType.CustomDomain, fileName, videoInfo.Domain);
         Log.Information("Streaming Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerURL}/{relativeUrl}");
         return true;
+    }
+
+    private static async Task<bool> DownloadStreamingWithFfmpeg(string url, TempPaths tempPaths)
+    {
+        var ffmpegPath = Path.Combine(ConfigManager.UtilsPath, OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg");
+        if (!File.Exists(ffmpegPath))
+        {
+            Log.Error("ffmpeg not found at {Path}, cannot fallback", ffmpegPath);
+            return false;
+        }
+
+        if (File.Exists(tempPaths.Mp4Path))
+            File.Delete(tempPaths.Mp4Path);
+
+        var uri = new Uri(url);
+        var referer = $"{uri.Scheme}://{uri.Host}/";
+
+        var process = new Process
+        {
+            StartInfo =
+            {
+                FileName = ffmpegPath,
+                Arguments = $"-user_agent \"NSPlayer/12.00.19041.6926 WMFSDK/12.00.19041.6926\" -referer \"{referer}\" -i \"{url}\" -c copy -y \"{tempPaths.Mp4Path}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+            }
+        };
+
+        process.Start();
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        await stdoutTask;
+        var error = (await stderrTask).Trim();
+        await process.WaitForExitAsync();
+
+        if (process.ExitCode != 0)
+        {
+            Log.Error("ffmpeg failed ({exitCode}): {error}", process.ExitCode, error);
+            return false;
+        }
+
+        return File.Exists(tempPaths.Mp4Path);
+    }
+
+    private static void ParseYtdlpProgress(string line, VideoInfo videoInfo)
+    {
+        if (string.IsNullOrWhiteSpace(line) || !line.StartsWith('{')) return;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(line);
+            var root = doc.RootElement;
+
+            var status = root.TryGetProperty("status", out var statusEl) ? statusEl.GetString() : null;
+            if (status != "downloading") return;
+
+            double percent = -1;
+            if (root.TryGetProperty("_percent_str", out var pctEl))
+            {
+                var pctStr = pctEl.GetString()?.Trim().TrimEnd('%');
+                if (pctStr != null) double.TryParse(pctStr, CultureInfo.InvariantCulture, out percent);
+            }
+
+            var speed = root.TryGetProperty("_speed_str", out var spdEl) ? spdEl.GetString()?.Trim() ?? "?" : "?";
+            var eta = root.TryGetProperty("_eta_str", out var etaEl) ? etaEl.GetString()?.Trim() ?? "?" : "?";
+            var total = root.TryGetProperty("_total_bytes_str", out var totEl)
+                ? totEl.GetString()?.Trim()
+                : root.TryGetProperty("_total_bytes_estimate_str", out var estEl)
+                    ? $"~{estEl.GetString()?.Trim()}"
+                    : null;
+
+            var fragSuffix = "";
+            if (root.TryGetProperty("fragment_index", out var fragIdx) && root.TryGetProperty("fragment_count", out var fragCnt))
+                fragSuffix = $" (frag {fragIdx.GetInt32()}/{fragCnt.GetInt32()})";
+
+            var text = total != null
+                ? $"{percent:F1}% of {total} at {speed} ETA {eta}{fragSuffix}"
+                : $"{percent:F1}% at {speed} ETA {eta}{fragSuffix}";
+
+            OnDownloadProgress?.Invoke(videoInfo, percent, text);
+        }
+        catch (JsonException) { }
+    }
+
+    private static async Task ReadStdoutWithProgress(Process process, Action<string> progressParser, CancellationToken ct = default)
+    {
+        while (await process.StandardOutput.ReadLineAsync(ct) is { } line)
+        {
+            progressParser(line);
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        return bytes switch
+        {
+            >= 1_073_741_824 => $"{bytes / 1_073_741_824.0:F2}GiB",
+            >= 1_048_576 => $"{bytes / 1_048_576.0:F1}MiB",
+            >= 1024 => $"{bytes / 1024.0:F0}KiB",
+            _ => $"{bytes}B"
+        };
     }
 }

@@ -9,17 +9,34 @@ namespace VRCVideoCacher.ViewModels;
 
 public partial class DownloadItemViewModel : ViewModelBase
 {
+    public string DownloadKey { get; init; } = string.Empty;
     public string VideoUrl { get; init; } = string.Empty;
     public string VideoId { get; init; } = string.Empty;
     public string UrlType { get; init; } = string.Empty;
     public string Format { get; init; } = string.Empty;
+
+    [ObservableProperty]
+    private double _downloadProgress;
+
+    [ObservableProperty]
+    private bool _isProgressIndeterminate;
+
+    [ObservableProperty]
+    private string _progressText = string.Empty;
+
+    [ObservableProperty]
+    private string _status = string.Empty;
+
+    [RelayCommand]
+    private void CancelDownload()
+    {
+        if (!string.IsNullOrEmpty(DownloadKey))
+            VideoDownloader.CancelDownload(DownloadKey);
+    }
 }
 
 public partial class DownloadQueueViewModel : ViewModelBase
 {
-    [ObservableProperty]
-    private DownloadItemViewModel? _currentDownload;
-
     [ObservableProperty]
     private string _currentStatus = "Idle";
 
@@ -29,6 +46,7 @@ public partial class DownloadQueueViewModel : ViewModelBase
     [ObservableProperty]
     private string _statusMessage = string.Empty;
 
+    public ObservableCollection<DownloadItemViewModel> ActiveDownloads { get; } = [];
     public ObservableCollection<DownloadItemViewModel> QueuedDownloads { get; } = [];
 
     public DownloadQueueViewModel()
@@ -38,20 +56,25 @@ public partial class DownloadQueueViewModel : ViewModelBase
         VideoDownloader.OnDownloadStarted += OnDownloadStarted;
         VideoDownloader.OnDownloadCompleted += OnDownloadCompleted;
         VideoDownloader.OnQueueChanged += OnQueueChanged;
+        VideoDownloader.OnDownloadProgress += OnDownloadProgress;
     }
 
     private void OnDownloadStarted(VideoInfo video)
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            CurrentDownload = new DownloadItemViewModel
+            ActiveDownloads.Add(new DownloadItemViewModel
             {
+                DownloadKey = $"{video.VideoId}:{video.DownloadFormat}",
                 VideoUrl = video.VideoUrl,
                 VideoId = video.VideoId,
                 UrlType = video.UrlType.ToString(),
-                Format = video.DownloadFormat.ToString()
-            };
-            CurrentStatus = $"Downloading {video.VideoId}...";
+                Format = video.DownloadFormat.ToString(),
+                Status = "Downloading..."
+            });
+            CurrentStatus = ActiveDownloads.Count == 1
+                ? $"Downloading {video.VideoId}..."
+                : $"Downloading {ActiveDownloads.Count} videos...";
             RefreshQueue();
         });
     }
@@ -60,12 +83,38 @@ public partial class DownloadQueueViewModel : ViewModelBase
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            CurrentDownload = null;
-            CurrentStatus = success ? "Completed" : "Failed";
+            var item = ActiveDownloads.FirstOrDefault(x => x.VideoId == video.VideoId);
+            if (item != null)
+                ActiveDownloads.Remove(item);
+
+            CurrentStatus = ActiveDownloads.Count > 0
+                ? $"Downloading {ActiveDownloads.Count} video(s)..."
+                : "Completed";
             StatusMessage = success
                 ? $"Downloaded: {video.VideoId}"
                 : $"Failed to download: {video.VideoId}";
             RefreshQueue();
+        });
+    }
+
+    private void OnDownloadProgress(VideoInfo video, double percent, string text)
+    {
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var item = ActiveDownloads.FirstOrDefault(x => x.VideoId == video.VideoId);
+            if (item == null) return;
+
+            if (percent < 0)
+            {
+                item.IsProgressIndeterminate = true;
+                item.DownloadProgress = 0;
+            }
+            else
+            {
+                item.IsProgressIndeterminate = false;
+                item.DownloadProgress = percent;
+            }
+            item.ProgressText = text;
         });
     }
 
@@ -91,25 +140,33 @@ public partial class DownloadQueueViewModel : ViewModelBase
             });
         }
 
-        var current = VideoDownloader.GetCurrentDownload();
-        if (current != null)
+        var activeDownloads = VideoDownloader.GetActiveDownloads();
+        if (activeDownloads.Count > 0)
         {
-            CurrentDownload = new DownloadItemViewModel
+            foreach (var dl in activeDownloads)
             {
-                VideoUrl = current.VideoUrl,
-                VideoId = current.VideoId,
-                UrlType = current.UrlType.ToString(),
-                Format = current.DownloadFormat.ToString()
-            };
-            CurrentStatus = $"Downloading {current.VideoId}...";
+                if (ActiveDownloads.All(x => x.VideoId != dl.VideoId))
+                {
+                    ActiveDownloads.Add(new DownloadItemViewModel
+                    {
+                        DownloadKey = $"{dl.VideoId}:{dl.DownloadFormat}",
+                        VideoUrl = dl.VideoUrl,
+                        VideoId = dl.VideoId,
+                        UrlType = dl.UrlType.ToString(),
+                        Format = dl.DownloadFormat.ToString(),
+                        Status = "Downloading..."
+                    });
+                }
+            }
+            CurrentStatus = ActiveDownloads.Count == 1
+                ? $"Downloading {ActiveDownloads[0].VideoId}..."
+                : $"Downloading {ActiveDownloads.Count} videos...";
         }
         else
         {
-            CurrentDownload = null;
+            ActiveDownloads.Clear();
             if (QueuedDownloads.Count == 0)
-            {
                 CurrentStatus = "Idle";
-            }
         }
     }
 
@@ -141,7 +198,7 @@ public partial class DownloadQueueViewModel : ViewModelBase
             StatusMessage = $"Error: {ex.Message}";
         }
     }
-    
+
     [RelayCommand]
     private void ClearQueue()
     {

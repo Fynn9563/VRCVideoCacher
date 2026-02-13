@@ -92,7 +92,10 @@ public partial class DashboardViewModel : ViewModelBase
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            CurrentDownloadText = $"{video.UrlType}: {video.VideoId}";
+            var active = VideoDownloader.GetActiveDownloads();
+            CurrentDownloadText = active.Count <= 1
+                ? $"{video.UrlType}: {video.VideoId}"
+                : $"{active.Count} downloads active";
         });
     }
 
@@ -100,7 +103,12 @@ public partial class DashboardViewModel : ViewModelBase
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            CurrentDownloadText = "None";
+            var active = VideoDownloader.GetActiveDownloads();
+            CurrentDownloadText = active.Count > 0
+                ? active.Count == 1
+                    ? $"{active[0].UrlType}: {active[0].VideoId}"
+                    : $"{active.Count} downloads active"
+                : "None";
         });
     }
 
@@ -129,9 +137,11 @@ public partial class DashboardViewModel : ViewModelBase
         RefreshCacheStats();
         DownloadQueueCount = VideoDownloader.GetQueueCount();
 
-        var currentDownload = VideoDownloader.GetCurrentDownload();
-        CurrentDownloadText = currentDownload != null
-            ? $"{currentDownload.UrlType}: {currentDownload.VideoId}"
+        var activeDownloads = VideoDownloader.GetActiveDownloads();
+        CurrentDownloadText = activeDownloads.Count > 0
+            ? activeDownloads.Count == 1
+                ? $"{activeDownloads[0].UrlType}: {activeDownloads[0].VideoId}"
+                : $"{activeDownloads.Count} downloads active"
             : "None";
 
         _ = ValidateCookiesAsync();

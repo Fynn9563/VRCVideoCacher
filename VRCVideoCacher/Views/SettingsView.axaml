@@ -116,6 +116,12 @@
                               ToolTip.Tip="Download and cache VRDancing videos locally"/>
                     <CheckBox IsChecked="{Binding CacheOnly}" Content="Only use Cached Videos"
                               ToolTip.Tip="Only serve already cached content — no new downloads will be started"/>
+
+                    <StackPanel Spacing="5"
+                              ToolTip.Tip="Number of videos to download simultaneously">
+                        <TextBlock Text="Max Concurrent Downloads"/>
+                        <NumericUpDown Value="{Binding MaxConcurrentDownloads}" Minimum="1" Maximum="8" Increment="1"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

@@ -20,22 +20,43 @@
             </StackPanel>
         </Grid>
 
-        <!-- Current Download -->
+        <!-- Active Downloads -->
         <Border Grid.Row="1" Background="#2d2d2d" CornerRadius="8" Padding="20" Margin="0,0,0,20">
             <StackPanel Spacing="10">
-                <TextBlock Text="Current Download" FontWeight="SemiBold" FontSize="16"/>
+                <TextBlock Text="Active Downloads" FontWeight="SemiBold" FontSize="16"/>
 
-                <Grid ColumnDefinitions="Auto, *, Auto" IsVisible="{Binding CurrentDownload, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <mi:MaterialIcon Grid.Column="0" Kind="Download" Width="24" Height="24" Foreground="#64B5F6"/>
-                    <StackPanel Grid.Column="1" Margin="15,0">
-                        <TextBlock Text="{Binding CurrentDownload.VideoId}" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding CurrentDownload.UrlType}" Foreground="#888888" FontSize="12"/>
-                    </StackPanel>
-                    <TextBlock Grid.Column="2" Text="{Binding CurrentStatus}" VerticalAlignment="Center"/>
-                </Grid>
+                <ItemsControl ItemsSource="{Binding ActiveDownloads}"
+                              IsVisible="{Binding ActiveDownloads.Count, Converter={x:Static vm:GreaterThanZeroConverter.Instance}}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:DownloadItemViewModel}">
+                            <Border Background="#383838" CornerRadius="6" Padding="12" Margin="0,0,0,6">
+                                <StackPanel Spacing="6">
+                                    <Grid ColumnDefinitions="Auto, *, Auto">
+                                        <mi:MaterialIcon Grid.Column="0" Kind="Download" Width="24" Height="24" Foreground="#64B5F6"/>
+                                        <StackPanel Grid.Column="1" Margin="15,0">
+                                            <TextBlock Text="{Binding VideoId}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding UrlType}" Foreground="#888888" FontSize="12"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Command="{Binding CancelDownloadCommand}"
+                                                ToolTip.Tip="Cancel Download" Background="#CF6679"
+                                                Padding="6" VerticalAlignment="Center">
+                                            <mi:MaterialIcon Kind="Close" Width="16" Height="16"/>
+                                        </Button>
+                                    </Grid>
+                                    <ProgressBar Value="{Binding DownloadProgress}"
+                                                 IsIndeterminate="{Binding IsProgressIndeterminate}"
+                                                 Minimum="0" Maximum="100" Height="6"/>
+                                    <TextBlock Text="{Binding ProgressText}"
+                                               Foreground="#888888" FontSize="11"
+                                               IsVisible="{Binding ProgressText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
-                <TextBlock Text="No active download"
-                           IsVisible="{Binding CurrentDownload, Converter={x:Static ObjectConverters.IsNull}}"
+                <TextBlock Text="No active downloads"
+                           IsVisible="{Binding !ActiveDownloads.Count}"
                            Foreground="#888888"/>
             </StackPanel>
         </Border>

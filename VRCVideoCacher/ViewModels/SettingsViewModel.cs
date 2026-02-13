@@ -58,6 +58,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _cacheOnly;
 
+    [ObservableProperty]
+    private int _maxConcurrentDownloads;
+
     // Eviction Protection
     [ObservableProperty]
     private bool _evictionProtectYouTube;
@@ -154,6 +157,7 @@ public partial class SettingsViewModel : ViewModelBase
         CachePyPyDance = config.CachePyPyDance;
         CacheVRDancing = config.CacheVRDancing;
         CacheOnly = config.CacheOnly;
+        MaxConcurrentDownloads = config.MaxConcurrentDownloads;
         EvictionProtectYouTube = config.EvictionProtectYouTube;
         EvictionProtectPyPyDance = config.EvictionProtectPyPyDance;
         EvictionProtectVRDancing = config.EvictionProtectVRDancing;
@@ -221,6 +225,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnCacheMaxSizeInGbChanged(float value) => HasChanges = true;
     partial void OnCachePyPyDanceChanged(bool value) => HasChanges = true;
     partial void OnCacheVRDancingChanged(bool value) => HasChanges = true;
+    partial void OnMaxConcurrentDownloadsChanged(int value) => HasChanges = true;
     partial void OnPatchResoniteChanged(bool value) => HasChanges = true;
     partial void OnPatchVRCChanged(bool value) => HasChanges = true;
     partial void OnAutoUpdateChanged(bool value) => HasChanges = true;
@@ -254,6 +259,7 @@ public partial class SettingsViewModel : ViewModelBase
         config.CacheMaxSizeInGb = CacheMaxSizeInGb;
         config.CachePyPyDance = CachePyPyDance;
         config.CacheVRDancing = CacheVRDancing;
+        config.MaxConcurrentDownloads = MaxConcurrentDownloads;
         config.EvictionProtectYouTube = EvictionProtectYouTube;
         config.EvictionProtectPyPyDance = EvictionProtectPyPyDance;
         config.EvictionProtectVRDancing = EvictionProtectVRDancing;

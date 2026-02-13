@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.6.0] - 2026-02-14
+
+### Added
+- Concurrent downloads with configurable max (1-8, default 2) in Settings
+- Per-download progress bars for YouTube, custom domain, and HTTP downloads
+- yt-dlp JSON progress parsing via `--progress-template` for accurate real-time progress
+- Cancel button on active downloads (kills entire process tree)
+- Download queue UI shows multiple active downloads with individual progress
+
+### Fixed
+- Large custom domain downloads (HLS streams) no longer block YouTube and other downloads
+- Custom domain streaming videos failing to download
+
+### Changed
+- Downloads use per-download temp directories to avoid file conflicts
+- Stale temp directories cleaned up on startup
+
 ## [2.5.1] - 2026-02-13
 
 ### Fixed
