@@ -9,6 +9,7 @@ using Serilog.Templates;
 using Serilog.Templates.Themes;
 using VRCVideoCacher.API;
 using VRCVideoCacher.Database;
+using VRCVideoCacher.Elevator;
 using VRCVideoCacher.Services;
 using VRCVideoCacher.Utils;
 using VRCVideoCacher.YTDL;
@@ -18,18 +19,17 @@ namespace VRCVideoCacher;
 internal sealed partial class Program
 {
     public static string YtdlpHash = string.Empty;
-    public const string Version = "2.6.1";
-    public static readonly ILogger Logger = Log.ForContext("SourceContext", "Core");
+    public const string Version = "2.7.0";
+    public static ILogger Logger => Log.ForContext("SourceContext", "Core");
     public static readonly string CurrentProcessPath = Path.GetDirectoryName(Environment.ProcessPath) ?? string.Empty;
-    public static readonly string DataPath = OperatingSystem.IsWindows()
-        ? CurrentProcessPath
-        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VRCVideoCacher");
+    public static readonly string DataPath = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VRCVideoCacher");
     public static event Action? OnCookiesUpdated;
     private static string? _youtubeUsername;
 
     [STAThread]
     public static void Main(string[] args)
     {
+        HostsManager.TryRun();
         AdminCheck.SetupArguements(args);
 
         var processes = Process.GetProcessesByName("VRCVideoCacher");
@@ -49,6 +49,8 @@ internal sealed partial class Program
             return;
         }
 
+        Directory.CreateDirectory(DataPath);
+
         // Configure Serilog with UI sink
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
@@ -56,7 +58,7 @@ internal sealed partial class Program
                 "[{@t:HH:mm:ss} {@l:u3} {Coalesce(Substring(SourceContext, LastIndexOf(SourceContext, '.') + 1),'<none>')}] {@m}\n\r{@x}",
                 theme: TemplateTheme.Literate))
             .WriteTo.File(
-                path: "logs/VRCVideoCacher.log",
+                path: Path.Join(DataPath, "logs", "VRCVideoCacher.log"),
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 5)
             .WriteTo.Sink(new UiLogSink())
@@ -132,8 +134,7 @@ internal sealed partial class Program
         AppDomain.CurrentDomain.ProcessExit += (_, _) => OnAppQuit();
 
         YtdlpHash = GetOurYtdlpHash();
-
-        DatabaseManager.Init();
+        await VvcConfigService.GetConfig();
 
         if (ConfigManager.Config.YtdlpAutoUpdate && !string.IsNullOrEmpty(ConfigManager.Config.YtdlpPath))
         {
@@ -145,6 +146,7 @@ internal sealed partial class Program
 
         if (OperatingSystem.IsWindows())
             AutoStartShortcut.TryUpdateShortcutPath();
+        DatabaseManager.Init();
         WebServer.Init();
         FileTools.BackupAllYtdl();
         await BulkPreCache.DownloadFileList();
@@ -270,7 +272,7 @@ internal sealed partial class Program
         return GetEmbeddedResource("VRCVideoCacher.yt-dlp-stub.exe");
     }
 
-    private static Stream GetEmbeddedResource(string resourceName)
+    public static Stream GetEmbeddedResource(string resourceName)
     {
         var assembly = Assembly.GetExecutingAssembly();
         var stream = assembly.GetManifestResourceStream(resourceName);

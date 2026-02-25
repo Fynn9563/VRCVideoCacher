@@ -52,20 +52,20 @@ public class VideoDownloader
 
     private static void CleanupStaleTempDirectories()
     {
-        var tempRoot = Path.Combine(CacheManager.CachePath, "_temp");
+        var tempRoot = Path.Join(CacheManager.CachePath, "_temp");
         if (!Directory.Exists(tempRoot)) return;
         try { Directory.Delete(tempRoot, true); } catch { }
     }
 
     private static TempPaths CreateTempPaths()
     {
-        var dir = Path.Combine(CacheManager.CachePath, "_temp", Guid.NewGuid().ToString("N"));
+        var dir = Path.Join(CacheManager.CachePath, "_temp", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         return new TempPaths
         {
             Directory = dir,
-            Mp4Path = Path.Combine(dir, "_tempVideo.mp4"),
-            WebmPath = Path.Combine(dir, "_tempVideo.webm")
+            Mp4Path = Path.Join(dir, "_tempVideo.mp4"),
+            WebmPath = Path.Join(dir, "_tempVideo.webm")
         };
     }
 
@@ -281,7 +281,7 @@ public class VideoDownloader
 
         var fileName = $"{videoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
         var subdirPath = CacheManager.GetSubdirectoryPath(UrlType.YouTube);
-        var filePath = Path.Combine(subdirPath, fileName);
+        var filePath = Path.Join(subdirPath, fileName);
         if (File.Exists(filePath))
         {
             Log.Error("File already exists, canceling...");
@@ -355,7 +355,7 @@ public class VideoDownloader
         if (!string.IsNullOrEmpty(videoInfo.Domain))
             Directory.CreateDirectory(subdirPath);
 
-        var filePath = Path.Combine(subdirPath, fileName);
+        var filePath = Path.Join(subdirPath, fileName);
         if (File.Exists(tempPaths.Mp4Path))
         {
             File.Move(tempPaths.Mp4Path, filePath);
@@ -426,7 +426,7 @@ public class VideoDownloader
         if (!string.IsNullOrEmpty(videoInfo.Domain))
             Directory.CreateDirectory(subdirPath);
 
-        var filePath = Path.Combine(subdirPath, fileName);
+        var filePath = Path.Join(subdirPath, fileName);
         if (File.Exists(filePath))
         {
             Log.Error("File already exists, canceling...");
@@ -451,7 +451,7 @@ public class VideoDownloader
 
     private static async Task<bool> DownloadStreamingWithFfmpeg(string url, TempPaths tempPaths)
     {
-        var ffmpegPath = Path.Combine(ConfigManager.UtilsPath, OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg");
+        var ffmpegPath = Path.Join(ConfigManager.UtilsPath, OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg");
         if (!File.Exists(ffmpegPath))
         {
             Log.Error("ffmpeg not found at {Path}, cannot fallback", ffmpegPath);

@@ -2,8 +2,8 @@ namespace VRCVideoCacher.Services;
 
 public class ThumbnailManager
 {
-    public static readonly string CacheDir = Path.Combine(Program.DataPath, "MetadataCache");
-    public static readonly string ThumbnailCacheDir = Path.Combine(CacheDir, "thumbnails");
+    public static readonly string CacheDir = Path.Join(Program.DataPath, "MetadataCache");
+    public static readonly string ThumbnailCacheDir = Path.Join(CacheDir, "thumbnails");
 
     private static readonly HttpClient HttpClient = new()
     {
@@ -19,7 +19,7 @@ public class ThumbnailManager
 
     public static string GetThumbnailPath(string videoId)
     {
-        return Path.Combine(ThumbnailCacheDir, $"{videoId}.jpg");
+        return Path.Join(ThumbnailCacheDir, $"{videoId}.jpg");
     }
 
     public static string? GetThumbnail(string videoId)
@@ -28,13 +28,13 @@ public class ThumbnailManager
             return null;
 
         // Check all supported thumbnail formats (embedded saves as .jpg, shell saves as .bmp/.png)
-        var jpgPath = Path.Combine(ThumbnailCacheDir, $"{videoId}.jpg");
+        var jpgPath = Path.Join(ThumbnailCacheDir, $"{videoId}.jpg");
         if (File.Exists(jpgPath)) return jpgPath;
 
-        var bmpPath = Path.Combine(ThumbnailCacheDir, $"{videoId}.bmp");
+        var bmpPath = Path.Join(ThumbnailCacheDir, $"{videoId}.bmp");
         if (File.Exists(bmpPath)) return bmpPath;
 
-        var pngPath = Path.Combine(ThumbnailCacheDir, $"{videoId}.png");
+        var pngPath = Path.Join(ThumbnailCacheDir, $"{videoId}.png");
         if (File.Exists(pngPath)) return pngPath;
 
         return null;

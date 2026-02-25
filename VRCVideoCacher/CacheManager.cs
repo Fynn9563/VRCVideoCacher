@@ -18,7 +18,7 @@ public class CacheManager
     private static readonly ILogger Log = Program.Logger.ForContext<CacheManager>();
     private static readonly ConcurrentDictionary<string, VideoCache> CachedAssets = new();
     public static readonly string CachePath;
-    private static readonly string LockFilePath = Path.Combine(Program.DataPath, ".cache.lock");
+    private static readonly string LockFilePath = Path.Join(Program.DataPath, ".cache.lock");
 
     // Events for UI
     public static event Action<string, CacheChangeType>? OnCacheChanged;
@@ -32,11 +32,11 @@ public class CacheManager
     static CacheManager()
     {
         if (string.IsNullOrEmpty(ConfigManager.Config.CachedAssetPath))
-            CachePath = Path.Combine(GetCacheFolder(), "CachedAssets");
+            CachePath = Path.Join(GetCacheFolder(), "CachedAssets");
         else if (Path.IsPathRooted(ConfigManager.Config.CachedAssetPath))
             CachePath = ConfigManager.Config.CachedAssetPath;
         else
-            CachePath = Path.Combine(Program.CurrentProcessPath, ConfigManager.Config.CachedAssetPath);
+            CachePath = Path.Join(Program.CurrentProcessPath, ConfigManager.Config.CachedAssetPath);
 
         Log.Debug("Using cache path {CachePath}", CachePath);
         CreateSubdirectories();
@@ -47,21 +47,21 @@ public class CacheManager
     private static void CreateSubdirectories()
     {
         Directory.CreateDirectory(CachePath);
-        Directory.CreateDirectory(Path.Combine(CachePath, "YouTube"));
-        Directory.CreateDirectory(Path.Combine(CachePath, "PyPyDance"));
-        Directory.CreateDirectory(Path.Combine(CachePath, "VRDancing"));
-        Directory.CreateDirectory(Path.Combine(CachePath, "CustomDomains"));
+        Directory.CreateDirectory(Path.Join(CachePath, "YouTube"));
+        Directory.CreateDirectory(Path.Join(CachePath, "PyPyDance"));
+        Directory.CreateDirectory(Path.Join(CachePath, "VRDancing"));
+        Directory.CreateDirectory(Path.Join(CachePath, "CustomDomains"));
     }
 
     public static string GetSubdirectoryPath(UrlType urlType, string? domain = null)
     {
         return urlType switch
         {
-            UrlType.YouTube => Path.Combine(CachePath, "YouTube"),
-            UrlType.PyPyDance => Path.Combine(CachePath, "PyPyDance"),
-            UrlType.VRDancing => Path.Combine(CachePath, "VRDancing"),
-            UrlType.CustomDomain when !string.IsNullOrEmpty(domain) => Path.Combine(CachePath, "CustomDomains", domain),
-            UrlType.CustomDomain => Path.Combine(CachePath, "CustomDomains"),
+            UrlType.YouTube => Path.Join(CachePath, "YouTube"),
+            UrlType.PyPyDance => Path.Join(CachePath, "PyPyDance"),
+            UrlType.VRDancing => Path.Join(CachePath, "VRDancing"),
+            UrlType.CustomDomain when !string.IsNullOrEmpty(domain) => Path.Join(CachePath, "CustomDomains", domain),
+            UrlType.CustomDomain => Path.Join(CachePath, "CustomDomains"),
             _ => CachePath
         };
     }
@@ -70,11 +70,11 @@ public class CacheManager
     {
         return urlType switch
         {
-            UrlType.YouTube => Path.Combine("YouTube", fileName),
-            UrlType.PyPyDance => Path.Combine("PyPyDance", fileName),
-            UrlType.VRDancing => Path.Combine("VRDancing", fileName),
-            UrlType.CustomDomain when !string.IsNullOrEmpty(domain) => Path.Combine("CustomDomains", domain, fileName),
-            UrlType.CustomDomain => Path.Combine("CustomDomains", fileName),
+            UrlType.YouTube => Path.Join("YouTube", fileName),
+            UrlType.PyPyDance => Path.Join("PyPyDance", fileName),
+            UrlType.VRDancing => Path.Join("VRDancing", fileName),
+            UrlType.CustomDomain when !string.IsNullOrEmpty(domain) => Path.Join("CustomDomains", domain, fileName),
+            UrlType.CustomDomain => Path.Join("CustomDomains", fileName),
             _ => fileName
         };
     }
@@ -82,13 +82,13 @@ public class CacheManager
     private static string GetCacheFolder()
     {
         if (OperatingSystem.IsWindows())
-            return Program.CurrentProcessPath;
+            return Program.DataPath;
 
         var cachePath = Environment.GetEnvironmentVariable("XDG_CACHE_HOME");
         if (string.IsNullOrEmpty(cachePath))
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache");
+            return Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache");
 
-        return Path.Combine(cachePath, "VRCVideoCacher");
+        return Path.Join(cachePath, "VRCVideoCacher");
     }
 
     public static void Init()
@@ -123,7 +123,7 @@ public class CacheManager
 
     private static void ScanCustomDomainDirectories()
     {
-        var customDomainsPath = Path.Combine(CachePath, "CustomDomains");
+        var customDomainsPath = Path.Join(CachePath, "CustomDomains");
         if (!Directory.Exists(customDomainsPath))
             return;
 
@@ -172,7 +172,7 @@ public class CacheManager
         while (evictableSize >= maxCacheSize && oldestFiles.Count > 0)
         {
             var oldestFile = oldestFiles.First();
-            var filePath = Path.Combine(CachePath, oldestFile.Value.FileName);
+            var filePath = Path.Join(CachePath, oldestFile.Value.FileName);
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
@@ -195,7 +195,7 @@ public class CacheManager
     public static void AddToCache(string fileName, UrlType urlType, string? domain = null)
     {
         var subdirPath = GetSubdirectoryPath(urlType, domain);
-        var filePath = Path.Combine(subdirPath, fileName);
+        var filePath = Path.Join(subdirPath, fileName);
         if (!File.Exists(filePath))
             return;
 
@@ -288,7 +288,7 @@ public class CacheManager
 
     public static void DeleteCacheItem(string fileName)
     {
-        var filePath = Path.Combine(CachePath, fileName);
+        var filePath = Path.Join(CachePath, fileName);
         if (!File.Exists(filePath))
             return;
 
@@ -304,7 +304,7 @@ public class CacheManager
         var files = CachedAssets.Keys.ToList();
         foreach (var fileName in files)
         {
-            var filePath = Path.Combine(CachePath, fileName);
+            var filePath = Path.Join(CachePath, fileName);
             if (!File.Exists(filePath))
                 continue;
 
@@ -365,7 +365,7 @@ public class CacheManager
 
     public static void EnsureCustomDomainDirectory(string domain)
     {
-        var domainPath = Path.Combine(CachePath, "CustomDomains", domain);
+        var domainPath = Path.Join(CachePath, "CustomDomains", domain);
         Directory.CreateDirectory(domainPath);
     }
 
@@ -414,12 +414,12 @@ public class CacheManager
         // Clear specific custom domains
         if (ConfigManager.Config.ClearCustomDomainsOnExit.Length > 0)
         {
-            var customDomainsPath = Path.Combine(CachePath, "CustomDomains");
+            var customDomainsPath = Path.Join(CachePath, "CustomDomains");
             foreach (var domain in ConfigManager.Config.ClearCustomDomainsOnExit)
             {
                 try
                 {
-                    var domainPath = Path.Combine(customDomainsPath, domain);
+                    var domainPath = Path.Join(customDomainsPath, domain);
                     if (Directory.Exists(domainPath))
                     {
                         var files = Directory.GetFiles(domainPath);

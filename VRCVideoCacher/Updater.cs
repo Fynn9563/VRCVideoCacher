@@ -16,9 +16,9 @@ public class Updater
     };
     private static readonly ILogger Log = Program.Logger.ForContext<Updater>();
     private static readonly string FileName = OperatingSystem.IsWindows() ? "VRCVideoCacher.exe" : "VRCVideoCacher";
-    private static readonly string FilePath = Path.Combine(Program.CurrentProcessPath, FileName);
-    private static readonly string BackupFilePath = Path.Combine(Program.CurrentProcessPath, $"VRCVideoCacher_{Program.Version}.bkp");
-    private static readonly string TempFilePath = Path.Combine(Program.CurrentProcessPath, "VRCVideoCacher.Temp");
+    private static readonly string FilePath = Path.Join(Program.CurrentProcessPath, FileName);
+    private static readonly string BackupFilePath = Path.Join(Program.CurrentProcessPath, $"VRCVideoCacher_{Program.Version}.bkp");
+    private static readonly string TempFilePath = Path.Join(Program.CurrentProcessPath, "VRCVideoCacher.Temp");
 
     public static async Task CheckForUpdates()
     {
@@ -100,7 +100,7 @@ public class Updater
             }
 
             // Also clean up old non-versioned backup file if it exists
-            var oldBackupPath = Path.Combine(Program.CurrentProcessPath, "VRCVideoCacher.bkp");
+            var oldBackupPath = Path.Join(Program.CurrentProcessPath, "VRCVideoCacher.bkp");
             if (File.Exists(oldBackupPath))
             {
                 try

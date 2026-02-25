@@ -1,5 +1,6 @@
 using System.Globalization;
 using Avalonia.Data.Converters;
+using Avalonia.Media;
 
 namespace VRCVideoCacher.ViewModels;
 
@@ -10,6 +11,19 @@ public class BoolToStatusConverter : IValueConverter
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         return value is true ? "Running" : "Stopped";
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotImplementedException();
+}
+
+public class BoolToStatusColorConverter : IValueConverter
+{
+    public static readonly BoolToStatusColorConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return value is true ? Brushes.Green : value is false ? Brushes.Red : Brushes.Orange;
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

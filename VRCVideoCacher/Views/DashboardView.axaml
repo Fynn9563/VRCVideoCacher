@@ -10,9 +10,15 @@
             <!-- Header -->
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Text="Dashboard" FontSize="24" FontWeight="Bold"/>
-                <Button Grid.Column="1" Command="{Binding RefreshDataCommand}" ToolTip.Tip="Refresh">
-                    <mi:MaterialIcon Kind="Refresh" Width="20" Height="20"/>
-                </Button>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
+                    <Button Command="{Binding RefreshDataCommand}" ToolTip.Tip="Refresh">
+                        <mi:MaterialIcon Kind="Refresh" Width="20" Height="20"/>
+                    </Button>
+                    <Button Command="{Binding ToggleHostCommand}" ToolTip.Tip="Toggle using YouTube domain for localhost cache">
+                        <mi:MaterialIcon Kind="ToggleSwitch" Width="20" Height="20"
+                                         Foreground="{Binding HostState, Converter={x:Static vm:BoolToStatusColorConverter.Instance}}"/>
+                    </Button>
+                </StackPanel>
             </Grid>
 
             <!-- Stats Cards -->

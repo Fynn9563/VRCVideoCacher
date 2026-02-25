@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using VRCVideoCacher.API;
 using VRCVideoCacher.Models;
 
 namespace VRCVideoCacher.ViewModels;
@@ -132,6 +133,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     public SettingsViewModel()
     {
+        ConfigManager.OnConfigChanged += LoadFromConfig;
         LoadFromConfig();
 
         // Subscribe to cookie updates to refresh status after initialization
@@ -246,7 +248,12 @@ public partial class SettingsViewModel : ViewModelBase
     {
         var config = ConfigManager.Config;
 
-        config.YtdlpWebServerURL = WebServerUrl;
+        if (config.YtdlpWebServerURL != WebServerUrl)
+        {
+            config.YtdlpWebServerURL = WebServerUrl;
+            WebServer.Init();
+        }
+
         config.YtdlpPath = YtdlPath;
         config.YtdlpUseCookies = YtdlUseCookies;
         config.YtdlpAutoUpdate = YtdlAutoUpdate;

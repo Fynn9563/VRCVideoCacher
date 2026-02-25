@@ -2,6 +2,8 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using VRCVideoCacher.Elevator;
+using VRCVideoCacher.Utils;
 using VRCVideoCacher.Views;
 using VRCVideoCacher.YTDL;
 
@@ -61,10 +63,14 @@ public partial class DashboardViewModel : ViewModelBase
     [ObservableProperty]
     private bool _showCustomDomainsSize;
 
+    [ObservableProperty]
+    private bool? _hostState;
+
     public DashboardViewModel()
     {
         ServerUrl = ConfigManager.Config.YtdlpWebServerURL;
         MaxCacheSize = ConfigManager.Config.CacheMaxSizeInGb;
+        HostState = ElevatorManager.HasHostsLine;
 
         // Initial data load
         RefreshData();
@@ -129,6 +135,14 @@ public partial class DashboardViewModel : ViewModelBase
             RefreshCategoryVisibility();
         });
         _ = ValidateCookiesAsync();
+    }
+
+    [RelayCommand]
+    private async Task ToggleHost()
+    {
+        HostState = null;
+        await Task.Run(() => ElevatorManager.ToggleHostLine());
+        HostState = ElevatorManager.HasHostsLine;
     }
 
     [RelayCommand]

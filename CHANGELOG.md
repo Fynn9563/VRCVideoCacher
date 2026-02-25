@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.7.0] - 2026-02-25
+
+### Added
+- Hosts file toggle — redirect `localhost.youtube.com` to `127.0.0.1` with UAC elevation
+- YouTube URL resolver support (dmn.moe, u2b.cx, t-ne.x0.to, nextnex.com, r.0cm.org)
+- Remote config service (motd, prefetch retry count from vvc.ellyvr.dev)
+- Sensitive data logging for EF Core (debug builds)
+
+### Changed
+- Config and data files moved to `%AppData%/VRCVideoCacher` (auto-migrates from exe directory)
+- `Path.Combine` replaced with `Path.Join` across codebase
+- WebServer reinitializes cleanly on URL change
+- AsNoTracking for play history queries
+
+### Fixed
+- Config migration failing when exe and AppData are on different drives
+
 ## [2.6.1] - 2026-02-14
 
 ### Fixed

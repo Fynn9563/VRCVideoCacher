@@ -5,7 +5,7 @@ namespace VRCVideoCacher.Database;
 
 public class Database : DbContext
 {
-    private static readonly string CacheDir = Path.Combine(Program.DataPath, "MetadataCache");
+    private static readonly string CacheDir = Path.Join(Program.DataPath, "MetadataCache");
     private static readonly string DbPath = Path.Join(CacheDir, "database.db");
     
     public DbSet<History> PlayHistory { get; set; }
@@ -17,6 +17,7 @@ public class Database : DbContext
         {
             Directory.CreateDirectory(CacheDir);
             optionsBuilder.UseSqlite($"Data Source={DbPath}");
+            optionsBuilder.EnableSensitiveDataLogging();
         }
     }
 }

@@ -46,7 +46,7 @@ public partial class CacheItemViewModel : ViewModelBase
 
     public async Task LoadMetadataAsync()
     {
-        var filePath = Path.Combine(CacheManager.CachePath, FileName);
+        var filePath = Path.Join(CacheManager.CachePath, FileName);
 
         // Load title from DB
         var videoInfo = await DatabaseManager.Database.VideoInfoCache.FindAsync(VideoId);
@@ -109,7 +109,7 @@ public partial class CacheItemViewModel : ViewModelBase
     [RelayCommand]
     private void OpenInMediaPlayer()
     {
-        var filePath = Path.Combine(CacheManager.CachePath, FileName);
+        var filePath = Path.Join(CacheManager.CachePath, FileName);
         if (!File.Exists(filePath)) return;
 
         try
@@ -331,7 +331,7 @@ public partial class CacheBrowserViewModel : ViewModelBase
         {
             if (SelectedItem != null)
             {
-                var filePath = Path.Combine(cachePath, SelectedItem.FileName);
+                var filePath = Path.Join(cachePath, SelectedItem.FileName);
                 System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{filePath}\"");
             }
             else

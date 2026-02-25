@@ -4,14 +4,14 @@ using EmbedIO.Routing;
 using EmbedIO.WebApi;
 using VRCVideoCacher.Database;
 using VRCVideoCacher.Models;
+using VRCVideoCacher.Services;
 using VRCVideoCacher.YTDL;
 
 namespace VRCVideoCacher.API;
 
 public class ApiController : WebApiController
 {
-    // @TODO: Make this configurable via proposed API.
-    const int YoutubePrefetchMaxRetries = 7;
+    private int YoutubePrefetchMaxRetries = VvcConfigService.CurrentConfig.retryCount;
 
     private static readonly Serilog.ILogger Log = Program.Logger.ForContext<ApiController>();
     private static readonly HttpClient HttpClient = new()
@@ -59,22 +59,6 @@ public class ApiController : WebApiController
 
         Log.Information("Request URL: {URL}", requestUrl);
 
-        if (requestUrl.StartsWith("https://dmn.moe"))
-        {
-            requestUrl = requestUrl.Replace("/sr/", "/yt/");
-            Log.Information("YTS URL detected, modified to: {URL}", requestUrl);
-            var resolvedUrl = await GetRedirectUrl(requestUrl);
-            if (!string.IsNullOrEmpty(resolvedUrl))
-            {
-                requestUrl = resolvedUrl;
-                Log.Information("YTS URL resolved to URL: {URL}", resolvedUrl);
-            }
-            else
-            {
-                Log.Error("Failed to resolve YTS URL: {URL}", requestUrl);
-            }
-        }
-
         if (ConfigManager.Config.BlockedUrls.Any(blockedUrl => requestUrl.StartsWith(blockedUrl)))
         {
             Log.Warning("URL Is Blocked: {url}", requestUrl);
@@ -96,7 +80,7 @@ public class ApiController : WebApiController
         if (source == "resonite")
         {
             Log.Information("Request sent from resonite sending json.");
-            await HttpContext.SendStringAsync(await VideoId.GetURLResonite(requestUrl), "text/plain", Encoding.UTF8);
+            await HttpContext.SendStringAsync(await VideoId.GetURLResonite(videoInfo.VideoUrl), "text/plain", Encoding.UTF8);
             return;
         }
 
@@ -145,7 +129,7 @@ public class ApiController : WebApiController
         // bypass vfi - cinema
         if (requestUrl.StartsWith("https://virtualfilm.institute"))
         {
-            Log.Information("URL Is VFI -Cinema: Bypassing.");
+            Log.Information("URL Is VFI - Cinema: Bypassing.");
             await HttpContext.SendStringAsync(string.Empty, "text/plain", Encoding.UTF8);
             return;
         }
@@ -233,13 +217,4 @@ public class ApiController : WebApiController
         return (isCached, filePath, relativeUrl);
     }
 
-    private static async Task<string?> GetRedirectUrl(string requestUrl)
-    {
-        using var req = new HttpRequestMessage(HttpMethod.Head, requestUrl);
-        using var res = await HttpClient.SendAsync(req);
-        if (!res.IsSuccessStatusCode)
-            return null;
-
-        return res.RequestMessage?.RequestUri?.ToString();
-    }
 }
