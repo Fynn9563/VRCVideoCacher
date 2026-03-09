@@ -195,7 +195,7 @@ public partial class DownloadQueueViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Error: {ex.Message}";
+            StatusMessage = $"Error: {ex.ToString()}";
         }
     }
 

@@ -1,4 +1,12 @@
-# VRCVideoCacher
+<div align="center">
+
+![Header Banner](https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4296960/d1bac93e4abb00108cda2137260b76a25bcffea4/header.jpg)
+
+[![Steam Download](https://img.shields.io/badge/Steam-Download-blue?logo=steam)](https://store.steampowered.com/app/4296960)
+[![Github Download](https://img.shields.io/badge/Github-Download-blue?logo=github)](https://github.com/Fynn9563/VRCVideoCacher/releases/latest)
+
+<hr>
+</div>
 
 ### What is VRCVideoCacher?
 
@@ -26,52 +34,8 @@ In order to fix YouTube videos failing to load, you'll need to install our Chrom
 
 Sync system time, Open Windows Settings -> Time & Language -> Date & Time, under "Additional settings" click "Sync now"
 
-### Fix cached videos failing to play in public instances
-
-> Attempted to play an untrusted URL (Domain: localhost) that is not allowlisted for public instances.
-
-Run notepad as Admin then browse to `C:\Windows\System32\drivers\etc\hosts` add this new line `127.0.0.1 localhost.youtube.com` to the bottom of the file, edit `Config.json` and set `ytdlWebServerURL` to `http://localhost.youtube.com:9696`
-
-### Running on Linux
-
-- Install `dotnet-runtime-10.0`
-- Run with `./VRCVideoCacher`
-- By default VRCVideoCacher will try to download and run its own binaries, but if you'd like to use your system packages instead, set `ytdlPath` to `""` in `Config.json`, you'll need to install `deno`, `ffmpeg` and yt-dlp using `pip install "yt-dlp[default,curl-cffi]"` the pip version is required due to package manager versions not including browser impersonation, make sure to always keep yt-dlp updated otherwise you will run into issues.
-
 ### Uninstalling
 
 - If you have VRCX, delete the startup shortcut "VRCVideoCacher" from `%AppData%\VRCX\startup`
+- Delete config and cache from `%AppData%\VRCVideoCacher`
 - Delete "yt-dlp.exe" from `%AppData%\..\LocalLow\VRChat\VRChat\Tools` and restart VRChat or rejoin world.
-
-### Config Options
-
-| Option                    | Description                                                                                                                                                                                                                                                                                    |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ytdlWebServerURL          | Used to circumvent VRChats public world video player whitelist, see above for usage instructions.                                                                                                                                                                                              |
-| ytdlPath                  | Path to the yt-dlp executable, default `Utils\\yt-dlp.exe`, when set to `""` it will use global PATH instead, as a side effect this will disable the yt-dlp, ffmpeg and deno auto updater.                                                                                                     |
-| ytdlUseCookies            | Uses the [Chrome](https://github.com/clienthax/VRCVideoCacherBrowserExtension) or [Firefox](https://addons.mozilla.org/en-GB/android/addon/vrcvideocachercookiesexporter) extension for cookies, this is used to circumvent YouTubes bot detection.                                            |
-| ytdlAutoUpdate            | Auto update yt-dlp, ffmpeg and deno.                                                                                                                                                                                                                                                           |
-| ytdlAdditionalArgs        | Add your own [yt-dlp args](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#usage-and-options) (only add these if you know what you're doing)                                                                                                                                               |
-| ytdlArgsOverride          | Completely override yt-dlp args instead of using defaults. When set, ignores `ytdlAdditionalArgs`.                                                                                                                                                                                             |
-| ytdlDubLanguage           | Set preferred audio language for AVPro and cached videos, be warned you may end up with auto translated slop. e.g. `de` for German, check list of [supported lang codes](https://github.com/yt-dlp/yt-dlp/blob/c26f9b991a0681fd3ea548d535919cec1fbbd430/yt_dlp/extractor/youtube.py#L381-L390) |
-| avproOverride             | Force video player type: `default` (respect VRChat's choice), `true` (force AVPro/MP4), `false` (force Unity Video Player/WebM).                                                                                                                                                               |
-| CachedAssetPath           | Location to store downloaded videos, e.g. store videos on separate drive with `D:\\DownloadedVideos`                                                                                                                                                                                           |
-| BlockedUrls               | List of URLs to never load in VRC, also works for blocking domains e.g. `[ "https://youtube.com", "https://youtu.be" ]` to block YouTube.                                                                                                                                                      |
-| BlockRedirect             | Video to load in-place of Blocked URL.                                                                                                                                                                                                                                                         |
-| CacheYouTube              | Download YouTube videos to `CachedAssets` to improve load times next time the video plays.                                                                                                                                                                                                     |
-| CacheYouTubeMaxResolution | Maximum resolution to cache youtube videos in (Larger resolutions will take longer to cache), e.g. `2160` for 4K.                                                                                                                                                                              |
-| CacheYouTubeMaxLength     | Maximum video duration in minutes, e.g. `60` for 1 hour.                                                                                                                                                                                                                                       |
-| CacheMaxSizeInGb          | Maximum size of `CachedAssets` folder in GB, `0` for Unlimited.                                                                                                                                                                                                                                |
-| CachePyPyDance            | Download videos that play while you're in [PyPyDance](https://vrchat.com/home/world/wrld_f20326da-f1ac-45fc-a062-609723b097b1)                                                                                                                                                                 |
-| CacheVRDancing            | Download videos that play while you're in [VRDancing](https://vrchat.com/home/world/wrld_42377cf1-c54f-45ed-8996-5875b0573a83)                                                                                                                                                                 |
-| CacheCustomDomains        | List of domains to cache (supports wildcard subdomains), e.g. `["cdn.example.com", "mega.io"]` will match `mega.io` and `s3.g.s4.mega.io`                                                                                                                                                      |
-| ClearYouTubeCacheOnExit   | Clear YouTube cache when VRCVideoCacher exits cleanly or on next startup after crash. Default: `false`                                                                                                                                                                                         |
-| ClearPyPyDanceCacheOnExit | Clear PyPyDance cache when VRCVideoCacher exits cleanly or on next startup after crash. Default: `false`                                                                                                                                                                                       |
-| ClearVRDancingCacheOnExit | Clear VRDancing cache when VRCVideoCacher exits cleanly or on next startup after crash. Default: `false`                                                                                                                                                                                       |
-| ClearCustomDomainsOnExit  | List of custom domains to clear cache for on exit or after crash, e.g. `["cdn.example.com"]`                                                                                                                                                                                                   |
-| PatchResonite             | Enable Resonite support.                                                                                                                                                                                                                                                                       |
-| PatchVRC                  | Enable VRChat support.                                                                                                                                                                                                                                                                         |
-| AutoUpdate                | When a update is available for VRCVideoCacher it will automatically be installed.                                                                                                                                                                                                              |
-| PreCacheUrls              | Download all videos from a JSON list format e.g. `[{"fileName":"video.mp4","url":"https:\/\/example.com\/video.mp4","lastModified":1631653260,"size":124029113},...]` "lastModified" and "size" are optional fields used for file integrity.                                                   |
-
-> Generate PoToken has unfortunately been [deprecated](https://github.com/iv-org/youtube-trusted-session-generator?tab=readme-ov-file#tool-is-deprecated)

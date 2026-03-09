@@ -8,6 +8,9 @@ public static class DatabaseManager
 {
     public static readonly Database Database = new();
 
+    public static event Action? OnPlayHistoryAdded;
+    public static event Action? OnVideoInfoCacheUpdated;
+
     static DatabaseManager()
     {
         Database.Database.EnsureCreated();
@@ -20,6 +23,12 @@ public static class DatabaseManager
     
     public static void AddPlayHistory(VideoInfo videoInfo)
     {
+        var cutoff = DateTime.UtcNow.AddSeconds(-5);
+        var isDuplicate = Database.PlayHistory
+            .Any(h => h.Id == videoInfo.VideoId && h.Timestamp > cutoff);
+        if (isDuplicate)
+            return;
+
         var history = new History
         {
             Timestamp = DateTime.UtcNow,
@@ -29,6 +38,7 @@ public static class DatabaseManager
         };
         Database.PlayHistory.Add(history);
         Database.SaveChanges();
+        OnPlayHistoryAdded?.Invoke();
     }
 
     public static void AddVideoInfoCache(VideoInfoCache videoInfoCache)
@@ -56,8 +66,9 @@ public static class DatabaseManager
             Database.VideoInfoCache.Add(videoInfoCache);
         }
         Database.SaveChanges();
+        OnVideoInfoCacheUpdated?.Invoke();
     }
-    
+
     public static List<History> GetPlayHistory(int limit = 50)
     {
         return Database.PlayHistory
@@ -65,5 +76,30 @@ public static class DatabaseManager
             .OrderByDescending(h => h.Timestamp)
             .Take(limit)
             .ToList();
+    }
+
+    public static Dictionary<string, VideoInfoCache> GetVideoInfoCacheByIds(IEnumerable<string> ids)
+    {
+        var idList = ids.Where(id => !string.IsNullOrEmpty(id)).ToList();
+        return Database.VideoInfoCache
+            .AsNoTracking()
+            .Where(v => idList.Contains(v.Id))
+            .ToDictionary(v => v.Id);
+    }
+
+    public static void ClearPlayHistory()
+    {
+        Database.PlayHistory.RemoveRange(Database.PlayHistory);
+        Database.SaveChanges();
+        OnPlayHistoryAdded?.Invoke();
+    }
+
+    public static Dictionary<string, int> GetVideoAccessCounts()
+    {
+        return Database.PlayHistory
+            .AsNoTracking()
+            .Where(h => h.Id != null)
+            .GroupBy(h => h.Id!)
+            .ToDictionary(g => g.Key, g => g.Count());
     }
 }

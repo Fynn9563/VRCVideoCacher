@@ -88,7 +88,7 @@ public class ApiController : WebApiController
         if (isCached)
         {
             File.SetLastWriteTimeUtc(filePath, DateTime.UtcNow);
-            var url = $"{ConfigManager.Config.YtdlpWebServerURL}/{relativeUrl}";
+            var url = $"{ConfigManager.Config.YtdlpWebServerUrl}/{relativeUrl}";
             Log.Information("Responding with Cached URL: {URL}", url);
             await HttpContext.SendStringAsync(url, "text/plain", Encoding.UTF8);
             return;

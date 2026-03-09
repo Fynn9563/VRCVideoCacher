@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using Avalonia.Media;
 using Avalonia.Threading;
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using VRCVideoCacher.Utils;
 
 namespace VRCVideoCacher.ViewModels;
 
@@ -22,30 +24,35 @@ public partial class CookieSetupViewModel : ViewModelBase
     [ObservableProperty]
     private bool _cookiesReceived;
 
+    [ObservableProperty]
+    private bool _hostState;
+
     public bool IsStep1 => CurrentStep == 1;
     public bool IsStep2 => CurrentStep == 2;
     public bool IsStep3 => CurrentStep == 3;
     public bool IsStep4 => CurrentStep == 4;
+    public bool IsStep5 => CurrentStep == 5;
 
-    public bool CanGoBack => CurrentStep > 1 && CurrentStep < 4;
+    public bool CanGoBack => CurrentStep > 1 && CurrentStep < 5;
     public bool CanGoNext => CurrentStep switch
     {
         1 => false, // Must select browser
         2 => true,
         3 => CookiesReceived,
-        4 => true,
+        4 => true, // Hosts step is optional
+        5 => true,
         _ => false
     };
 
-    public string NextButtonText => CurrentStep == 4 ? "Done" : "Next";
+    public string NextButtonText => CurrentStep == 5 ? Loc.Tr("Done") : Loc.Tr("Next");
 
     public string ExtensionStoreButtonText => IsChrome
-        ? "Open Chrome Web Store"
-        : "Open Firefox Add-ons";
+        ? Loc.Tr("OpenChromeWebStore")
+        : Loc.Tr("OpenFirefoxAddons");
 
     public string CookieStatusText => CookiesReceived
-        ? "Cookies received!"
-        : "Waiting for cookies...";
+        ? Loc.Tr("CookiesReceived")
+        : Loc.Tr("WaitingForCookies");
 
     public string CookieStatusIcon => CookiesReceived
         ? "CheckCircle"
@@ -55,13 +62,23 @@ public partial class CookieSetupViewModel : ViewModelBase
         ? new SolidColorBrush(Color.Parse("#81C784"))
         : new SolidColorBrush(Color.Parse("#FFB74D"));
 
+    public string HostStatusText => HostState
+        ? Loc.Tr("HostsActive")
+        : Loc.Tr("NotConfigured");
+
+    public string HostStatusIcon => HostState ? "CheckCircle" : "AlertCircleOutline";
+
+    public IBrush HostStatusColor => HostState
+        ? new SolidColorBrush(Color.Parse("#81C784"))
+        : new SolidColorBrush(Color.Parse("#FFB74D"));
+
+    public string HostButtonText => HostState ? Loc.Tr("RemoveEntry") : Loc.Tr("AddHostsEntry");
+
     public CookieSetupViewModel()
     {
-        // Subscribe to cookies updated event
         VRCVideoCacher.Program.OnCookiesUpdated += OnCookiesUpdated;
-
-        // Check if cookies are already valid
         CookiesReceived = VRCVideoCacher.Program.IsCookiesEnabledAndValid();
+        _hostState = ElevatorManager.HasHostsLine;
     }
 
     private void OnCookiesUpdated()
@@ -74,10 +91,9 @@ public partial class CookieSetupViewModel : ViewModelBase
             OnPropertyChanged(nameof(CookieStatusIcon));
             OnPropertyChanged(nameof(CookieStatusColor));
 
-            // Auto-advance to step 4 when cookies are received
             if (CookiesReceived && CurrentStep == 3)
             {
-                CurrentStep = 4;
+                CurrentStep = NextStepFrom(3);
                 UpdateStepProperties();
             }
         });
@@ -94,10 +110,17 @@ public partial class CookieSetupViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsStep2));
         OnPropertyChanged(nameof(IsStep3));
         OnPropertyChanged(nameof(IsStep4));
+        OnPropertyChanged(nameof(IsStep5));
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(CanGoNext));
         OnPropertyChanged(nameof(NextButtonText));
     }
+
+    private static int NextStepFrom(int step) =>
+        step == 3 && !OperatingSystem.IsWindows() ? 5 : step + 1;
+
+    private static int PrevStepFrom(int step) =>
+        step == 5 && !OperatingSystem.IsWindows() ? 3 : step - 1;
 
     [RelayCommand]
     private void SelectChrome()
@@ -129,33 +152,40 @@ public partial class CookieSetupViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task ToggleHost()
+    {
+        try
+        {
+            await Task.Run(() => ElevatorManager.ToggleHostLine());
+        }
+        catch { /* UAC cancelled or process failed */ }
+        HostState = ElevatorManager.HasHostsLine;
+        OnPropertyChanged(nameof(HostButtonText));
+        OnPropertyChanged(nameof(HostStatusText));
+        OnPropertyChanged(nameof(HostStatusIcon));
+        OnPropertyChanged(nameof(HostStatusColor));
+    }
+
+    [RelayCommand]
     private void Next()
     {
-        if (CurrentStep == 4)
+        if (CurrentStep == 5)
         {
-            // Mark setup as completed and save config
             ConfigManager.Config.CookieSetupCompleted = true;
             ConfigManager.TrySaveConfig();
-
-            // Done - close the window
             VRCVideoCacher.Program.OnCookiesUpdated -= OnCookiesUpdated;
             RequestClose?.Invoke();
             return;
         }
 
-        if (CurrentStep < 4)
-        {
-            CurrentStep++;
-        }
+        CurrentStep = NextStepFrom(CurrentStep);
     }
 
     [RelayCommand]
     private void Back()
     {
         if (CurrentStep > 1)
-        {
-            CurrentStep--;
-        }
+            CurrentStep = PrevStepFrom(CurrentStep);
     }
 
     [RelayCommand]

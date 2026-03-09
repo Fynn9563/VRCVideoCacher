@@ -3,41 +3,66 @@
              xmlns:vm="using:VRCVideoCacher.ViewModels"
              xmlns:models="using:VRCVideoCacher.Models"
              xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:loc="using:CodingSeb.Localization.Avalonia"
              x:Class="VRCVideoCacher.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
 
-    <ScrollViewer>
-        <StackPanel Spacing="20" Margin="10">
-            <!-- Header -->
-            <Grid ColumnDefinitions="*, Auto, Auto">
-                <TextBlock Text="Settings" FontSize="24" FontWeight="Bold"/>
-                <Button Grid.Column="1" Command="{Binding ResetToDefaultsCommand}" Margin="0,0,10,0">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <mi:MaterialIcon Kind="Undo" Width="16" Height="16"/>
-                        <TextBlock Text="Reset"/>
-                    </StackPanel>
-                </Button>
-                <Button Grid.Column="2" Command="{Binding SaveSettingsCommand}" Classes="accent">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <mi:MaterialIcon Kind="ContentSave" Width="16" Height="16"/>
-                        <TextBlock Text="Save"/>
-                    </StackPanel>
-                </Button>
-            </Grid>
+    <Grid RowDefinitions="Auto, *, Auto">
+        <!-- Header -->
+        <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto, Auto" Margin="10">
+            <TextBlock Text="{loc:Tr Settings}" FontSize="24" FontWeight="Bold"/>
 
             <!-- Status Message -->
-            <TextBlock Text="{Binding StatusMessage}"
+            <TextBlock Grid.Column="1" Text="{Binding StatusMessage}" Margin="15,0" VerticalAlignment="Center"
                        IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                        Foreground="#81C784"/>
+
+            <Button Grid.Column="2" Command="{Binding ResetToDefaultsCommand}" Margin="0,0,10,0">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <mi:MaterialIcon Kind="Undo" Width="16" Height="16"/>
+                    <TextBlock Text="{loc:Tr Reset}"/>
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="3" Command="{Binding SaveSettingsCommand}" Classes="accent">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <mi:MaterialIcon Kind="ContentSave" Width="16" Height="16"/>
+                    <TextBlock Text="{loc:Tr Save}"/>
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="20" Margin="10">
+
+            <!-- General Settings -->
+            <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="{loc:Tr General}" FontWeight="SemiBold" FontSize="16"/>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="{loc:Tr Language}"/>
+                        <ComboBox ItemsSource="{Binding AvailableLanguageOptions}"
+                                  SelectedItem="{Binding SelectedLanguageOption}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DisplayName}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <CheckBox IsChecked="{Binding CloseToTray}" Content="{loc:Tr CloseToTray}"/>
+                </StackPanel>
+            </Border>
 
             <!-- Server Settings -->
             <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="Server Settings" FontWeight="SemiBold" FontSize="16"/>
+                    <TextBlock Text="{loc:Tr ServerSettings}" FontWeight="SemiBold" FontSize="16"/>
 
                     <StackPanel Spacing="5"
-                              ToolTip.Tip="The local URL that VRCVideoCacher listens on for video requests from VRChat/Resonite">
-                        <TextBlock Text="Web Server URL"/>
+                              ToolTip.Tip="{loc:Tr WebServerUrlTooltip}">
+                        <TextBlock Text="{loc:Tr WebServerUrl}"/>
                         <TextBox Text="{Binding WebServerUrl}" Watermark="http://localhost:9696"/>
                     </StackPanel>
                 </StackPanel>
@@ -46,32 +71,29 @@
             <!-- Download Settings -->
             <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="Download Settings" FontWeight="SemiBold" FontSize="16"/>
+                    <TextBlock Text="{loc:Tr DownloadSettings}" FontWeight="SemiBold" FontSize="16"/>
 
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="yt-dlp Path (leave empty to use global PATH)"
-                                   ToolTip.Tip="Path to the yt-dlp executable. Leave empty to use the version installed on your system"/>
-                        <TextBox Text="{Binding YtdlPath}" Watermark="Utils\yt-dlp.exe"/>
-                    </StackPanel>
+                    <CheckBox IsChecked="{Binding YtdlpGlobalPath}" Content="{loc:Tr YtdlpPathGlobalLabel}"
+                              ToolTip.Tip="{loc:Tr YtdlpPathGlobalTooltip}"/>
 
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                        <CheckBox IsChecked="{Binding YtdlUseCookies}" Content="Use YouTube Cookies (requires browser extension)"
-                                  ToolTip.Tip="Use cookies from your browser to authenticate with YouTube. Fixes age-restricted and bot-detection issues"/>
+                        <CheckBox IsChecked="{Binding YtdlUseCookies}" Content="{loc:Tr UseYouTubeCookies}"
+                                  ToolTip.Tip="{loc:Tr UseYouTubeCookiesTooltip}"/>
                         <TextBlock Text="{Binding CookieStatus}" VerticalAlignment="Center" Foreground="#81C784" FontStyle="Italic"/>
                     </StackPanel>
-                    <CheckBox IsChecked="{Binding YtdlAutoUpdate}" Content="Auto-update Utils (yt-dlp, FFmpeg, and Deno)"
-                              ToolTip.Tip="Automatically download the latest versions of yt-dlp, FFmpeg, and Deno on startup"/>
+                    <CheckBox IsChecked="{Binding YtdlAutoUpdate}" Content="{loc:Tr AutoUpdateUtils}"
+                              ToolTip.Tip="{loc:Tr AutoUpdateUtilsTooltip}"/>
 
                     <StackPanel Spacing="5"
-                              ToolTip.Tip="Extra command-line arguments passed to yt-dlp when downloading videos">
-                        <TextBlock Text="Additional yt-dlp Arguments"/>
-                        <TextBox Text="{Binding YtdlAdditionalArgs}" Watermark="Optional arguments"/>
+                              ToolTip.Tip="{loc:Tr AdditionalYtdlpArgsTooltip}">
+                        <TextBlock Text="{loc:Tr AdditionalYtdlpArgs}"/>
+                        <TextBox Text="{Binding YtdlAdditionalArgs}" Watermark="{loc:Tr OptionalArguments}"/>
                     </StackPanel>
 
                     <StackPanel Spacing="5"
-                              ToolTip.Tip="Two-letter language code for dubbed audio. YouTube will use this language if available">
-                        <TextBlock Text="Preferred Dub Language (e.g., 'de' for German)"/>
-                        <TextBox Text="{Binding YtdlDubLanguage}" Watermark="Leave empty for original"/>
+                              ToolTip.Tip="{loc:Tr PreferredDubLanguageTooltip}">
+                        <TextBlock Text="{loc:Tr PreferredDubLanguage}"/>
+                        <TextBox Text="{Binding YtdlDubLanguage}" Watermark="{loc:Tr LeaveEmptyForOriginal}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -79,47 +101,47 @@
             <!-- Cache Settings -->
             <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="Cache Settings" FontWeight="SemiBold" FontSize="16"/>
+                    <TextBlock Text="{loc:Tr CacheSettings}" FontWeight="SemiBold" FontSize="16"/>
 
                     <StackPanel Spacing="5"
-                              ToolTip.Tip="Folder where cached videos are stored. Leave empty to use the default location next to the executable">
-                        <TextBlock Text="Cache Path (leave empty for default)"/>
+                              ToolTip.Tip="{loc:Tr CachePathTooltip}">
+                        <TextBlock Text="{loc:Tr CachePathLabel}"/>
                         <TextBox Text="{Binding CachedAssetPath}" Watermark="CachedAssets"/>
                     </StackPanel>
 
                     <StackPanel Spacing="5"
-                              ToolTip.Tip="Maximum total size for non-protected cached videos. Set to 0 for unlimited. Protected categories are not counted toward this limit">
-                        <TextBlock Text="Max Cache Size in GB (0 = unlimited)"/>
+                              ToolTip.Tip="{loc:Tr MaxCacheSizeTooltip}">
+                        <TextBlock Text="{loc:Tr MaxCacheSizeLabel}"/>
                         <NumericUpDown Value="{Binding CacheMaxSizeInGb}" Minimum="0" Maximum="10000" Increment="1" FormatString="0.#"/>
                     </StackPanel>
 
-                    <CheckBox IsChecked="{Binding CacheYouTube}" Content="Cache YouTube Videos"
-                              ToolTip.Tip="Download and cache YouTube videos locally for faster playback"/>
+                    <CheckBox IsChecked="{Binding CacheYouTube}" Content="{loc:Tr CacheYouTubeVideos}"
+                              ToolTip.Tip="{loc:Tr CacheYouTubeTooltip}"/>
 
                     <StackPanel Spacing="5" Margin="30,0,0,0" IsVisible="{Binding CacheYouTube}">
                         <StackPanel Spacing="5"
-                                  ToolTip.Tip="Maximum video resolution to download. Higher resolutions use more disk space">
-                            <TextBlock Text="Max YouTube Resolution"/>
+                                  ToolTip.Tip="{loc:Tr MaxYouTubeResolutionTooltip}">
+                            <TextBlock Text="{loc:Tr MaxYouTubeResolution}"/>
                             <ComboBox ItemsSource="{Binding ResolutionOptions}" SelectedItem="{Binding CacheYouTubeMaxResolution}"/>
                         </StackPanel>
 
                         <StackPanel Spacing="5"
-                                  ToolTip.Tip="Videos longer than this will not be cached. Prevents caching very long streams or movies">
-                            <TextBlock Text="Max Video Length (minutes)"/>
+                                  ToolTip.Tip="{loc:Tr MaxVideoLengthTooltip}">
+                            <TextBlock Text="{loc:Tr MaxVideoLength}"/>
                             <NumericUpDown Value="{Binding CacheYouTubeMaxLength}" Minimum="1" Maximum="600" Increment="10"/>
                         </StackPanel>
                     </StackPanel>
 
-                    <CheckBox IsChecked="{Binding CachePyPyDance}" Content="Cache PyPyDance Videos"
-                              ToolTip.Tip="Download and cache PyPyDance videos locally"/>
-                    <CheckBox IsChecked="{Binding CacheVRDancing}" Content="Cache VRDancing Videos"
-                              ToolTip.Tip="Download and cache VRDancing videos locally"/>
-                    <CheckBox IsChecked="{Binding CacheOnly}" Content="Only Serve Cached Videos"
-                              ToolTip.Tip="Only serve already cached content — no new downloads will be started"/>
+                    <CheckBox IsChecked="{Binding CachePyPyDance}" Content="{loc:Tr CachePyPyDanceVideos}"
+                              ToolTip.Tip="{loc:Tr CachePyPyDanceTooltip}"/>
+                    <CheckBox IsChecked="{Binding CacheVRDancing}" Content="{loc:Tr CacheVRDancingVideos}"
+                              ToolTip.Tip="{loc:Tr CacheVRDancingTooltip}"/>
+                    <CheckBox IsChecked="{Binding CacheOnly}" Content="{loc:Tr OnlyServeCachedVideos}"
+                              ToolTip.Tip="{loc:Tr OnlyServeCachedTooltip}"/>
 
                     <StackPanel Spacing="5"
-                              ToolTip.Tip="Number of videos to download simultaneously">
-                        <TextBlock Text="Max Concurrent Downloads"/>
+                              ToolTip.Tip="{loc:Tr MaxConcurrentDownloadsTooltip}">
+                        <TextBlock Text="{loc:Tr MaxConcurrentDownloads}"/>
                         <NumericUpDown Value="{Binding MaxConcurrentDownloads}" Minimum="1" Maximum="8" Increment="1"/>
                     </StackPanel>
                 </StackPanel>
@@ -130,18 +152,18 @@
                     IsVisible="{Binding CacheMaxSizeInGb, Converter={x:Static vm:GreaterThanZeroConverter.Instance}}">
                 <StackPanel Spacing="15">
                     <StackPanel>
-                        <TextBlock Text="Eviction Protection" FontWeight="SemiBold" FontSize="16"/>
-                        <TextBlock Text="Protected categories are exempt from the max cache size limit" Foreground="#888" FontSize="12"/>
+                        <TextBlock Text="{loc:Tr EvictionProtection}" FontWeight="SemiBold" FontSize="16"/>
+                        <TextBlock Text="{loc:Tr EvictionProtectionDesc}" Foreground="#888" FontSize="12"/>
                     </StackPanel>
 
-                    <CheckBox IsChecked="{Binding EvictionProtectYouTube}" Content="Protect YouTube"
-                              ToolTip.Tip="YouTube videos will not be deleted when the cache exceeds the max size"/>
-                    <CheckBox IsChecked="{Binding EvictionProtectPyPyDance}" Content="Protect PyPyDance"
-                              ToolTip.Tip="PyPyDance videos will not be deleted when the cache exceeds the max size"/>
-                    <CheckBox IsChecked="{Binding EvictionProtectVRDancing}" Content="Protect VRDancing"
-                              ToolTip.Tip="VRDancing videos will not be deleted when the cache exceeds the max size"/>
-                    <CheckBox IsChecked="{Binding EvictionProtectCustomDomains}" Content="Protect Custom Domains"
-                              ToolTip.Tip="Custom domain videos will not be deleted when the cache exceeds the max size"/>
+                    <CheckBox IsChecked="{Binding EvictionProtectYouTube}" Content="{loc:Tr ProtectYouTube}"
+                              ToolTip.Tip="{loc:Tr ProtectYouTubeTooltip}"/>
+                    <CheckBox IsChecked="{Binding EvictionProtectPyPyDance}" Content="{loc:Tr ProtectPyPyDance}"
+                              ToolTip.Tip="{loc:Tr ProtectPyPyDanceTooltip}"/>
+                    <CheckBox IsChecked="{Binding EvictionProtectVRDancing}" Content="{loc:Tr ProtectVRDancing}"
+                              ToolTip.Tip="{loc:Tr ProtectVRDancingTooltip}"/>
+                    <CheckBox IsChecked="{Binding EvictionProtectCustomDomains}" Content="{loc:Tr ProtectCustomDomains}"
+                              ToolTip.Tip="{loc:Tr ProtectCustomDomainsTooltip}"/>
                 </StackPanel>
             </Border>
 
@@ -149,25 +171,25 @@
             <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
                 <StackPanel Spacing="15">
                     <StackPanel>
-                        <TextBlock Text="Custom Domain Caching" FontWeight="SemiBold" FontSize="16"/>
-                        <TextBlock Text="Cache videos from custom domains" Foreground="#888" FontSize="12"/>
+                        <TextBlock Text="{loc:Tr CustomDomainCaching}" FontWeight="SemiBold" FontSize="16"/>
+                        <TextBlock Text="{loc:Tr CustomDomainCachingDesc}" Foreground="#888" FontSize="12"/>
                     </StackPanel>
 
-                    <CheckBox IsChecked="{Binding CacheCustomDomainsEnabled}" Content="Enable Custom Domain Caching"
-                              ToolTip.Tip="Cache videos from custom domains you specify below (e.g., self-hosted media servers)"/>
+                    <CheckBox IsChecked="{Binding CacheCustomDomainsEnabled}" Content="{loc:Tr EnableCustomDomainCaching}"
+                              ToolTip.Tip="{loc:Tr EnableCustomDomainCachingTooltip}"/>
 
                     <StackPanel Spacing="15" IsVisible="{Binding CacheCustomDomainsEnabled}">
                         <StackPanel>
                             <Grid ColumnDefinitions="*, Auto">
-                                <TextBlock Text="Domains to Cache" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Tr DomainsToCache}" VerticalAlignment="Center"/>
                                 <Button Grid.Column="1" Command="{Binding AddCacheCustomDomainCommand}">
                                     <StackPanel Orientation="Horizontal" Spacing="5">
                                         <mi:MaterialIcon Kind="Plus" Width="16" Height="16"/>
-                                        <TextBlock Text="Add Domain"/>
+                                        <TextBlock Text="{loc:Tr AddDomain}"/>
                                     </StackPanel>
                                 </Button>
                             </Grid>
-                            <TextBlock Text="Add domains to cache videos from (e.g., self-hosted media servers)" Foreground="#888" FontSize="12"/>
+                            <TextBlock Text="{loc:Tr DomainsToCacheDesc}" Foreground="#888" FontSize="12"/>
                         </StackPanel>
 
                         <ItemsControl ItemsSource="{Binding CacheCustomDomains}">
@@ -192,29 +214,29 @@
             <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
                 <StackPanel Spacing="15">
                     <StackPanel>
-                        <TextBlock Text="Clear Cache on Exit" FontWeight="SemiBold" FontSize="16"/>
-                        <TextBlock Text="Automatically delete cached videos when VRCVideoCacher closes" Foreground="#888" FontSize="12"/>
+                        <TextBlock Text="{loc:Tr ClearCacheOnExit}" FontWeight="SemiBold" FontSize="16"/>
+                        <TextBlock Text="{loc:Tr ClearCacheOnExitDesc}" Foreground="#888" FontSize="12"/>
                     </StackPanel>
 
-                    <CheckBox IsChecked="{Binding ClearYouTubeCacheOnExit}" Content="Clear YouTube cache on exit"
-                              ToolTip.Tip="Delete all cached YouTube videos when VRCVideoCacher shuts down"/>
-                    <CheckBox IsChecked="{Binding ClearPyPyDanceCacheOnExit}" Content="Clear PyPyDance cache on exit"
-                              ToolTip.Tip="Delete all cached PyPyDance videos when VRCVideoCacher shuts down"/>
-                    <CheckBox IsChecked="{Binding ClearVRDancingCacheOnExit}" Content="Clear VRDancing cache on exit"
-                              ToolTip.Tip="Delete all cached VRDancing videos when VRCVideoCacher shuts down"/>
+                    <CheckBox IsChecked="{Binding ClearYouTubeCacheOnExit}" Content="{loc:Tr ClearYouTubeCacheOnExit}"
+                              ToolTip.Tip="{loc:Tr ClearYouTubeCacheOnExitTooltip}"/>
+                    <CheckBox IsChecked="{Binding ClearPyPyDanceCacheOnExit}" Content="{loc:Tr ClearPyPyDanceCacheOnExit}"
+                              ToolTip.Tip="{loc:Tr ClearPyPyDanceCacheOnExitTooltip}"/>
+                    <CheckBox IsChecked="{Binding ClearVRDancingCacheOnExit}" Content="{loc:Tr ClearVRDancingCacheOnExit}"
+                              ToolTip.Tip="{loc:Tr ClearVRDancingCacheOnExitTooltip}"/>
 
                     <StackPanel Spacing="10" IsVisible="{Binding CacheCustomDomainsEnabled}" Margin="0,10,0,0">
                         <StackPanel>
                             <Grid ColumnDefinitions="*, Auto">
-                                <TextBlock Text="Custom Domains to Clear on Exit" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:Tr CustomDomainsToClearOnExit}" VerticalAlignment="Center"/>
                                 <Button Grid.Column="1" Command="{Binding AddClearCustomDomainOnExitCommand}">
                                     <StackPanel Orientation="Horizontal" Spacing="5">
                                         <mi:MaterialIcon Kind="Plus" Width="16" Height="16"/>
-                                        <TextBlock Text="Add"/>
+                                        <TextBlock Text="{loc:Tr Add}"/>
                                     </StackPanel>
                                 </Button>
                             </Grid>
-                            <TextBlock Text="Specific custom domains whose cached videos will be deleted on shutdown" Foreground="#888" FontSize="12"/>
+                            <TextBlock Text="{loc:Tr CustomDomainsToClearOnExitDesc}" Foreground="#888" FontSize="12"/>
                         </StackPanel>
 
                         <ItemsControl ItemsSource="{Binding ClearCustomDomainsOnExit}">
@@ -238,26 +260,30 @@
             <!-- Game Patching -->
             <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="Game Patching" FontWeight="SemiBold" FontSize="16"/>
+                    <TextBlock Text="{loc:Tr GamePatching}" FontWeight="SemiBold" FontSize="16"/>
 
-                    <CheckBox IsChecked="{Binding PatchVRC}" Content="Patch VRChat"
-                              ToolTip.Tip="Redirect VRChat video requests through VRCVideoCacher"/>
-                    <CheckBox IsChecked="{Binding PatchResonite}" Content="Patch Resonite"
-                              ToolTip.Tip="Redirect Resonite video requests through VRCVideoCacher"/>
+                    <CheckBox IsChecked="{Binding PatchVRC}" Content="{loc:Tr PatchVRChat}"
+                              ToolTip.Tip="{loc:Tr PatchVRChatTooltip}"/>
+                    <CheckBox IsChecked="{Binding PatchResonite}" Content="{loc:Tr PatchResonite}"
+                              ToolTip.Tip="{loc:Tr PatchResoniteTooltip}"/>
                 </StackPanel>
             </Border>
 
             <!-- Updates & Startup -->
             <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="Updates &amp; Startup" FontWeight="SemiBold" FontSize="16"/>
+                    <TextBlock Text="{loc:Tr UpdatesAndStartup}" FontWeight="SemiBold" FontSize="16"/>
 
-                    <CheckBox IsChecked="{Binding AutoUpdate}" Content="Auto-update VRCVideoCacher"
-                              ToolTip.Tip="Automatically check for and install VRCVideoCacher updates on startup"/>
+                    <CheckBox IsChecked="{Binding AutoUpdate}" Content="{loc:Tr AutoUpdateVRCVideoCacher}"
+                              ToolTip.Tip="{loc:Tr AutoUpdateVRCVideoCacherTooltip}"/>
                     <CheckBox IsChecked="{Binding VrcxAutoStart}"
-                              Content="Start with VRCX (Windows only)"
+                              Content="{loc:Tr StartWithVRCX}"
                               IsVisible="{Binding IsVrcxInstalled}"
-                              ToolTip.Tip="Automatically launch VRCVideoCacher when VRCX starts"/>
+                              ToolTip.Tip="{loc:Tr StartWithVRCXTooltip}"/>
+                    <CheckBox IsChecked="{Binding SteamVrAutoStart}"
+                              Content="{loc:Tr StartWithSteamVR}"
+                              IsVisible="{Binding IsSteamVrInstalled}"
+                              ToolTip.Tip="{loc:Tr StartWithSteamVRTooltip}"/>
                 </StackPanel>
             </Border>
 
@@ -265,14 +291,14 @@
             <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
                 <StackPanel Spacing="15">
                     <StackPanel>
-                        <TextBlock Text="Advanced Settings" FontWeight="SemiBold" FontSize="16"/>
-                        <TextBlock Text="For power users only - modify at your own risk" Foreground="#f0ad4e" FontSize="12"/>
+                        <TextBlock Text="{loc:Tr AdvancedSettings}" FontWeight="SemiBold" FontSize="16"/>
+                        <TextBlock Text="{loc:Tr AdvancedSettingsDesc}" Foreground="#f0ad4e" FontSize="12"/>
                     </StackPanel>
 
                     <StackPanel Spacing="5"
-                              ToolTip.Tip="Completely replaces the default yt-dlp arguments. When set, Additional Arguments are ignored. Use with caution">
-                        <TextBlock Text="yt-dlp Arguments Override (replaces Additional Args when set)"/>
-                        <TextBox Text="{Binding YtdlArgsOverride}" Watermark="Leave empty to use Additional Arguments"/>
+                              ToolTip.Tip="{loc:Tr YtdlpArgsOverrideTooltip}">
+                        <TextBlock Text="{loc:Tr YtdlpArgsOverride}"/>
+                        <TextBox Text="{Binding YtdlArgsOverride}" Watermark="{loc:Tr LeaveEmptyForAdditionalArgs}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -282,15 +308,15 @@
                 <StackPanel Spacing="15">
                     <StackPanel>
                         <Grid ColumnDefinitions="*, Auto">
-                            <TextBlock Text="Pre-Cache URLs" FontWeight="SemiBold" FontSize="16"/>
+                            <TextBlock Text="{loc:Tr PreCacheUrls}" FontWeight="SemiBold" FontSize="16"/>
                             <Button Grid.Column="1" Command="{Binding AddPreCacheUrlCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="5">
                                     <mi:MaterialIcon Kind="Plus" Width="16" Height="16"/>
-                                    <TextBlock Text="Add"/>
+                                    <TextBlock Text="{loc:Tr Add}"/>
                                 </StackPanel>
                             </Button>
                         </Grid>
-                        <TextBlock Text="Videos to automatically download when VRCVideoCacher starts" Foreground="#888" FontSize="12"/>
+                        <TextBlock Text="{loc:Tr PreCacheUrlsDesc}" Foreground="#888" FontSize="12"/>
                     </StackPanel>
 
                     <ItemsControl ItemsSource="{Binding PreCacheUrls}">
@@ -315,15 +341,15 @@
                 <StackPanel Spacing="15">
                     <StackPanel>
                         <Grid ColumnDefinitions="*, Auto">
-                            <TextBlock Text="Blocked URLs" FontWeight="SemiBold" FontSize="16"/>
+                            <TextBlock Text="{loc:Tr BlockedUrls}" FontWeight="SemiBold" FontSize="16"/>
                             <Button Grid.Column="1" Command="{Binding AddBlockedUrlCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="5">
                                 <mi:MaterialIcon Kind="Plus" Width="16" Height="16"/>
-                                <TextBlock Text="Add"/>
+                                <TextBlock Text="{loc:Tr Add}"/>
                             </StackPanel>
                         </Button>
                         </Grid>
-                        <TextBlock Text="URLs in this list will be blocked from playing and redirected to the Blocked URL Redirect below" Foreground="#888" FontSize="12"/>
+                        <TextBlock Text="{loc:Tr BlockedUrlsDesc}" Foreground="#888" FontSize="12"/>
                     </StackPanel>
 
                     <ItemsControl ItemsSource="{Binding BlockedUrls}">
@@ -342,15 +368,16 @@
                     </ItemsControl>
                     <StackPanel Spacing="5" Margin="0,20,0,0">
                         <StackPanel>
-                            <TextBlock Text="Blocked URL Redirect" FontWeight="SemiBold" FontSize="16"/>
-                            <TextBlock Text="When a blocked URL is requested, the player will be redirected to this video instead" Foreground="#888" FontSize="12"/>
+                            <TextBlock Text="{loc:Tr BlockedUrlRedirect}" FontWeight="SemiBold" FontSize="16"/>
+                            <TextBlock Text="{loc:Tr BlockedUrlRedirectDesc}" Foreground="#888" FontSize="12"/>
                         </StackPanel>
-                        <TextBox Text="{Binding BlockRedirect}" Watermark="Redirect URL"/>
+                        <TextBox Text="{Binding BlockRedirect}" Watermark="{loc:Tr RedirectUrl}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
         </StackPanel>
-    </ScrollViewer>
+        </ScrollViewer>
+    </Grid>
 
     <UserControl.Styles>
         <Style Selector="Button.accent">

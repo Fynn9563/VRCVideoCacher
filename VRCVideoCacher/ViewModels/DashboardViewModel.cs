@@ -1,5 +1,6 @@
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using VRCVideoCacher.Elevator;
@@ -32,10 +33,10 @@ public partial class DashboardViewModel : ViewModelBase
     private int _downloadQueueCount;
 
     [ObservableProperty]
-    private string _cookieStatus = "Not Set";
+    private string _cookieStatus = Loc.Tr("NotSet");
 
     [ObservableProperty]
-    private string _currentDownloadText = "None";
+    private string _currentDownloadText = Loc.Tr("None");
 
     // Per-category cache sizes
     [ObservableProperty]
@@ -68,7 +69,7 @@ public partial class DashboardViewModel : ViewModelBase
 
     public DashboardViewModel()
     {
-        ServerUrl = ConfigManager.Config.YtdlpWebServerURL;
+        ServerUrl = ConfigManager.Config.YtdlpWebServerUrl;
         MaxCacheSize = ConfigManager.Config.CacheMaxSizeInGb;
         HostState = ElevatorManager.HasHostsLine;
 
@@ -82,6 +83,7 @@ public partial class DashboardViewModel : ViewModelBase
         VideoDownloader.OnQueueChanged += OnQueueChanged;
         ConfigManager.OnConfigChanged += OnConfigChanged;
         Program.OnCookiesUpdated += OnCookiesUpdated;
+        ElevatorManager.OnHostStateChanged += OnElevatorHostStateChanged;
     }
 
     private void OnCookiesUpdated()
@@ -114,7 +116,7 @@ public partial class DashboardViewModel : ViewModelBase
                 ? active.Count == 1
                     ? $"{active[0].UrlType}: {active[0].VideoId}"
                     : $"{active.Count} downloads active"
-                : "None";
+                : Loc.Tr("None");
         });
     }
 
@@ -130,19 +132,22 @@ public partial class DashboardViewModel : ViewModelBase
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            ServerUrl = ConfigManager.Config.YtdlpWebServerURL;
+            ServerUrl = ConfigManager.Config.YtdlpWebServerUrl;
             MaxCacheSize = ConfigManager.Config.CacheMaxSizeInGb;
             RefreshCategoryVisibility();
         });
         _ = ValidateCookiesAsync();
     }
 
+    private void OnElevatorHostStateChanged(bool? state)
+    {
+        Dispatcher.UIThread.InvokeAsync(() => HostState = state);
+    }
+
     [RelayCommand]
     private async Task ToggleHost()
     {
-        HostState = null;
         await Task.Run(() => ElevatorManager.ToggleHostLine());
-        HostState = ElevatorManager.HasHostsLine;
     }
 
     [RelayCommand]
@@ -156,7 +161,7 @@ public partial class DashboardViewModel : ViewModelBase
             ? activeDownloads.Count == 1
                 ? $"{activeDownloads[0].UrlType}: {activeDownloads[0].VideoId}"
                 : $"{activeDownloads.Count} downloads active"
-            : "None";
+            : Loc.Tr("None");
 
         _ = ValidateCookiesAsync();
     }
@@ -207,20 +212,20 @@ public partial class DashboardViewModel : ViewModelBase
     {
         if (!Program.IsCookiesEnabledAndValid())
         {
-            Dispatcher.UIThread.Post(() => CookieStatus = "Not Set");
+            Dispatcher.UIThread.Post(() => CookieStatus = Loc.Tr("NotSet"));
             return;
         }
 
-        Dispatcher.UIThread.Post(() => CookieStatus = "Checking...");
+        Dispatcher.UIThread.Post(() => CookieStatus = Loc.Tr("Checking"));
 
         var result = await Program.ValidateCookiesAsync();
         Dispatcher.UIThread.Post(() =>
         {
             CookieStatus = result switch
             {
-                true => "Valid",
-                false => "Expired",
-                null => "Unknown"
+                true => Loc.Tr("Valid"),
+                false => Loc.Tr("Expired"),
+                null => Loc.Tr("Unknown")
             };
         });
     }

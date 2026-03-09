@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Avalonia.Threading;
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using VRCVideoCacher.Database;
@@ -126,7 +127,7 @@ public partial class CacheItemViewModel : ViewModelBase
     [RelayCommand]
     private async Task CopyUrl()
     {
-        var url = $"{ConfigManager.Config.YtdlpWebServerURL}/{FileName}";
+        var url = $"{ConfigManager.Config.YtdlpWebServerUrl}/{FileName}";
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
         {
             var clipboard = desktop.MainWindow?.Clipboard;
@@ -175,7 +176,6 @@ public partial class CacheBrowserViewModel : ViewModelBase
 
     public CacheBrowserViewModel()
     {
-        RefreshCache();
         CacheManager.OnCacheChanged += OnCacheChanged;
         VideoDownloader.OnDownloadCompleted += OnDownloadCompleted;
     }
@@ -227,7 +227,7 @@ public partial class CacheBrowserViewModel : ViewModelBase
             FilteredVideos.Add(video);
         }
 
-        StatusText = $"{FilteredVideos.Count} of {CachedVideos.Count} videos";
+        StatusText = string.Format(Loc.Tr("VideosCountFormat"), FilteredVideos.Count, CachedVideos.Count);
     }
 
     [RelayCommand]
@@ -313,7 +313,7 @@ public partial class CacheBrowserViewModel : ViewModelBase
         {
             CachedVideos.Remove(item);
             FilteredVideos.Remove(item);
-            StatusText = $"{FilteredVideos.Count} of {CachedVideos.Count} videos";
+            StatusText = string.Format(Loc.Tr("VideosCountFormat"), FilteredVideos.Count, CachedVideos.Count);
         });
     }
 

@@ -19,9 +19,10 @@
         <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
         <PublishTrimmed>true</PublishTrimmed>
         <TrimMode>partial</TrimMode>
-        <!-- Suppress trim warnings from third-party libraries (IL2037 = EF Core linker warning) -->
+        <!-- Suppress trim warnings from third-party libraries -->
         <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
-        <NoWarn>IL2037</NoWarn>
+        <!-- IL2037: EF Core 10 DynamicDependency on ExecuteUpdate overload not resolvable by ILLink -->
+        <NoWarn>$(NoWarn);IL2037</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
@@ -45,6 +46,7 @@
         <PackageReference Include="SharpCompress" Version="0.44.5" />
         <PackageReference Include="TagLibSharp" Version="2.3.0" />
         <PackageReference Include="ValveKeyValue" Version="0.20.0.417" />
+        <PackageReference Include="CodingSeb.Localization.Avalonia" Version="1.*" />
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.3.11" />
     </ItemGroup>
@@ -59,6 +61,11 @@
         <EmbeddedResource Include="yt-dlp-stub.exe">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </EmbeddedResource>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Remove="Languages\*.loc.json" />
+        <EmbeddedResource Include="Languages\*.loc.json" />
     </ItemGroup>
 
 </Project>

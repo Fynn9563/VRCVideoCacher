@@ -1,5 +1,49 @@
 # Changelog
 
+## [2.8.0] - 2026-03-08
+
+### Added
+- History tab — view recently played videos with thumbnails, type badges, and action buttons
+- SteamVR auto-start — register as SteamVR plugin so it launches with VR
+- Frequency-aware cache eviction — frequently watched videos stay cached longer
+- Cookie setup wizard hosts file step (Step 4) on Windows
+- Host toggle state syncs between Dashboard and cookie setup wizard
+- Thumbnail fallback icon for videos without thumbnails in History
+- Multi-language support (i18n) using CodingSeb.Localization.Avalonia — all UI strings localized
+- Language selector in Settings under new General section
+- Crowdin integration for community translations (GitHub Actions workflow)
+- Close to Tray option in Settings — minimize to tray on window close instead of exiting
+- Unsaved settings indicator — shows warning when settings differ from saved config
+- Smart change detection — toggling a setting back to its saved value clears the unsaved warning
+- Linux privilege elevation for hosts toggle (pkexec, sudo -A, pressure vessel/Steam Deck support)
+- Auto-detect system language on first launch for i18n
+
+### Changed
+- History deduplicates entries within 5-second window to prevent VRChat multi-request spam
+- Nav order: Dashboard, History, Cache Browser, Downloads, Logs, Settings
+- Cache Browser defers data load to OnLoaded for faster navigation
+- Settings header (title, status, save/reset buttons) is now sticky above the scrollable content
+- Tray icon menu items update dynamically when language changes
+- README simplified with centered banner and Steam/GitHub download badges
+- `YtdlpPath` config replaced with `YtdlpGlobalPath` boolean toggle
+- `YtdlpWebServerURL` config renamed to `YtdlpWebServerUrl` (old key still loads via JsonProperty)
+- UtilsPath moved to a fixed location under AppData
+- Updater downloads to temp file and hash-checks before replacing binary
+- Global yt-dlp config check extracted to dedicated `YtdlpGlobalConfig` class
+- Cookie validation endpoint changed from `/account` to `/new`
+- First-run console setup only runs in `--nogui` mode
+
+### Fixed
+- Taskkill / Task Manager not quitting the app when Close to Tray is enabled (Win32 WndProc hook)
+- Linux SIGTERM not shutting down cleanly (PosixSignalRegistration handler)
+- Linux cache path missing `VRCVideoCacher` subdirectory when XDG_CACHE_HOME is unset
+- UAC cancellation on Windows hosts toggle no longer logs an error
+- Hosts toggle verifies the entry after elevation instead of trusting the exit code
+
+### Removed
+- File logging (logs/VRCVideoCacher.log) — console and in-app log viewer are sufficient
+- Old yt-dlp version file migration (`yt-dlp.version.txt`)
+
 ## [2.7.0] - 2026-02-25
 
 ### Added

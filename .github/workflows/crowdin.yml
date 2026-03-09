@@ -1,0 +1,73 @@
+name: Crowdin Translations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "VRCVideoCacher/Languages/en.loc.json"
+  pull_request:
+    paths:
+      - "VRCVideoCacher/Languages/*.loc.json"
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * 1" # Weekly on Monday at 4am UTC
+
+jobs:
+  upload-sources:
+    name: Upload Sources
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crowdin/github-action@v2
+        with:
+          upload_sources: true
+          upload_translations: false
+          download_translations: false
+        env:
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_API_TOKEN: ${{ secrets.CROWDIN_API_TOKEN }}
+
+  download-translations:
+    name: Download Translations
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crowdin/github-action@v2
+        with:
+          upload_sources: false
+          upload_translations: false
+          download_translations: true
+          create_pull_request: true
+          pull_request_title: "chore: update Crowdin translations"
+          pull_request_body: "Automated pull request with latest translations from Crowdin."
+          pull_request_base_branch_name: main
+          localization_branch_name: l10n_crowdin
+        env:
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_API_TOKEN: ${{ secrets.CROWDIN_API_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  validate-translations:
+    name: Validate Translation Files
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate JSON files
+        run: |
+          EXIT_CODE=0
+          SOURCE_KEYS=$(python3 -c "import json; print(sorted(json.load(open('VRCVideoCacher/Languages/en.loc.json')).keys()))")
+          for f in VRCVideoCacher/Languages/*.loc.json; do
+            echo "Checking $f..."
+            if ! python3 -c "import json; json.load(open('$f'))"; then
+              echo "::error::Invalid JSON in $f"
+              EXIT_CODE=1
+            fi
+            FILE_KEYS=$(python3 -c "import json; print(sorted(json.load(open('$f')).keys()))")
+            if [ "$FILE_KEYS" != "$SOURCE_KEYS" ]; then
+              echo "::warning::Key mismatch in $f compared to en.loc.json"
+            fi
+          done
+          exit $EXIT_CODE

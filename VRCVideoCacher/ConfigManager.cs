@@ -1,5 +1,8 @@
+using System.Globalization;
+using CodingSeb.Localization;
 using Newtonsoft.Json;
 using Serilog;
+using VRCVideoCacher.Utils;
 using VRCVideoCacher.YTDL;
 
 // ReSharper disable FieldCanBeMadeReadOnly.Global
@@ -11,7 +14,6 @@ public class ConfigManager
     public static ConfigModel Config { get; private set; }
     private static readonly ILogger Log = Program.Logger.ForContext<ConfigManager>();
     private static readonly string ConfigFilePath;
-    public static readonly string UtilsPath;
 
     // Events for UI
     public static event Action? OnConfigChanged;
@@ -40,22 +42,20 @@ public class ConfigManager
         if (Config == null)
         {
             Log.Information("No valid config found, creating new one...");
-            Config = new ConfigModel();
-            FirstRun();
+            Config = new ConfigModel
+            {
+                Language = GetSystemLanguage()
+            };
+            if (!Program.HasGui)
+                FirstRunConsole();
         }
         else
         {
             Log.Information("Config loaded successfully.");
         }
 
-        if (Config.YtdlpWebServerURL.EndsWith('/'))
-            Config.YtdlpWebServerURL = Config.YtdlpWebServerURL.TrimEnd('/');
-
-        UtilsPath = Path.GetDirectoryName(Config.YtdlpPath) ?? string.Empty;
-        if (!Path.IsPathRooted(UtilsPath))
-            UtilsPath = Path.Join(Program.DataPath, "Utils");
-
-        Directory.CreateDirectory(UtilsPath);
+        if (Config.YtdlpWebServerUrl.EndsWith('/'))
+            Config.YtdlpWebServerUrl = Config.YtdlpWebServerUrl.TrimEnd('/');
 
         Log.Information("Loaded config.");
         TrySaveConfig();
@@ -78,10 +78,10 @@ public class ConfigManager
             try { MoveDataToAppData(); }
             catch (Exception ex) { Log.Warning(ex, "Failed to move data to AppData, will continue with config migration"); }
 
-            // Try current format first (YtdlpWebServerURL, YtdlpPath, etc.)
+            // Try current format first (YtdlpWebServerUrl, YtdlpPath, etc.)
             var currentConfig = JsonConvert.DeserializeObject<ConfigModel>(configText);
-            if (currentConfig != null && currentConfig.YtdlpWebServerURL != new ConfigModel().YtdlpWebServerURL
-                || (currentConfig != null && configText.Contains("\"YtdlpWebServerURL\"")))
+            if (currentConfig != null && currentConfig.YtdlpWebServerUrl != new ConfigModel().YtdlpWebServerUrl
+                || (currentConfig != null && configText.Contains("\"YtdlpWebServerUrl\"")))
             {
                 // Preserve existing cache path if in use
                 var oldCachePath = Path.Join(Program.CurrentProcessPath, "CachedAssets");
@@ -107,8 +107,8 @@ public class ConfigManager
             Log.Information("Migrated legacy config from {LegacyConfigPath}", legacyConfigPath);
             return new ConfigModel
             {
-                YtdlpWebServerURL = legacyConfig.ytdlWebServerURL,
-                YtdlpPath = legacyConfig.ytdlPath,
+                YtdlpWebServerUrl = legacyConfig.ytdlWebServerURL,
+                YtdlpGlobalPath = string.IsNullOrEmpty(legacyConfig.ytdlPath),
                 YtdlpUseCookies = legacyConfig.ytdlUseCookies,
                 YtdlpAutoUpdate = legacyConfig.ytdlAutoUpdate,
                 YtdlpAdditionalArgs = legacyConfig.ytdlAdditionalArgs,
@@ -206,7 +206,7 @@ public class ConfigManager
         return string.IsNullOrEmpty(input) ? defaultValue : input.Equals("y", StringComparison.CurrentCultureIgnoreCase);
     }
 
-    private static void FirstRun()
+    private static void FirstRunConsole()
     {
         Log.Information("It appears this is your first time running VRCVideoCacher. Let's create a basic config file.");
 
@@ -246,9 +246,9 @@ public class ConfigManager
             AutoStartShortcut.CreateShortcut();
         }
 
-        if (YtdlManager.GlobalYtdlConfigExists() && GetUserConfirmation(@"Would you like to delete global YT-DLP config in %AppData%\yt-dlp\config? (this is necessary for VRCVideoCacher to function)", true))
+        if (YtdlpGlobalConfig.GlobalYtdlConfigExists() && GetUserConfirmation(@"Would you like to delete global YT-DLP config in %AppData%\yt-dlp\config? (this is necessary for VRCVideoCacher to function)", true))
         {
-            YtdlManager.DeleteGlobalYtdlConfig();
+            YtdlpGlobalConfig.DeleteGlobalYtdlConfig();
         }
 
         if (GetUserConfirmation("Would you like to cache custom domains? (You can configure domains later in Config.json)", false))
@@ -268,14 +268,21 @@ public class ConfigManager
 
         TrySaveConfig();
     }
+
+    private static string GetSystemLanguage()
+    {
+        var culture = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+        return Loc.Instance.AvailableLanguages.Contains(culture) ? culture : "en";
+    }
 }
 
 // ReSharper disable InconsistentNaming
 public class ConfigModel
 {
     // yt-dlp
-    public string YtdlpWebServerURL = "http://localhost:9696";
-    public string YtdlpPath = OperatingSystem.IsWindows() ? "Utils\\yt-dlp.exe" : Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VRCVideoCacher/Utils/yt-dlp");
+    [JsonProperty("YtdlpWebServerURL")]
+    public string YtdlpWebServerUrl = "http://localhost:9696";
+    public bool YtdlpGlobalPath = false;
     public bool YtdlpUseCookies = true;
     public bool YtdlpAutoUpdate = true;
     public string YtdlpAdditionalArgs = string.Empty;
@@ -319,7 +326,11 @@ public class ConfigModel
 
     // Video Cacher
     public bool AutoUpdateVrcVideoCacher = true;
+    public bool CloseToTray = true;
     public bool CookieSetupCompleted = false;
+
+    // Localization
+    public string Language = "en";
 }
 
 // ReSharper disable InconsistentNaming

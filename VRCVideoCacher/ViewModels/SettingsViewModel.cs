@@ -1,10 +1,15 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using VRCVideoCacher.API;
 using VRCVideoCacher.Models;
+using VRCVideoCacher.Utils;
 
 namespace VRCVideoCacher.ViewModels;
+
+public record LanguageOption(string Code, string DisplayName);
 
 public partial class SettingsViewModel : ViewModelBase
 {
@@ -14,7 +19,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     // Download Settings
     [ObservableProperty]
-    private string _ytdlPath = string.Empty;
+    private bool _ytdlpGlobalPath;
 
     [ObservableProperty]
     private bool _ytdlUseCookies;
@@ -86,12 +91,22 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _autoUpdate;
 
+    [ObservableProperty]
+    private bool _closeToTray;
+
     // VRCX Auto-start (Windows only, immediate effect - not saved to config)
     [ObservableProperty]
     private bool _vrcxAutoStart;
 
     [ObservableProperty]
     private bool _isVrcxInstalled;
+
+    // SteamVR Auto-start (Windows only, immediate effect - not saved to config)
+    [ObservableProperty]
+    private bool _steamVrAutoStart;
+
+    [ObservableProperty]
+    private bool _isSteamVrInstalled;
 
     // Advanced Settings
     [ObservableProperty]
@@ -124,6 +139,12 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private string _blockRedirect = string.Empty;
 
+    // Language
+    public List<LanguageOption> AvailableLanguageOptions { get; } = [];
+
+    [ObservableProperty]
+    private LanguageOption? _selectedLanguageOption;
+
     // Status
     [ObservableProperty]
     private string _statusMessage = string.Empty;
@@ -131,8 +152,15 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _hasChanges;
 
+    private bool _isLoading;
+    private bool _savedVrcxAutoStart;
+    private bool _savedSteamVrAutoStart;
+
     public SettingsViewModel()
     {
+        foreach (var lang in Loc.Instance.AvailableLanguages)
+            AvailableLanguageOptions.Add(new LanguageOption(lang, GetLanguageDisplayName(lang)));
+
         ConfigManager.OnConfigChanged += LoadFromConfig;
         LoadFromConfig();
 
@@ -140,12 +168,23 @@ public partial class SettingsViewModel : ViewModelBase
         Program.OnCookiesUpdated += () => CookieStatus = Program.GetCookieStatus();
     }
 
+    private static string GetLanguageDisplayName(string code)
+    {
+        try
+        {
+            var culture = new CultureInfo(code);
+            return $"{culture.NativeName} ({code})";
+        }
+        catch { return code; }
+    }
+
     private void LoadFromConfig()
     {
+        _isLoading = true;
         var config = ConfigManager.Config;
 
-        WebServerUrl = config.YtdlpWebServerURL;
-        YtdlPath = config.YtdlpPath;
+        WebServerUrl = config.YtdlpWebServerUrl;
+        YtdlpGlobalPath = config.YtdlpGlobalPath;
         YtdlUseCookies = config.YtdlpUseCookies;
         CookieStatus = Program.GetCookieStatus();
         YtdlAutoUpdate = config.YtdlpAutoUpdate;
@@ -167,12 +206,22 @@ public partial class SettingsViewModel : ViewModelBase
         PatchResonite = config.PatchResonite;
         PatchVRC = config.PatchVrChat;
         AutoUpdate = config.AutoUpdateVrcVideoCacher;
+        CloseToTray = config.CloseToTray;
 
         // VRCX Auto-start (Windows only)
         if (OperatingSystem.IsWindows())
         {
             IsVrcxInstalled = AutoStartShortcut.IsVrcxInstalled();
             VrcxAutoStart = AutoStartShortcut.IsStartupEnabled();
+            _savedVrcxAutoStart = VrcxAutoStart;
+        }
+
+        // SteamVR Auto-start (Windows only)
+        if (OperatingSystem.IsWindows())
+        {
+            IsSteamVrInstalled = SteamVrStartup.IsSteamVrInstalled();
+            SteamVrAutoStart = SteamVrStartup.IsAutoStartEnabled();
+            _savedSteamVrAutoStart = SteamVrAutoStart;
         }
 
         // Advanced Settings
@@ -210,51 +259,112 @@ public partial class SettingsViewModel : ViewModelBase
         }
         BlockRedirect = config.BlockRedirect;
 
+        SelectedLanguageOption = AvailableLanguageOptions.FirstOrDefault(l => l.Code == config.Language)
+                                 ?? AvailableLanguageOptions.FirstOrDefault();
+
         HasChanges = false;
         StatusMessage = string.Empty;
+        _isLoading = false;
     }
 
-    partial void OnWebServerUrlChanged(string value) => HasChanges = true;
-    partial void OnYtdlPathChanged(string value) => HasChanges = true;
-    partial void OnYtdlUseCookiesChanged(bool value) => HasChanges = true;
-    partial void OnYtdlAutoUpdateChanged(bool value) => HasChanges = true;
-    partial void OnYtdlAdditionalArgsChanged(string value) => HasChanges = true;
-    partial void OnYtdlDubLanguageChanged(string value) => HasChanges = true;
-    partial void OnCachedAssetPathChanged(string value) => HasChanges = true;
-    partial void OnCacheYouTubeChanged(bool value) => HasChanges = true;
-    partial void OnCacheYouTubeMaxResolutionChanged(int value) => HasChanges = true;
-    partial void OnCacheYouTubeMaxLengthChanged(int value) => HasChanges = true;
-    partial void OnCacheMaxSizeInGbChanged(float value) => HasChanges = true;
-    partial void OnCachePyPyDanceChanged(bool value) => HasChanges = true;
-    partial void OnCacheVRDancingChanged(bool value) => HasChanges = true;
-    partial void OnMaxConcurrentDownloadsChanged(int value) => HasChanges = true;
-    partial void OnPatchResoniteChanged(bool value) => HasChanges = true;
-    partial void OnPatchVRCChanged(bool value) => HasChanges = true;
-    partial void OnAutoUpdateChanged(bool value) => HasChanges = true;
-    partial void OnYtdlArgsOverrideChanged(string value) => HasChanges = true;
-    partial void OnCacheCustomDomainsEnabledChanged(bool value) => HasChanges = true;
-    partial void OnEvictionProtectYouTubeChanged(bool value) => HasChanges = true;
-    partial void OnEvictionProtectPyPyDanceChanged(bool value) => HasChanges = true;
-    partial void OnEvictionProtectVRDancingChanged(bool value) => HasChanges = true;
-    partial void OnEvictionProtectCustomDomainsChanged(bool value) => HasChanges = true;
-    partial void OnClearYouTubeCacheOnExitChanged(bool value) => HasChanges = true;
-    partial void OnClearPyPyDanceCacheOnExitChanged(bool value) => HasChanges = true;
-    partial void OnClearVRDancingCacheOnExitChanged(bool value) => HasChanges = true;
+    private void CheckForChanges()
+    {
+        if (_isLoading) return;
 
-    partial void OnVrcxAutoStartChanged(bool value) => HasChanges = true;
+        var config = ConfigManager.Config;
+        var changed =
+            WebServerUrl != config.YtdlpWebServerUrl ||
+            YtdlpGlobalPath != config.YtdlpGlobalPath ||
+            YtdlUseCookies != config.YtdlpUseCookies ||
+            YtdlAutoUpdate != config.YtdlpAutoUpdate ||
+            YtdlAdditionalArgs != config.YtdlpAdditionalArgs ||
+            YtdlDubLanguage != config.YtdlpDubLanguage ||
+            CachedAssetPath != config.CachedAssetPath ||
+            CacheYouTube != config.CacheYouTube ||
+            CacheYouTubeMaxResolution != config.CacheYouTubeMaxResolution ||
+            CacheYouTubeMaxLength != config.CacheYouTubeMaxLength ||
+            Math.Abs(CacheMaxSizeInGb - config.CacheMaxSizeInGb) > 0.001f ||
+            CachePyPyDance != config.CachePyPyDance ||
+            CacheVRDancing != config.CacheVRDancing ||
+            CacheOnly != config.CacheOnly ||
+            MaxConcurrentDownloads != config.MaxConcurrentDownloads ||
+            EvictionProtectYouTube != config.EvictionProtectYouTube ||
+            EvictionProtectPyPyDance != config.EvictionProtectPyPyDance ||
+            EvictionProtectVRDancing != config.EvictionProtectVRDancing ||
+            EvictionProtectCustomDomains != config.EvictionProtectCustomDomains ||
+            PatchResonite != config.PatchResonite ||
+            PatchVRC != config.PatchVrChat ||
+            AutoUpdate != config.AutoUpdateVrcVideoCacher ||
+            CloseToTray != config.CloseToTray ||
+            YtdlArgsOverride != config.YtdlpArgsOverride ||
+            CacheCustomDomainsEnabled != config.CacheCustomDomainsEnabled ||
+            ClearYouTubeCacheOnExit != config.ClearYouTubeCacheOnExit ||
+            ClearPyPyDanceCacheOnExit != config.ClearPyPyDanceCacheOnExit ||
+            ClearVRDancingCacheOnExit != config.ClearVRDancingCacheOnExit ||
+            BlockRedirect != config.BlockRedirect ||
+            VrcxAutoStart != _savedVrcxAutoStart ||
+            SteamVrAutoStart != _savedSteamVrAutoStart ||
+            !CacheCustomDomains.Select(x => x.Value).SequenceEqual(config.CacheCustomDomains) ||
+            !ClearCustomDomainsOnExit.Select(x => x.Value).SequenceEqual(config.ClearCustomDomainsOnExit) ||
+            !BlockedUrls.Select(x => x.Value).SequenceEqual(config.BlockedUrls) ||
+            !PreCacheUrls.Select(x => x.Value).SequenceEqual(config.PreCacheUrls);
+
+        HasChanges = changed;
+        StatusMessage = changed ? Loc.Tr("SettingsUnsavedChanges") : string.Empty;
+    }
+
+    partial void OnWebServerUrlChanged(string value) => CheckForChanges();
+    partial void OnYtdlpGlobalPathChanged(bool value) => CheckForChanges();
+    partial void OnYtdlUseCookiesChanged(bool value) => CheckForChanges();
+    partial void OnYtdlAutoUpdateChanged(bool value) => CheckForChanges();
+    partial void OnYtdlAdditionalArgsChanged(string value) => CheckForChanges();
+    partial void OnYtdlDubLanguageChanged(string value) => CheckForChanges();
+    partial void OnCachedAssetPathChanged(string value) => CheckForChanges();
+    partial void OnCacheYouTubeChanged(bool value) => CheckForChanges();
+    partial void OnCacheYouTubeMaxResolutionChanged(int value) => CheckForChanges();
+    partial void OnCacheYouTubeMaxLengthChanged(int value) => CheckForChanges();
+    partial void OnCacheMaxSizeInGbChanged(float value) => CheckForChanges();
+    partial void OnCachePyPyDanceChanged(bool value) => CheckForChanges();
+    partial void OnCacheVRDancingChanged(bool value) => CheckForChanges();
+    partial void OnCacheOnlyChanged(bool value) => CheckForChanges();
+    partial void OnMaxConcurrentDownloadsChanged(int value) => CheckForChanges();
+    partial void OnPatchResoniteChanged(bool value) => CheckForChanges();
+    partial void OnPatchVRCChanged(bool value) => CheckForChanges();
+    partial void OnAutoUpdateChanged(bool value) => CheckForChanges();
+    partial void OnCloseToTrayChanged(bool value) => CheckForChanges();
+    partial void OnYtdlArgsOverrideChanged(string value) => CheckForChanges();
+    partial void OnCacheCustomDomainsEnabledChanged(bool value) => CheckForChanges();
+    partial void OnEvictionProtectYouTubeChanged(bool value) => CheckForChanges();
+    partial void OnEvictionProtectPyPyDanceChanged(bool value) => CheckForChanges();
+    partial void OnEvictionProtectVRDancingChanged(bool value) => CheckForChanges();
+    partial void OnEvictionProtectCustomDomainsChanged(bool value) => CheckForChanges();
+    partial void OnClearYouTubeCacheOnExitChanged(bool value) => CheckForChanges();
+    partial void OnClearPyPyDanceCacheOnExitChanged(bool value) => CheckForChanges();
+    partial void OnClearVRDancingCacheOnExitChanged(bool value) => CheckForChanges();
+    partial void OnBlockRedirectChanged(string value) => CheckForChanges();
+    partial void OnVrcxAutoStartChanged(bool value) => CheckForChanges();
+    partial void OnSteamVrAutoStartChanged(bool value) => CheckForChanges();
+
+    partial void OnSelectedLanguageOptionChanged(LanguageOption? value)
+    {
+        if (value == null) return;
+        Loc.Instance.CurrentLanguage = value.Code;
+        ConfigManager.Config.Language = value.Code;
+        ConfigManager.TrySaveConfig();
+    }
 
     [RelayCommand]
     private void SaveSettings()
     {
         var config = ConfigManager.Config;
 
-        if (config.YtdlpWebServerURL != WebServerUrl)
+        if (config.YtdlpWebServerUrl != WebServerUrl)
         {
-            config.YtdlpWebServerURL = WebServerUrl;
+            config.YtdlpWebServerUrl = WebServerUrl;
             WebServer.Init();
         }
 
-        config.YtdlpPath = YtdlPath;
+        config.YtdlpGlobalPath = YtdlpGlobalPath;
         config.YtdlpUseCookies = YtdlUseCookies;
         config.YtdlpAutoUpdate = YtdlAutoUpdate;
         config.YtdlpAdditionalArgs = YtdlAdditionalArgs;
@@ -274,6 +384,7 @@ public partial class SettingsViewModel : ViewModelBase
         config.PatchResonite = PatchResonite;
         config.PatchVrChat = PatchVRC;
         config.AutoUpdateVrcVideoCacher = AutoUpdate;
+        config.CloseToTray = CloseToTray;
 
         // Advanced Settings
         config.YtdlpArgsOverride = YtdlArgsOverride;
@@ -301,72 +412,83 @@ public partial class SettingsViewModel : ViewModelBase
                 AutoStartShortcut.CreateShortcut();
             else
                 AutoStartShortcut.RemoveShortcut();
+            _savedVrcxAutoStart = VrcxAutoStart;
+        }
+
+        // Apply SteamVR auto-start setting (Windows only)
+        if (OperatingSystem.IsWindows())
+        {
+            if (SteamVrAutoStart)
+                SteamVrStartup.Enable();
+            else
+                SteamVrStartup.Disable();
+            _savedSteamVrAutoStart = SteamVrAutoStart;
         }
 
         HasChanges = false;
-        StatusMessage = "Settings saved!";
+        StatusMessage = Loc.Tr("SettingsSaved");
     }
 
     [RelayCommand]
     private void ResetToDefaults()
     {
         LoadFromConfig();
-        StatusMessage = "Settings reset to last saved values.";
+        StatusMessage = Loc.Tr("SettingsReset");
     }
 
     [RelayCommand]
     private void AddBlockedUrl()
     {
         BlockedUrls.Add(new EditableString("https://"));
-        HasChanges = true;
+        CheckForChanges();
     }
 
     [RelayCommand]
     private void RemoveBlockedUrl(EditableString url)
     {
         BlockedUrls.Remove(url);
-        HasChanges = true;
+        CheckForChanges();
     }
 
     [RelayCommand]
     private void AddCacheCustomDomain()
     {
         CacheCustomDomains.Add(new EditableString("example.com"));
-        HasChanges = true;
+        CheckForChanges();
     }
 
     [RelayCommand]
     private void RemoveCacheCustomDomain(EditableString domain)
     {
         CacheCustomDomains.Remove(domain);
-        HasChanges = true;
+        CheckForChanges();
     }
 
     [RelayCommand]
     private void AddClearCustomDomainOnExit()
     {
         ClearCustomDomainsOnExit.Add(new EditableString("example.com"));
-        HasChanges = true;
+        CheckForChanges();
     }
 
     [RelayCommand]
     private void RemoveClearCustomDomainOnExit(EditableString domain)
     {
         ClearCustomDomainsOnExit.Remove(domain);
-        HasChanges = true;
+        CheckForChanges();
     }
 
     [RelayCommand]
     private void AddPreCacheUrl()
     {
         PreCacheUrls.Add(new EditableString("https://"));
-        HasChanges = true;
+        CheckForChanges();
     }
 
     [RelayCommand]
     private void RemovePreCacheUrl(EditableString url)
     {
         PreCacheUrls.Remove(url);
-        HasChanges = true;
+        CheckForChanges();
     }
 }

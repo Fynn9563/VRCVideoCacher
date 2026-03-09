@@ -2,19 +2,20 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:VRCVideoCacher.ViewModels"
              xmlns:mi="using:Material.Icons.Avalonia"
+             xmlns:loc="using:CodingSeb.Localization.Avalonia"
              x:Class="VRCVideoCacher.Views.DownloadQueueView"
              x:DataType="vm:DownloadQueueViewModel">
 
     <Grid RowDefinitions="Auto, Auto, Auto, *, Auto" Margin="10">
         <!-- Header -->
         <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,20">
-            <TextBlock Text="Download Queue" FontSize="24" FontWeight="Bold"/>
+            <TextBlock Text="{loc:Tr DownloadQueue}" FontSize="24" FontWeight="Bold"/>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                <Button Command="{Binding RefreshQueueCommand}" ToolTip.Tip="Refresh">
+                <Button Command="{Binding RefreshQueueCommand}" ToolTip.Tip="{loc:Tr Refresh}">
                     <mi:MaterialIcon Kind="Refresh" Width="20" Height="20"/>
                 </Button>
-                <Button Command="{Binding ClearQueueCommand}" ToolTip.Tip="Clear Queue" Background="#CF6679">
+                <Button Command="{Binding ClearQueueCommand}" ToolTip.Tip="{loc:Tr ClearQueue}" Background="#CF6679">
                     <mi:MaterialIcon Kind="DeleteSweep" Width="20" Height="20"/>
                 </Button>
             </StackPanel>
@@ -23,7 +24,7 @@
         <!-- Active Downloads -->
         <Border Grid.Row="1" Background="#2d2d2d" CornerRadius="8" Padding="20" Margin="0,0,0,20">
             <StackPanel Spacing="10">
-                <TextBlock Text="Active Downloads" FontWeight="SemiBold" FontSize="16"/>
+                <TextBlock Text="{loc:Tr ActiveDownloads}" FontWeight="SemiBold" FontSize="16"/>
 
                 <ItemsControl ItemsSource="{Binding ActiveDownloads}"
                               IsVisible="{Binding ActiveDownloads.Count, Converter={x:Static vm:GreaterThanZeroConverter.Instance}}">
@@ -38,7 +39,7 @@
                                             <TextBlock Text="{Binding UrlType}" Foreground="#888888" FontSize="12"/>
                                         </StackPanel>
                                         <Button Grid.Column="2" Command="{Binding CancelDownloadCommand}"
-                                                ToolTip.Tip="Cancel Download" Background="#CF6679"
+                                                ToolTip.Tip="{loc:Tr CancelDownload}" Background="#CF6679"
                                                 Padding="6" VerticalAlignment="Center">
                                             <mi:MaterialIcon Kind="Close" Width="16" Height="16"/>
                                         </Button>
@@ -55,7 +56,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <TextBlock Text="No active downloads"
+                <TextBlock Text="{loc:Tr NoActiveDownload}"
                            IsVisible="{Binding !ActiveDownloads.Count}"
                            Foreground="#888888"/>
             </StackPanel>
@@ -64,14 +65,14 @@
         <!-- Manual Download -->
         <Border Grid.Row="2" Background="#2d2d2d" CornerRadius="8" Padding="20" Margin="0,0,0,20">
             <StackPanel Spacing="10">
-                <TextBlock Text="Add Manual Download" FontWeight="SemiBold" FontSize="16"/>
+                <TextBlock Text="{loc:Tr AddManualDownload}" FontWeight="SemiBold" FontSize="16"/>
 
                 <Grid ColumnDefinitions="*, Auto">
-                    <TextBox Grid.Column="0" Text="{Binding ManualUrl}" Watermark="Enter video URL..."/>
+                    <TextBox Grid.Column="0" Text="{Binding ManualUrl}" Watermark="{loc:Tr EnterVideoUrl}"/>
                     <Button Grid.Column="1" Command="{Binding AddManualDownloadCommand}" Margin="10,0,0,0">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <mi:MaterialIcon Kind="Plus" Width="16" Height="16"/>
-                            <TextBlock Text="Add"/>
+                            <TextBlock Text="{loc:Tr Add}"/>
                         </StackPanel>
                     </Button>
                 </Grid>
@@ -85,7 +86,7 @@
         <!-- Queue List -->
         <Border Grid.Row="3" Background="#2d2d2d" CornerRadius="8" Padding="20">
             <Grid RowDefinitions="Auto, *">
-                <TextBlock Grid.Row="0" Text="Queued Downloads" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,15"/>
+                <TextBlock Grid.Row="0" Text="{loc:Tr QueuedDownloads}" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,15"/>
 
                 <ListBox Grid.Row="1"
                          ItemsSource="{Binding QueuedDownloads}"
@@ -108,7 +109,7 @@
                 </ListBox>
 
                 <TextBlock Grid.Row="1"
-                           Text="Queue is empty"
+                           Text="{loc:Tr QueueIsEmpty}"
                            Foreground="#888888"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"

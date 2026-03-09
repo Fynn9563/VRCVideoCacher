@@ -19,10 +19,12 @@ namespace VRCVideoCacher;
 internal sealed partial class Program
 {
     public static string YtdlpHash = string.Empty;
-    public const string Version = "2.7.0";
+    public const string Version = "2.8.0";
     public static ILogger Logger => Log.ForContext("SourceContext", "Core");
     public static readonly string CurrentProcessPath = Path.GetDirectoryName(Environment.ProcessPath) ?? string.Empty;
     public static readonly string DataPath = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VRCVideoCacher");
+    public static readonly string UtilsPath = Path.Join(DataPath, "Utils");
+    public static bool HasGui;
     public static event Action? OnCookiesUpdated;
     private static string? _youtubeUsername;
 
@@ -44,8 +46,8 @@ internal sealed partial class Program
         // Check for --nogui flag
         if (args.Contains("--nogui"))
         {
-            // Run backend only (console mode)
-            InitVRCVideoCacher(false).GetAwaiter().GetResult();
+            HasGui = false;
+            InitVRCVideoCacher().GetAwaiter().GetResult();
             return;
         }
 
@@ -57,10 +59,6 @@ internal sealed partial class Program
             .WriteTo.Console(new ExpressionTemplate(
                 "[{@t:HH:mm:ss} {@l:u3} {Coalesce(Substring(SourceContext, LastIndexOf(SourceContext, '.') + 1),'<none>')}] {@m}\n\r{@x}",
                 theme: TemplateTheme.Literate))
-            .WriteTo.File(
-                path: Path.Join(DataPath, "logs", "VRCVideoCacher.log"),
-                rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: 5)
             .WriteTo.Sink(new UiLogSink())
             .CreateLogger();
 
@@ -77,7 +75,8 @@ internal sealed partial class Program
             {
                 try
                 {
-                    await InitVRCVideoCacher(true);
+                    HasGui = true;
+                    await InitVRCVideoCacher();
                 }
                 catch (Exception ex)
                 {
@@ -90,7 +89,7 @@ internal sealed partial class Program
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
-    public static async Task InitVRCVideoCacher(bool hasGui)
+    public static async Task InitVRCVideoCacher()
     {
         try { Console.Title = $"VRCVideoCacher v{Version}{AdminCheck.GetAdminTitleWarning()}"; } catch { /* GUI mode, no console */ }
 
@@ -111,13 +110,13 @@ internal sealed partial class Program
         Logger.Information("VRCVideoCacher version {Version} created by {Elly}, {Natsumi}, {Haxy}", Version, elly, natsumi, haxy);
         Logger.Information("Modified by {Fynn}", fynn);
 
-        if (!hasGui && AdminCheck.ShouldShowAdminWarning())
+        if (!HasGui && AdminCheck.ShouldShowAdminWarning())
         {
             Logger.Error(AdminCheck.AdminWarningMessage);
             Environment.Exit(0);
         }
 
-        Directory.CreateDirectory(DataPath);
+        Directory.CreateDirectory(UtilsPath);
         await Updater.CheckForUpdates();
         Updater.Cleanup();
         if (Environment.CommandLine.Contains("--Reset"))
@@ -136,7 +135,7 @@ internal sealed partial class Program
         YtdlpHash = GetOurYtdlpHash();
         await VvcConfigService.GetConfig();
 
-        if (ConfigManager.Config.YtdlpAutoUpdate && !string.IsNullOrEmpty(ConfigManager.Config.YtdlpPath))
+        if (ConfigManager.Config.YtdlpAutoUpdate && !ConfigManager.Config.YtdlpGlobalPath)
         {
             await YtdlManager.TryDownloadYtdlp();
             YtdlManager.StartYtdlDownloadThread();
@@ -145,7 +144,10 @@ internal sealed partial class Program
         }
 
         if (OperatingSystem.IsWindows())
+        {
             AutoStartShortcut.TryUpdateShortcutPath();
+            SteamVrStartup.TryUpdateManifestPath();
+        }
         DatabaseManager.Init();
         WebServer.Init();
         FileTools.BackupAllYtdl();
@@ -162,7 +164,7 @@ internal sealed partial class Program
         if (OperatingSystem.IsWindows())
             _ = WinGet.TryInstallPackages();
 
-        if (YtdlManager.GlobalYtdlConfigExists())
+        if (YtdlpGlobalConfig.GlobalYtdlConfigExists())
             Logger.Error("Global yt-dlp config file found in \"%AppData%\\yt-dlp\". Please delete it to avoid conflicts with VRCVideoCacher.");
 
         await Task.Delay(-1);
@@ -241,12 +243,12 @@ internal sealed partial class Program
             client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            using var response = await client.GetAsync("https://www.youtube.com/account", cts.Token);
+            using var response = await client.GetAsync("https://www.youtube.com/new", cts.Token);
             return response.StatusCode == HttpStatusCode.OK;
         }
         catch (Exception ex)
         {
-            Logger.Warning("Failed to validate cookies online: {Error}", ex.Message);
+            Logger.Warning("Failed to validate cookies online: {Error}", ex.ToString());
             return null;
         }
     }

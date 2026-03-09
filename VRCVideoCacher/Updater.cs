@@ -126,29 +126,35 @@ public class Updater
             if (asset.name != FileName)
                 continue;
 
-            File.Move(FilePath, BackupFilePath);
-
             try
             {
+                if (File.Exists(TempFilePath))
+                {
+                    Log.Information("Temp file found from a previous update, deleting.");
+                    File.Delete(TempFilePath);
+                }
+
                 await using var stream = await HttpClient.GetStreamAsync(asset.browser_download_url);
                 await using var fileStream = new FileStream(TempFilePath, FileMode.Create, FileAccess.Write, FileShare.None);
                 await stream.CopyToAsync(fileStream);
                 fileStream.Close();
 
-                if (await HashCheck(asset.digest))
-                {
-                    Log.Information("Hash check passed, Replacing binary.");
-                    File.Move(TempFilePath, FilePath);
-                }
-                else
+                if (!await HashCheck(asset.digest))
                 {
                     Log.Information("Hash check failed, Reverting update.");
-                    File.Move(BackupFilePath, FilePath);
+                    File.Delete(TempFilePath);
                     return;
                 }
-                Log.Information("Updated to version {Version}", release.tag_name);
+
+                Log.Information("Hash check passed, Replacing binary.");
+
                 if (!OperatingSystem.IsWindows())
-                    FileTools.MarkFileExecutable(FilePath);
+                    FileTools.MarkFileExecutable(TempFilePath);
+
+                File.Move(FilePath, BackupFilePath);
+                File.Move(TempFilePath, FilePath);
+
+                Log.Information("Updated to version {Version}", release.tag_name);
 
                 var process = new Process()
                 {
@@ -164,7 +170,7 @@ public class Updater
             }
             catch (Exception ex)
             {
-                Log.Error("Failed to update: {Message}", ex.Message);
+                Log.Error("Failed to update: {Message}", ex.ToString());
                 File.Move(BackupFilePath, FilePath);
                 Console.ReadKey();
             }

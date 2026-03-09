@@ -78,7 +78,7 @@ public class VideoDownloader
         }
         catch (Exception ex)
         {
-            Log.Warning("Failed to cleanup temp directory: {ex}", ex.Message);
+            Log.Warning("Failed to cleanup temp directory: {ex}", ex.ToString());
         }
     }
 
@@ -146,7 +146,7 @@ public class VideoDownloader
         }
         catch (Exception ex)
         {
-            Log.Error("Exception during download: {Ex}", ex.Message);
+            Log.Error("Exception during download: {Ex}", ex.ToString());
             success = false;
         }
         finally
@@ -218,7 +218,7 @@ public class VideoDownloader
         }
         catch (Exception ex)
         {
-            Log.Error("Not downloading YouTube video: {URL} {ex}", url, ex.Message);
+            Log.Error("Not downloading YouTube video: {URL} {ex}", url, ex.ToString());
             return false;
         }
 
@@ -304,7 +304,7 @@ public class VideoDownloader
 
         CacheManager.AddToCache(fileName, UrlType.YouTube);
         var relativeUrl = CacheManager.GetRelativePath(UrlType.YouTube, fileName);
-        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerURL}/{relativeUrl}");
+        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerUrl}/{relativeUrl}");
         return true;
     }
 
@@ -372,7 +372,7 @@ public class VideoDownloader
 
         CacheManager.AddToCache(fileName, videoInfo.UrlType, videoInfo.Domain);
         var relativeUrl = CacheManager.GetRelativePath(videoInfo.UrlType, fileName, videoInfo.Domain);
-        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerURL}/{relativeUrl}");
+        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerUrl}/{relativeUrl}");
         return true;
     }
 
@@ -445,13 +445,13 @@ public class VideoDownloader
 
         CacheManager.AddToCache(fileName, UrlType.CustomDomain, videoInfo.Domain);
         var relativeUrl = CacheManager.GetRelativePath(UrlType.CustomDomain, fileName, videoInfo.Domain);
-        Log.Information("Streaming Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerURL}/{relativeUrl}");
+        Log.Information("Streaming Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerUrl}/{relativeUrl}");
         return true;
     }
 
     private static async Task<bool> DownloadStreamingWithFfmpeg(string url, TempPaths tempPaths)
     {
-        var ffmpegPath = Path.Join(ConfigManager.UtilsPath, OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg");
+        var ffmpegPath = Path.Join(Program.UtilsPath, OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg");
         if (!File.Exists(ffmpegPath))
         {
             Log.Error("ffmpeg not found at {Path}, cannot fallback", ffmpegPath);

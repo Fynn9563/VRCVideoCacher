@@ -6,7 +6,9 @@ public class HostsManager
 
     private static readonly string Header = $"{Environment.NewLine}# ----- BEGIN VRCVIDEOCACHER -----{Environment.NewLine}";
     private static readonly string Footer = $"{Environment.NewLine}# ----- END VRCVIDEOCACHER -----{Environment.NewLine}";
-    private static readonly string HostsPath = $"{Environment.GetFolderPath(Environment.SpecialFolder.System)}/drivers/etc/hosts";
+    private static readonly string HostsPath = OperatingSystem.IsWindows()
+        ? $"{Environment.GetFolderPath(Environment.SpecialFolder.System)}/drivers/etc/hosts"
+        : "/etc/hosts";
 
     public static void TryRun()
     {
@@ -20,7 +22,7 @@ public class HostsManager
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to add host entry: " + ex.Message);
+                Log.Error(ex, "Failed to add host entry: " + ex.ToString());
                 Environment.Exit(1);
             }
         }
@@ -34,7 +36,7 @@ public class HostsManager
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to remove host entry: " + ex.Message);
+                Log.Error(ex, "Failed to remove host entry: " + ex.ToString());
                 Environment.Exit(1);
             }
         }

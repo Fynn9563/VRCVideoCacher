@@ -86,7 +86,7 @@ public class CacheManager
 
         var cachePath = Environment.GetEnvironmentVariable("XDG_CACHE_HOME");
         if (string.IsNullOrEmpty(cachePath))
-            return Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache");
+            cachePath = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache");
 
         return Path.Join(cachePath, "VRCVideoCacher");
     }
@@ -162,11 +162,15 @@ public class CacheManager
             return;
 
         var recentPlayHistory = DatabaseManager.GetPlayHistory();
-        // Evict by category priority (YouTube first, custom domains last), oldest-first within each
-        // Skip categories that are protected from eviction
+        var accessCounts = DatabaseManager.GetVideoAccessCounts();
+        // Evict by category priority (YouTube first, custom domains last),
+        // then least-accessed first, then oldest-modified as tiebreaker.
+        // Skip categories that are protected from eviction.
         var oldestFiles = CachedAssets
             .Where(x => !IsEvictionProtected(x.Value.FileName))
             .OrderBy(x => GetEvictionPriority(x.Value.FileName))
+            .ThenBy(x => accessCounts.GetValueOrDefault(
+                Path.GetFileNameWithoutExtension(x.Value.FileName), 0))
             .ThenBy(x => x.Value.LastModified)
             .ToList();
         while (evictableSize >= maxCacheSize && oldestFiles.Count > 0)
@@ -323,7 +327,7 @@ public class CacheManager
             }
             catch (Exception ex)
             {
-                Log.Error("Failed to delete {FileName}: {Error}", fileName, ex.Message);
+                Log.Error("Failed to delete {FileName}: {Error}", fileName, ex.ToString());
             }
         }
         CachedAssets.Clear();

@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:CodingSeb.Localization.Avalonia"
         x:Class="VRCVideoCacher.Views.PopupWindow"
         Title="VRCVideoCacher"
         Width="600"
@@ -9,7 +10,7 @@
         <TextBlock x:Name="ErrorTextBlock"
                    TextWrapping="Wrap"
                    Margin="0,0,0,20"/>
-        <Button Content="OK"
+        <Button Content="{loc:Tr OK}"
                 Width="80"
                 HorizontalAlignment="Right"
                 Click="OkButton_Click"/>
