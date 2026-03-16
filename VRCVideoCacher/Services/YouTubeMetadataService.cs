@@ -53,6 +53,16 @@ public static class YouTubeMetadataService
         return null;
     }
 
+    public static async Task<VideoInfoCache?> GetVideoMetadataAsync(string videoId)
+    {
+        var cachedInfo = await DatabaseManager.Database.VideoInfoCache.FindAsync(videoId);
+
+        if (videoId.Length == 11 && (cachedInfo == null || string.IsNullOrEmpty(cachedInfo?.Title)))
+            cachedInfo = await GetVideoTitleAsync(videoId);
+
+        return cachedInfo;
+    }
+
     public static async Task<string?> GetThumbnail(string videoId)
     {
         if (string.IsNullOrEmpty(videoId))

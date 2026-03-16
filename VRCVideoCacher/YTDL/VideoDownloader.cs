@@ -222,12 +222,13 @@ public class VideoDownloader
             return false;
         }
 
-        Log.Information("Downloading YouTube Video: {URL}", url);
+        if (string.IsNullOrEmpty(videoId))
+        {
+            Log.Warning("Not downloading YouTube video (no video ID): {URL}", url);
+            return false;
+        }
 
-        var additionalArgs = ConfigManager.Config.YtdlpAdditionalArgs;
-        var cookieArg = string.Empty;
-        if (Program.IsCookiesEnabledAndValid())
-            cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
+        Log.Information("Downloading YouTube Video: {URL}", url);
 
         var audioArg = string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage)
             ? "+ba[acodec=opus][ext=webm]"
@@ -251,16 +252,26 @@ public class VideoDownloader
             }
         };
 
+        var args = new List<string>
+        {
+            "--newline",
+            "--progress-template \"download:%(progress)j\""
+        };
+
         if (videoInfo.DownloadFormat == DownloadFormat.Webm)
         {
-            process.StartInfo.Arguments = $"--encoding utf-8 --newline --progress-template \"download:%(progress)j\" -o \"{tempPaths.WebmPath}\" -f \"bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec~='^av01'][ext=mp4][dynamic_range='SDR']{audioArg}/bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec~='vp9'][ext=webm][dynamic_range='SDR']{audioArg}\" --no-mtime --no-playlist {cookieArg} {additionalArgs} -- \"{videoId}\"";
+            args.Add($"-o \"{tempPaths.WebmPath}\"");
+            args.Add($"-f \"bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec~='^av01'][ext=mp4][dynamic_range='SDR']{audioArg}/bv*[height<={ConfigManager.Config.CacheYouTubeMaxResolution}][vcodec~='vp9'][ext=webm][dynamic_range='SDR']{audioArg}\"");
         }
         else
         {
             // Potato mode.
             var potatoMaxRes = Math.Min(ConfigManager.Config.CacheYouTubeMaxResolution, 1080);
-            process.StartInfo.Arguments = $"--encoding utf-8 --newline --progress-template \"download:%(progress)j\" -o \"{tempPaths.Mp4Path}\" -f \"bv*[height<={potatoMaxRes}][vcodec~='^(avc|h264)']{audioArgPotato}/bv*[height<={potatoMaxRes}][vcodec~='^av01'][dynamic_range='SDR']\" --no-mtime --no-playlist --remux-video mp4 {cookieArg} {additionalArgs} -- \"{videoId}\"";
+            args.Add($"-o \"{tempPaths.Mp4Path}\"");
+            args.Add($"-f \"bv*[height<={potatoMaxRes}][vcodec~='^(avc|h264)']{audioArgPotato}/bv*[height<={potatoMaxRes}][vcodec~='^av01'][dynamic_range='SDR']\"");
+            args.Add("--remux-video mp4");
         }
+        process.StartInfo.Arguments = YtdlManager.GenerateYtdlArgs(args, $"-- \"{videoId}\"");
 
         process.Start();
         await using var reg = ct.Register(() => { try { process.Kill(true); } catch { } });

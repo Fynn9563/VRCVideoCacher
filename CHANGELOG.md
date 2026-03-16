@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.8.1] - 2026-03-17
+
+### Added
+- Start Minimized option in Settings — launch minimized to tray or taskbar
+- "Don't show this again" checkbox in Cookie Setup wizard
+- MOTD banner on Dashboard from remote config
+- Lazy-load metadata and thumbnails for History items without titles
+- Centralized yt-dlp argument builder (`GenerateYtdlArgs`) — cookies, ffmpeg, deno, and config args in one place
+- Deno runtime support for yt-dlp (`--js-runtimes`)
+- Hosts file auto-created with default content if missing
+- CORS header on cookie API endpoint
+
+### Changed
+- Version source of truth moved from hardcoded constant to .csproj `<Version>` property (read via assembly attribute at runtime)
+- yt-dlp and Deno downloads run in parallel on startup
+- `TryGetYouTubeVideoId` returns empty string instead of throwing exceptions
+- Error logging uses full stack traces (`ex.ToString()`) instead of just message
+- PyPyDanceApiService logger context corrected to own type
+- YouTube download validates video ID before proceeding
+
+### Fixed
+- Start minimized now works via config flag instead of `--minimized` CLI arg
+- History tab no longer fully refreshes on every metadata cache update
+
 ## [2.8.0] - 2026-03-08
 
 ### Added

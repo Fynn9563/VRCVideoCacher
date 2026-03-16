@@ -51,7 +51,7 @@ public class BulkPreCache
                 }
                 catch (Exception ex)
                 {
-                    Log.Error("Failed to pre-cache video {Url}: {Error}", url, ex.Message);
+                    Log.Error("Failed to pre-cache video {Url}: {Error}", url, ex.ToString());
                 }
                 continue;
             }
@@ -86,7 +86,7 @@ public class BulkPreCache
             }
             catch (JsonException ex)
             {
-                Log.Error("Failed to parse JSON from {Url}: {Error}", url, ex.Message);
+                Log.Error("Failed to parse JSON from {Url}: {Error}", url, ex.ToString());
             }
         }
     }

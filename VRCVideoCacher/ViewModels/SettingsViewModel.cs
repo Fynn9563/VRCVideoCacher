@@ -94,6 +94,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _closeToTray;
 
+    [ObservableProperty]
+    private bool _startMinimized;
+
     // VRCX Auto-start (Windows only, immediate effect - not saved to config)
     [ObservableProperty]
     private bool _vrcxAutoStart;
@@ -207,6 +210,7 @@ public partial class SettingsViewModel : ViewModelBase
         PatchVRC = config.PatchVrChat;
         AutoUpdate = config.AutoUpdateVrcVideoCacher;
         CloseToTray = config.CloseToTray;
+        StartMinimized = config.StartMinimized;
 
         // VRCX Auto-start (Windows only)
         if (OperatingSystem.IsWindows())
@@ -296,6 +300,7 @@ public partial class SettingsViewModel : ViewModelBase
             PatchVRC != config.PatchVrChat ||
             AutoUpdate != config.AutoUpdateVrcVideoCacher ||
             CloseToTray != config.CloseToTray ||
+            StartMinimized != config.StartMinimized ||
             YtdlArgsOverride != config.YtdlpArgsOverride ||
             CacheCustomDomainsEnabled != config.CacheCustomDomainsEnabled ||
             ClearYouTubeCacheOnExit != config.ClearYouTubeCacheOnExit ||
@@ -332,6 +337,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnPatchVRCChanged(bool value) => CheckForChanges();
     partial void OnAutoUpdateChanged(bool value) => CheckForChanges();
     partial void OnCloseToTrayChanged(bool value) => CheckForChanges();
+    partial void OnStartMinimizedChanged(bool value) => CheckForChanges();
     partial void OnYtdlArgsOverrideChanged(string value) => CheckForChanges();
     partial void OnCacheCustomDomainsEnabledChanged(bool value) => CheckForChanges();
     partial void OnEvictionProtectYouTubeChanged(bool value) => CheckForChanges();
@@ -385,6 +391,7 @@ public partial class SettingsViewModel : ViewModelBase
         config.PatchVrChat = PatchVRC;
         config.AutoUpdateVrcVideoCacher = AutoUpdate;
         config.CloseToTray = CloseToTray;
+        config.StartMinimized = StartMinimized;
 
         // Advanced Settings
         config.YtdlpArgsOverride = YtdlArgsOverride;

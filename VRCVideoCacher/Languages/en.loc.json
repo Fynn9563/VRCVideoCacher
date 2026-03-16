@@ -122,6 +122,7 @@
   "StartWithSteamVR": "Start with SteamVR (Windows only)",
   "StartWithSteamVRTooltip": "Automatically launch VRCVideoCacher when SteamVR starts",
   "CloseToTray": "Close to Tray",
+  "StartMinimized": "Start Minimized",
 
   "AdvancedSettings": "Advanced Settings",
   "AdvancedSettingsDesc": "For power users only - modify at your own risk",
@@ -196,6 +197,7 @@
   "AddHostsEntry": "Add Hosts Entry",
   "OpenChromeWebStore": "Open Chrome Web Store",
   "OpenFirefoxAddons": "Open Firefox Add-ons",
+  "DontShowAgain": "Don't show this again",
 
   "SettingsSaved": "Settings saved!",
   "SettingsReset": "Settings reset to last saved values.",

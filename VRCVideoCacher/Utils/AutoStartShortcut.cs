@@ -64,7 +64,7 @@ public class AutoStartShortcut
         }
         catch (Exception ex)
         {
-            Log.Error("Failed to remove shortcut: {Message}", ex.Message);
+            Log.Error("Failed to remove shortcut: {Message}", ex.ToString());
         }
     }
 

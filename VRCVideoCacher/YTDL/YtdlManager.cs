@@ -34,6 +34,40 @@ public class YtdlManager
         Log.Debug("Using ytdl path: {YtdlPath}", YtdlPath);
     }
 
+    public static readonly string FfmpegPath =
+        Path.Join(Program.UtilsPath, OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg");
+
+    public static readonly string DenoPath =
+        Path.Join(Program.UtilsPath, OperatingSystem.IsWindows() ? "deno.exe" : "deno");
+
+    public static string GenerateYtdlArgs(List<string> args, string urlArg)
+    {
+        args.Insert(0, "--encoding utf-8");
+        args.Insert(1, "--ignore-config");
+        args.Insert(2, "--no-playlist");
+        args.Insert(3, "--no-warnings");
+        args.Insert(4, "--no-mtime");
+        args.Insert(5, "--no-progress");
+
+        if (File.Exists(FfmpegPath))
+            args.Add($"--ffmpeg-location \"{FfmpegPath}\"");
+
+        if (File.Exists(DenoPath))
+            args.Add($"--js-runtimes deno:\"{DenoPath}\"");
+        else
+            Log.Error("Deno runtime not found at {DenoPath}. Some extractors may fail.", DenoPath);
+
+        if (Program.IsCookiesEnabledAndValid())
+            args.Add($"--cookies \"{CookiesPath}\"");
+
+        var additionalArgs = ConfigManager.Config.YtdlpAdditionalArgs;
+        if (!string.IsNullOrEmpty(additionalArgs))
+            args.Add(additionalArgs);
+
+        args.Add(urlArg);
+        return string.Join(" ", args);
+    }
+
     public static void StartYtdlDownloadThread()
     {
         Task.Run(YtdlDownloadTask);
@@ -46,6 +80,7 @@ public class YtdlManager
         {
             await Task.Delay(interval);
             await TryDownloadYtdlp();
+            await VRCVideoCacher.Services.VvcConfigService.GetConfig();
         }
         // ReSharper disable once FunctionNeverReturns
     }

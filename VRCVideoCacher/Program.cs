@@ -19,7 +19,9 @@ namespace VRCVideoCacher;
 internal sealed partial class Program
 {
     public static string YtdlpHash = string.Empty;
-    public const string Version = "2.8.0";
+    public static readonly string Version =
+        typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? "unknown";
     public static ILogger Logger => Log.ForContext("SourceContext", "Core");
     public static readonly string CurrentProcessPath = Path.GetDirectoryName(Environment.ProcessPath) ?? string.Empty;
     public static readonly string DataPath = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VRCVideoCacher");
@@ -80,7 +82,7 @@ internal sealed partial class Program
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Backend error " + ex.Message + " " + ex.StackTrace);
+                    Log.Error(ex, "Backend error " + ex.ToString());
                 }
             });
         }
@@ -137,9 +139,8 @@ internal sealed partial class Program
 
         if (ConfigManager.Config.YtdlpAutoUpdate && !ConfigManager.Config.YtdlpGlobalPath)
         {
-            await YtdlManager.TryDownloadYtdlp();
+            await Task.WhenAll(YtdlManager.TryDownloadYtdlp(), YtdlManager.TryDownloadDeno());
             YtdlManager.StartYtdlDownloadThread();
-            _ = YtdlManager.TryDownloadDeno();
             _ = YtdlManager.TryDownloadFfmpeg();
         }
 
@@ -368,7 +369,7 @@ internal sealed partial class Program
         }
         catch (Exception ex)
         {
-            Logger.Warning("Failed to fetch YouTube username: {Error}", ex.Message);
+            Logger.Warning("Failed to fetch YouTube username: {Error}", ex.ToString());
             _youtubeUsername = null;
         }
     }

@@ -20,7 +20,7 @@ public partial class HistoryItemViewModel : ViewModelBase
     public string? Author { get; init; }
     public bool HasAuthor => !string.IsNullOrEmpty(Author);
 
-    private readonly string? _title;
+    private string? _title;
 
     public string DisplayTitle
     {
@@ -72,6 +72,30 @@ public partial class HistoryItemViewModel : ViewModelBase
             _thumbnailSource = ThumbnailManager.GetThumbnail(Id);
     }
 
+    public async Task LoadMetadataAsync()
+    {
+        if (Id == null)
+            return;
+
+        var videoInfo = await YouTubeMetadataService.GetVideoMetadataAsync(Id);
+
+        if (!string.IsNullOrEmpty(videoInfo?.Title))
+        {
+            _title = videoInfo.Title;
+            OnPropertyChanged(nameof(DisplayTitle));
+        }
+
+        if (string.IsNullOrEmpty(ThumbnailSource))
+        {
+            var thumbnailPath = Id.Length == 11
+                ? await YouTubeMetadataService.GetThumbnail(Id)
+                : ThumbnailManager.GetThumbnail(Id);
+
+            if (!string.IsNullOrEmpty(thumbnailPath))
+                ThumbnailSource = thumbnailPath;
+        }
+    }
+
     [RelayCommand]
     private void OpenUrl()
     {
@@ -109,7 +133,6 @@ public partial class HistoryViewModel : ViewModelBase
     public HistoryViewModel()
     {
         DatabaseManager.OnPlayHistoryAdded += () => Task.Run(RefreshHistory);
-        DatabaseManager.OnVideoInfoCacheUpdated += () => Task.Run(RefreshHistory);
         Task.Run(RefreshHistory);
     }
 
@@ -145,6 +168,15 @@ public partial class HistoryViewModel : ViewModelBase
             foreach (var item in items)
                 HistoryItems.Add(item);
             StatusText = string.Format(Loc.Tr("EntriesCountFormat"), HistoryItems.Count);
+        });
+
+        // Lazy-load metadata for items that don't have titles yet
+        _ = Task.Run(async () =>
+        {
+            foreach (var item in items)
+            {
+                await item.LoadMetadataAsync();
+            }
         });
     }
 }

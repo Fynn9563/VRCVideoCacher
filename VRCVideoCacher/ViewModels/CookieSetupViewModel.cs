@@ -27,6 +27,11 @@ public partial class CookieSetupViewModel : ViewModelBase
     [ObservableProperty]
     private bool _hostState;
 
+    [ObservableProperty]
+    private bool _dontShowAgainChecked;
+
+    public bool IsDontShowAgainCheckboxVisible => !IsStep5 && !(ConfigManager.Config?.CookieSetupCompleted ?? false);
+
     public bool IsStep1 => CurrentStep == 1;
     public bool IsStep2 => CurrentStep == 2;
     public bool IsStep3 => CurrentStep == 3;
@@ -114,6 +119,7 @@ public partial class CookieSetupViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(CanGoNext));
         OnPropertyChanged(nameof(NextButtonText));
+        OnPropertyChanged(nameof(IsDontShowAgainCheckboxVisible));
     }
 
     private static int NextStepFrom(int step) =>
@@ -191,6 +197,12 @@ public partial class CookieSetupViewModel : ViewModelBase
     [RelayCommand]
     private void Cancel()
     {
+        if (DontShowAgainChecked)
+        {
+            ConfigManager.Config.CookieSetupCompleted = true;
+            ConfigManager.TrySaveConfig();
+        }
+
         VRCVideoCacher.Program.OnCookiesUpdated -= OnCookiesUpdated;
         RequestClose?.Invoke();
     }

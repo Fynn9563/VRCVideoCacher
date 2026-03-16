@@ -26,6 +26,27 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
     }
 
+    private async void OnMainWindowOpened(object? sender, EventArgs e)
+    {
+        if (_mainWindow == null)
+            return;
+
+        _mainWindow.Opened -= OnMainWindowOpened;
+
+        if (!ConfigManager.Config.StartMinimized)
+            return;
+
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (ConfigManager.Config.CloseToTray)
+                _mainWindow.Hide();
+            else
+                _mainWindow.WindowState = WindowState.Minimized;
+        }, DispatcherPriority.Background);
+    }
+
     [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "DataValidators is safe to access at startup")]
     public override void OnFrameworkInitializationCompleted()
     {
@@ -74,12 +95,9 @@ public partial class App : Application
                 _trayIcon = null;
             };
 
-            // Check for --minimized flag
-            var args = Environment.GetCommandLineArgs();
-            if (!args.Contains("--minimized"))
-            {
-                _mainWindow.Show();
-            }
+            // Minimize at startup if configured
+            _mainWindow.Opened += OnMainWindowOpened;
+            _mainWindow.Show();
         }
 
         base.OnFrameworkInitializationCompleted();

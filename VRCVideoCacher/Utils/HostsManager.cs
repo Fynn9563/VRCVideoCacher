@@ -22,7 +22,7 @@ public class HostsManager
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to add host entry: " + ex.ToString());
+                Log.Error(ex, "Failed to add host entry");
                 Environment.Exit(1);
             }
         }
@@ -36,7 +36,7 @@ public class HostsManager
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to remove host entry: " + ex.ToString());
+                Log.Error(ex, "Failed to remove host entry");
                 Environment.Exit(1);
             }
         }
@@ -44,6 +44,7 @@ public class HostsManager
 
     private static void Add()
     {
+        CreateHostsIfNotExists();
         var hostsFile = File.ReadAllText(HostsPath);
         if (hostsFile.Contains(Header))
             return;
@@ -54,6 +55,7 @@ public class HostsManager
 
     private static void Remove()
     {
+        CreateHostsIfNotExists();
         var hostsFile = File.ReadAllText(HostsPath);
         if (!hostsFile.Contains(Header))
             return;
@@ -66,7 +68,41 @@ public class HostsManager
 
     public static bool IsHostAdded()
     {
+        if (!File.Exists(HostsPath))
+            return false;
+
         var hostsFile = File.ReadAllText(HostsPath);
         return hostsFile.Contains(Header);
     }
+
+    private static void CreateHostsIfNotExists()
+    {
+        if (!File.Exists(HostsPath))
+        {
+            Log.Information("Hosts file not found at {HostsPath}. Creating a new one with default content.", HostsPath);
+            File.WriteAllText(HostsPath, DefaultHostsFile);
+        }
+    }
+
+    private const string DefaultHostsFile = @"# Copyright (c) 1993-2009 Microsoft Corp.
+#
+# This is a sample HOSTS file used by Microsoft TCP/IP for Windows.
+#
+# This file contains the mappings of IP addresses to host names. Each
+# entry should be kept on an individual line. The IP address should
+# be placed in the first column followed by the corresponding host name.
+# The IP address and the host name should be separated by at least one
+# space.
+#
+# Additionally, comments (such as these) may be inserted on individual
+# lines or following the machine name denoted by a '#' symbol.
+#
+# For example:
+#
+#      102.54.94.97     rhino.acme.com          # source server
+#       38.25.63.10     x.acme.com              # x client host
+# localhost name resolution is handled within DNS itself.
+#    127.0.0.1       localhost
+#    ::1             localhost
+";
 }

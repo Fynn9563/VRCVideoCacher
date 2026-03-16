@@ -219,17 +219,13 @@ public class VideoId
 
     public static async Task<string> TryGetYouTubeVideoId(string url)
     {
-        var additionalArgs = YtdlArgsHelper.GetYtdlArgs();
-        var cookieArg = string.Empty;
-        if (Program.IsCookiesEnabledAndValid())
-            cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
-
+        var args = new List<string> { "-j" };
         var process = new Process
         {
             StartInfo =
             {
                 FileName = YtdlManager.YtdlPath,
-                Arguments = $"--encoding utf-8 --no-playlist --no-warnings {additionalArgs} {cookieArg} -j \"{url}\"",
+                Arguments = YtdlManager.GenerateYtdlArgs(args, $"\"{url}\""),
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -243,12 +239,21 @@ public class VideoId
         var error = await process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync();
         if (process.ExitCode != 0)
-            throw new Exception($"Failed to get video ID: {error.Trim()}");
+        {
+            Log.Warning("Failed to get video ID: {Error}", error.Trim());
+            return string.Empty;
+        }
         if (string.IsNullOrEmpty(rawData))
-            throw new Exception("Failed to get video ID");
+        {
+            Log.Warning("Failed to get video ID: empty response");
+            return string.Empty;
+        }
         var data = JsonSerializer.Deserialize(rawData, VideoIdJsonContext.Default.YtdlpVideoInfo);
         if (data?.Id is null || data.Duration is null)
-            throw new Exception("Failed to get video ID");
+        {
+            Log.Warning("Failed to get video ID: missing ID or duration");
+            return string.Empty;
+        }
         
         DatabaseManager.AddVideoInfoCache(new VideoInfoCache
         {
@@ -260,9 +265,16 @@ public class VideoId
         });
 
         if (data.IsLive == true)
-            throw new Exception("Failed to get video ID: Video is a stream");
+        {
+            Log.Warning("Failed to get video ID: Video is a stream");
+            return string.Empty;
+        }
         if (data.Duration > ConfigManager.Config.CacheYouTubeMaxLength * 60)
-            throw new Exception($"Failed to get video ID: Video is longer than configured max length ({data.Duration / 60}/{ConfigManager.Config.CacheYouTubeMaxLength})");
+        {
+            Log.Warning("Failed to get video ID: Video is longer than configured max length ({Duration}/{MaxLength})",
+                data.Duration / 60, ConfigManager.Config.CacheYouTubeMaxLength);
+            return string.Empty;
+        }
 
         return data.Id;
     }
@@ -283,17 +295,20 @@ public class VideoId
             }
         };
 
-        var additionalArgs = ConfigManager.Config.YtdlpAdditionalArgs;
         var isYouTube = IsYouTubeUrl(url);
-        var cookieArg = string.Empty;
-        if (isYouTube && Program.IsCookiesEnabledAndValid())
-            cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
-
-        var youtubeArgs = isYouTube ? "--impersonate=\"safari\" --extractor-args=\"youtube:player_client=web\"" : "";
-        var languageArg = string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage)
-            ? string.Empty
-            : $" -f [language={ConfigManager.Config.YtdlpDubLanguage}]";
-        process.StartInfo.Arguments = $"--flat-playlist -i -J -s --no-playlist {languageArg} {youtubeArgs} --no-warnings {cookieArg} {additionalArgs} {url}";
+        var args = new List<string>();
+        if (!string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage))
+            args.Add($"-f \"[language={ConfigManager.Config.YtdlpDubLanguage}]\"");
+        args.Add("--flat-playlist");
+        args.Add("-i");
+        args.Add("-J");
+        args.Add("-s");
+        if (isYouTube)
+        {
+            args.Add("--impersonate=\"safari\"");
+            args.Add("--extractor-args=\"youtube:player_client=web\"");
+        }
+        process.StartInfo.Arguments = YtdlManager.GenerateYtdlArgs(args, $"\"{url}\"");
 
         process.Start();
         var output = await process.StandardOutput.ReadToEndAsync();
@@ -343,29 +358,29 @@ public class VideoId
             }
         };
 
-        // yt-dlp -f best/bestvideo[height<=?720]+bestaudio --no-playlist --no-warnings --get-url https://youtu.be/GoSo8YOKSAE
         var url = videoInfo.VideoUrl;
-        var additionalArgs = YtdlArgsHelper.GetYtdlArgs();
         var isYouTube = videoInfo.UrlType == UrlType.YouTube;
-        var cookieArg = string.Empty;
-        if (isYouTube && Program.IsCookiesEnabledAndValid())
-            cookieArg = $"--cookies \"{YtdlManager.CookiesPath}\"";
-
         var maxRes = ConfigManager.Config.CacheYouTubeMaxResolution;
-        var languageArg = string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage)
-            ? string.Empty
-            : $"[language={ConfigManager.Config.YtdlpDubLanguage}]/(mp4/best)[height<=?{maxRes}][height>=?64][width>=?64]";
+        var args = new List<string>();
 
         if (avPro)
         {
-            var youtubeArgs = isYouTube ? "--impersonate=\"safari\" --extractor-args=\"youtube:player_client=web\"" : "";
-            process.StartInfo.Arguments = $"--encoding utf-8 -f \"(mp4/best)[height<=?{maxRes}][height>=?64][width>=?64]{languageArg}\" {youtubeArgs} --no-playlist --no-warnings {cookieArg} {additionalArgs} --get-url \"{url}\"";
+            var languageArg = string.IsNullOrEmpty(ConfigManager.Config.YtdlpDubLanguage)
+                ? string.Empty
+                : $"[language={ConfigManager.Config.YtdlpDubLanguage}]/(mp4/best)[height<=?{maxRes}][height>=?64][width>=?64]";
+            args.Add($"-f \"(mp4/best)[height<=?{maxRes}][height>=?64][width>=?64]{languageArg}\"");
+            if (isYouTube)
+            {
+                args.Add("--impersonate=\"safari\"");
+                args.Add("--extractor-args=\"youtube:player_client=web\"");
+            }
         }
         else
         {
             var codecFilter = isYouTube ? "[vcodec!=av01][vcodec!=vp9.2]" : "";
-            process.StartInfo.Arguments = $"--encoding utf-8 -f \"(mp4/best){codecFilter}[height<=?{maxRes}][height>=?64][width>=?64][protocol^=http]\" --no-playlist --no-warnings {cookieArg} {additionalArgs} --get-url \"{url}\"";
+            args.Add($"-f \"(mp4/best){codecFilter}[height<=?{maxRes}][height>=?64][width>=?64][protocol^=http]\"");
         }
+        process.StartInfo.Arguments = YtdlManager.GenerateYtdlArgs(args, $"--get-url \"{url}\"");
 
         process.Start();
         var output = await process.StandardOutput.ReadToEndAsync();

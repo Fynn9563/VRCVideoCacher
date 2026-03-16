@@ -5,8 +5,21 @@
              xmlns:loc="using:CodingSeb.Localization.Avalonia"
              x:Class="VRCVideoCacher.Views.DashboardView"
              x:DataType="vm:DashboardViewModel">
+<Grid RowDefinitions="Auto, *">
 
-    <ScrollViewer>
+    <Border
+        Grid.Row="0"
+        Background="#1a73e8"
+        IsVisible="{Binding HasMotd}"
+        Padding="12,8">
+        <TextBlock
+            Foreground="White"
+            Text="{Binding Motd}"
+            TextWrapping="Wrap"
+            HorizontalAlignment="Center"
+            FontWeight="Medium" />
+    </Border>
+    <ScrollViewer Grid.Row="1">
         <StackPanel Spacing="20" Margin="10">
             <!-- Header -->
             <Grid ColumnDefinitions="*, Auto">
@@ -132,4 +145,5 @@
 
         </StackPanel>
     </ScrollViewer>
+</Grid>
 </UserControl>

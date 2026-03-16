@@ -343,7 +343,7 @@ public class CacheManager
         }
         catch (Exception ex)
         {
-            Log.Error("Failed to clear thumbnails: {Error}", ex.Message);
+            Log.Error("Failed to clear thumbnails: {Error}", ex.ToString());
         }
 
         OnCacheChanged?.Invoke(string.Empty, CacheChangeType.Cleared);
@@ -411,7 +411,7 @@ public class CacheManager
             }
             catch (Exception ex)
             {
-                Log.Error("Failed to clear {Type} cache: {Error}", type, ex.Message);
+                Log.Error("Failed to clear {Type} cache: {Error}", type, ex.ToString());
             }
         }
 
@@ -442,7 +442,7 @@ public class CacheManager
                 }
                 catch (Exception ex)
                 {
-                    Log.Error("Failed to clear CustomDomain cache for {Domain}: {Error}", domain, ex.Message);
+                    Log.Error("Failed to clear CustomDomain cache for {Domain}: {Error}", domain, ex.ToString());
                 }
             }
         }
@@ -462,7 +462,7 @@ public class CacheManager
         }
         catch (Exception ex)
         {
-            Log.Warning("Failed to check previous session lock file: {Message}", ex.Message);
+            Log.Warning("Failed to check previous session lock file: {Message}", ex.ToString());
         }
     }
 
@@ -475,7 +475,7 @@ public class CacheManager
         }
         catch (Exception ex)
         {
-            Log.Warning("Failed to create lock file: {Message}", ex.Message);
+            Log.Warning("Failed to create lock file: {Message}", ex.ToString());
         }
     }
 
@@ -491,7 +491,7 @@ public class CacheManager
         }
         catch (Exception ex)
         {
-            Log.Warning("Failed to remove lock file: {Message}", ex.Message);
+            Log.Warning("Failed to remove lock file: {Message}", ex.ToString());
         }
     }
 }
