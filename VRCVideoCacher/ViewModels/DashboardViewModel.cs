@@ -174,6 +174,12 @@ public partial class DashboardViewModel : ViewModelBase
     [ObservableProperty]
     private bool _showVRDancingSize;
 
+    [ObservableProperty]
+    private long _customDomainsCacheSize;
+
+    [ObservableProperty]
+    private bool _showCustomDomainsSize;
+
     private void RefreshCacheStats()
     {
         TotalCacheSize = CacheManager.GetTotalCacheSize();
@@ -188,11 +194,13 @@ public partial class DashboardViewModel : ViewModelBase
         YouTubeCacheSize = sizes["YouTube"];
         PyPyDanceCacheSize = sizes["PyPyDance"];
         VrDancingCacheSize = sizes["VRDancing"];
+        CustomDomainsCacheSize = sizes["CustomDomains"];
 
         var config = ConfigManager.Config;
         ShowYouTubeSize = config.CacheYouTube;
         ShowPyPyDanceSize = config.CachePyPyDance;
         ShowVRDancingSize = config.CacheVrDancing;
+        ShowCustomDomainsSize = config.CacheCustomDomainsEnabled;
     }
 
     [RelayCommand]

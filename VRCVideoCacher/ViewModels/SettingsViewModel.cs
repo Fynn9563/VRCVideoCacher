@@ -7,6 +7,8 @@ using CommunityToolkit.Mvvm.Input;
 using Jeek.Avalonia.Localization;
 using VRCVideoCacher.API;
 
+using VRCVideoCacher.Models;
+
 namespace VRCVideoCacher.ViewModels;
 
 public record LanguageOption(string Code, string DisplayName);
@@ -105,6 +107,12 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _clearVRDancingCacheOnExit;
 
+    [ObservableProperty]
+    private bool _cacheCustomDomainsEnabled;
+
+    [ObservableProperty]
+    private bool _evictionProtectCustomDomains;
+
     // Patching
     [ObservableProperty]
     private bool _patchResonite;
@@ -127,6 +135,10 @@ public partial class SettingsViewModel : ViewModelBase
 
     // Blocked URLs
     public ObservableCollection<BlockedUrlEntry> BlockedUrls { get; } = [];
+
+    // Custom domains
+    public ObservableCollection<EditableString> CacheCustomDomains { get; } = [];
+    public ObservableCollection<EditableString> ClearCustomDomainsOnExit { get; } = [];
 
     [ObservableProperty]
     private string _blockRedirect = string.Empty;
@@ -219,6 +231,15 @@ public partial class SettingsViewModel : ViewModelBase
         {
             BlockedUrls.Add(new BlockedUrlEntry(url));
         }
+        CacheCustomDomainsEnabled = config.CacheCustomDomainsEnabled;
+        EvictionProtectCustomDomains = config.EvictionProtectCustomDomains;
+        CacheCustomDomains.Clear();
+        foreach (var domain in config.CacheCustomDomains)
+            CacheCustomDomains.Add(new EditableString(domain));
+        ClearCustomDomainsOnExit.Clear();
+        foreach (var domain in config.ClearCustomDomainsOnExit)
+            ClearCustomDomainsOnExit.Add(new EditableString(domain));
+
         BlockRedirect = config.BlockRedirect;
 
         SelectedLanguageOption = AvailableLanguageOptions.FirstOrDefault(o => o.Code == config.Language)
@@ -295,6 +316,8 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnClearYouTubeCacheOnExitChanged(bool value) => SetHasChanges();
     partial void OnClearPyPyDanceCacheOnExitChanged(bool value) => SetHasChanges();
     partial void OnClearVRDancingCacheOnExitChanged(bool value) => SetHasChanges();
+    partial void OnCacheCustomDomainsEnabledChanged(bool value) => SetHasChanges();
+    partial void OnEvictionProtectCustomDomainsChanged(bool value) => SetHasChanges();
     partial void OnPatchResoniteChanged(bool value) => SetHasChanges();
     partial void OnPatchVRCChanged(bool value) => SetHasChanges();
     partial void OnAutoUpdateChanged(bool value) => SetHasChanges();
@@ -338,6 +361,12 @@ public partial class SettingsViewModel : ViewModelBase
         config.ClearYouTubeCacheOnExit = ClearYouTubeCacheOnExit;
         config.ClearPyPyDanceCacheOnExit = ClearPyPyDanceCacheOnExit;
         config.ClearVRDancingCacheOnExit = ClearVRDancingCacheOnExit;
+        config.CacheCustomDomainsEnabled = CacheCustomDomainsEnabled;
+        config.EvictionProtectCustomDomains = EvictionProtectCustomDomains;
+        config.CacheCustomDomains = CacheCustomDomains
+            .Select(d => d.Value.Trim()).Where(d => !string.IsNullOrEmpty(d)).ToArray();
+        config.ClearCustomDomainsOnExit = ClearCustomDomainsOnExit
+            .Select(d => d.Value.Trim()).Where(d => !string.IsNullOrEmpty(d)).ToArray();
         config.PatchResonite = PatchResonite;
         config.PatchVrChat = PatchVRC;
         config.AutoUpdateVrcVideoCacher = AutoUpdate;
@@ -374,5 +403,33 @@ public partial class SettingsViewModel : ViewModelBase
     private void RemoveBlockedUrl(BlockedUrlEntry url)
     {
         BlockedUrls.Remove(url);
+    }
+
+    [RelayCommand]
+    private void AddCacheCustomDomain()
+    {
+        CacheCustomDomains.Add(new EditableString(string.Empty));
+        SetHasChanges();
+    }
+
+    [RelayCommand]
+    private void RemoveCacheCustomDomain(EditableString entry)
+    {
+        CacheCustomDomains.Remove(entry);
+        SetHasChanges();
+    }
+
+    [RelayCommand]
+    private void AddClearCustomDomainOnExit()
+    {
+        ClearCustomDomainsOnExit.Add(new EditableString(string.Empty));
+        SetHasChanges();
+    }
+
+    [RelayCommand]
+    private void RemoveClearCustomDomainOnExit(EditableString entry)
+    {
+        ClearCustomDomainsOnExit.Remove(entry);
+        SetHasChanges();
     }
 }

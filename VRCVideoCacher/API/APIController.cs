@@ -259,7 +259,8 @@ public class ApiController : WebApiController
         if (!isCached && (
                 (videoInfo.UrlType == UrlType.YouTube && ConfigManager.Config.CacheYouTube) ||
                 (videoInfo.UrlType == UrlType.PyPyDance && ConfigManager.Config.CachePyPyDance) ||
-                (videoInfo.UrlType == UrlType.VRDancing && ConfigManager.Config.CacheVrDancing)))
+                (videoInfo.UrlType == UrlType.VRDancing && ConfigManager.Config.CacheVrDancing) ||
+                (videoInfo.UrlType == UrlType.CustomDomain && ConfigManager.Config.CacheCustomDomainsEnabled)))
         {
             VideoDownloader.QueueDownload(videoInfo);
         }
@@ -279,7 +280,7 @@ public class ApiController : WebApiController
 
     private static (bool isCached, string filePath, string relativeUrl) GetCachedFile(VideoInfo videoInfo, bool avPro)
     {
-        var subdirPath = CacheManager.GetSubdirectoryPath(videoInfo.UrlType);
+        var subdirPath = CacheManager.GetSubdirectoryPath(videoInfo.UrlType, videoInfo.Domain);
         var ext = avPro ? "webm" : "mp4";
         var baseFileName = $"{videoInfo.VideoId}.{ext}";
         var filePath = Path.Join(subdirPath, baseFileName);
@@ -293,7 +294,7 @@ public class ApiController : WebApiController
         }
 
         var relativeUrl = isCached
-            ? CacheManager.GetRelativeUrl(videoInfo.UrlType, baseFileName)
+            ? CacheManager.GetRelativeUrl(videoInfo.UrlType, baseFileName, videoInfo.Domain)
             : string.Empty;
         return (isCached, filePath, relativeUrl);
     }

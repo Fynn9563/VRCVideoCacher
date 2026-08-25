@@ -22,4 +22,6 @@ public class VideoInfo
     public required string VideoId;
     public required UrlType UrlType;
     public required DownloadFormat DownloadFormat;
+    // Set for UrlType.CustomDomain: selects the CustomDomains/<domain>/ cache subdirectory.
+    public string? Domain;
 }

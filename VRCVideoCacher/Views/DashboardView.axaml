@@ -108,6 +108,12 @@
                             <TextBlock Text="{Binding VrDancingCacheSize, Converter={x:Static vm:FileSizeConverter.Instance}}"
                                        Foreground="#666666" FontSize="11"/>
                         </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,1,0,0"
+                                    IsVisible="{Binding ShowCustomDomainsSize}">
+                            <TextBlock Text="{l:Localize CustomDomains}" Foreground="#666666" FontSize="11"/>
+                            <TextBlock Text="{Binding CustomDomainsCacheSize, Converter={x:Static vm:FileSizeConverter.Instance}}"
+                                       Foreground="#666666" FontSize="11"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 

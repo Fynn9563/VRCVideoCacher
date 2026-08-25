@@ -170,6 +170,8 @@
                                   ToolTip.Tip="{l:Localize ProtectPyPyDanceTooltip}"/>
                         <CheckBox IsChecked="{Binding EvictionProtectVRDancing}" Content="{l:Localize ProtectVRDancing}"
                                   ToolTip.Tip="{l:Localize ProtectVRDancingTooltip}"/>
+                        <CheckBox IsChecked="{Binding EvictionProtectCustomDomains}" Content="{l:Localize ProtectCustomDomains}"
+                                  ToolTip.Tip="{l:Localize ProtectCustomDomainsTooltip}"/>
                     </StackPanel>
                 </Border>
 
@@ -187,6 +189,74 @@
                                   ToolTip.Tip="{l:Localize ClearPyPyDanceCacheOnExitTooltip}"/>
                         <CheckBox IsChecked="{Binding ClearVRDancingCacheOnExit}" Content="{l:Localize ClearVRDancingCacheOnExit}"
                                   ToolTip.Tip="{l:Localize ClearVRDancingCacheOnExitTooltip}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- CustomDomains -->
+                <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
+                    <StackPanel Spacing="15">
+                        <StackPanel>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Text="{l:Localize CustomDomains}" FontWeight="SemiBold" FontSize="16" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Command="{Binding AddCacheCustomDomainCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <mi:MaterialIcon Kind="Plus" Width="16" Height="16"/>
+                                        <TextBlock Text="{l:Localize Add}"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                            <TextBlock Text="{l:Localize CustomDomainsDesc}" Foreground="#888" FontSize="12"/>
+                        </StackPanel>
+                        <CheckBox IsChecked="{Binding CacheCustomDomainsEnabled}" Content="{l:Localize EnableCustomDomainCaching}"/>
+
+                        <ItemsControl ItemsSource="{Binding CacheCustomDomains}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="*, Auto" Margin="0,5">
+                                        <TextBox Grid.Column="0" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 Watermark="cdn.example.com"/>
+                                        <Button Grid.Column="1" Margin="5,0,0,0"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveCacheCustomDomainCommand}"
+                                                CommandParameter="{Binding}">
+                                            <mi:MaterialIcon Kind="Delete" Width="16" Height="16"/>
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- CustomDomainsToClearOnExit -->
+                <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
+                    <StackPanel Spacing="15">
+                        <StackPanel>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Text="{l:Localize CustomDomainsToClearOnExit}" FontWeight="SemiBold" FontSize="16" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Command="{Binding AddClearCustomDomainOnExitCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <mi:MaterialIcon Kind="Plus" Width="16" Height="16"/>
+                                        <TextBlock Text="{l:Localize Add}"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                            <TextBlock Text="{l:Localize CustomDomainsToClearOnExitDesc}" Foreground="#888" FontSize="12"/>
+                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding ClearCustomDomainsOnExit}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="*, Auto" Margin="0,5">
+                                        <TextBox Grid.Column="0" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 Watermark="cdn.example.com"/>
+                                        <Button Grid.Column="1" Margin="5,0,0,0"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveClearCustomDomainOnExitCommand}"
+                                                CommandParameter="{Binding}">
+                                            <mi:MaterialIcon Kind="Delete" Width="16" Height="16"/>
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </Border>
 

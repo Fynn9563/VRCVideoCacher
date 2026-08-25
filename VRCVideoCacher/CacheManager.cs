@@ -292,6 +292,29 @@ public class CacheManager
     }
 
     /// Wipes the categories the user marked for clearing. Runs on clean shutdown only.
+    /// Matches a URL's host against the configured custom domains. Compares the host itself, never
+    /// the whole URL, so "https://evil.example/?x=cdn.mysite.com" cannot pass as "cdn.mysite.com".
+    public static bool MatchCustomDomain(Uri uri, out string? domain)
+    {
+        domain = null;
+        var host = uri.Host;
+        foreach (var candidate in ConfigManager.Config.CacheCustomDomains)
+        {
+            if (string.IsNullOrWhiteSpace(candidate))
+                continue;
+
+            var trimmed = candidate.Trim().TrimStart('.');
+            if (host.Equals(trimmed, StringComparison.OrdinalIgnoreCase) ||
+                host.EndsWith('.' + trimmed, StringComparison.OrdinalIgnoreCase))
+            {
+                domain = trimmed;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static void ClearCacheOnExit()
     {
         var directoriesToClear = new List<(UrlType type, string path)>();

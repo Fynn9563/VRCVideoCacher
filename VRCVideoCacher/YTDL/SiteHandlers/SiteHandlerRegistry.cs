@@ -9,6 +9,7 @@ public static class SiteHandlerRegistry
         new YouTubeHandler(),
         new PyPyDanceHandler(),
         new VRDancingHandler(),
+        new CustomDomainHandler(),
         // fallthrough last
         new GenericHandler(),
     ];

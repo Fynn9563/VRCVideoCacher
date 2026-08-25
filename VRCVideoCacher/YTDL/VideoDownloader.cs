@@ -343,8 +343,8 @@ public class VideoDownloader
         await Task.Delay(10);
 
         var baseFileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
-        var fileName = CacheManager.GetRelativePath(videoInfo.UrlType, baseFileName);
-        var relativeUrl = CacheManager.GetRelativeUrl(videoInfo.UrlType, baseFileName);
+        var fileName = CacheManager.GetRelativePath(videoInfo.UrlType, baseFileName, videoInfo.Domain);
+        var relativeUrl = CacheManager.GetRelativeUrl(videoInfo.UrlType, baseFileName, videoInfo.Domain);
         var filePath = Path.Join(CacheManager.CachePath, fileName);
         Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
         if (File.Exists(tempDownloadMp4Path))

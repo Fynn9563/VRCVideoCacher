@@ -185,6 +185,9 @@ public class ConfigModel
     public bool CachePyPyDance = false;
     public bool CacheVrDancing = false;
     public bool CacheOnly = false;
+    public bool CacheCustomDomainsEnabled = false;
+    // Hostnames, e.g. ["cdn.example.com"]. Subdomains of a listed host match too.
+    public string[] CacheCustomDomains = [];
 
     // Categories exempt from size-based eviction. Protected content still counts toward the total
     // reported in the UI, but is not measured against CacheMaxSizeInGb and is never evicted.
