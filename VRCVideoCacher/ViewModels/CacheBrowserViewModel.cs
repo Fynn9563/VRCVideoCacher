@@ -6,6 +6,8 @@ using CommunityToolkit.Mvvm.Input;
 using Jeek.Avalonia.Localization;
 using VRCVideoCacher.Services;
 
+using VRCVideoCacher.Utils;
+
 namespace VRCVideoCacher.ViewModels;
 
 public partial class CacheItemViewModel : ViewModelBase
@@ -26,11 +28,17 @@ public partial class CacheItemViewModel : ViewModelBase
 
     public string SizeFormatted => FormatSize(Size);
 
+    // Shown for audio files that have no artwork
+    [ObservableProperty]
+    private bool _showMusicIcon;
+
     // Event to notify parent when item is deleted
     public event Action<CacheItemViewModel>? OnDeleted;
 
     public async Task LoadMetadataAsync()
     {
+        var filePath = Path.Join(CacheManager.CachePath, FileName);
+
         // Load from DB
         var videoInfo = await YouTubeMetadataService.GetVideoMetadataAsync(VideoId);
 
@@ -40,13 +48,31 @@ public partial class CacheItemViewModel : ViewModelBase
             OnPropertyChanged(nameof(DisplayTitle));
         }
 
-        // Load thumbnail
+        // Detect audio-only files first, including .mp4 with no video stream
+        var isAudioOnly = File.Exists(filePath) && ThumbnailManager.IsAudioOnly(filePath);
+
+        // Cached thumbnail, then the YouTube API, then whatever the file itself carries
         var thumbnailPath = ThumbnailManager.GetThumbnail(VideoId);
         if (VideoId.Length == 11 && string.IsNullOrEmpty(thumbnailPath))
             thumbnailPath = await YouTubeMetadataService.GetThumbnail(VideoId);
 
+        if (string.IsNullOrEmpty(thumbnailPath) && File.Exists(filePath))
+            thumbnailPath = ThumbnailManager.TryExtractEmbeddedThumbnail(VideoId, filePath);
+
+        // Shell thumbnails are video-only; audio files get the music icon instead
+        if (string.IsNullOrEmpty(thumbnailPath) && File.Exists(filePath) && !isAudioOnly)
+            thumbnailPath = ShellThumbnailExtractor.TryExtract(VideoId, filePath, ThumbnailManager.ThumbnailCacheDir);
+
+        // A shell thumbnail for an audio file is just a generic player icon, so drop it
+        if (isAudioOnly && !string.IsNullOrEmpty(thumbnailPath) &&
+            Path.GetExtension(thumbnailPath).Equals(".bmp", StringComparison.OrdinalIgnoreCase))
+            thumbnailPath = null;
+
         if (!string.IsNullOrEmpty(thumbnailPath))
             ThumbnailSource = thumbnailPath;
+
+        if (isAudioOnly)
+            ShowMusicIcon = string.IsNullOrEmpty(ThumbnailSource);
     }
 
     [RelayCommand]
