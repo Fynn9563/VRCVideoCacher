@@ -2,22 +2,46 @@
 
 ## [2.9.0] - 2026-08-26
 
+Rebased onto upstream's sabr branch, five months of upstream work, with this
+fork's own features re-applied on top.
+
 ### Added
-- About page with version, credits, and links to Discord/GitHub/Steam
-- Clear YouTube Cookies button on Dashboard (visible when cookie file exists)
-- Launch args support (`--no-gui`, `--global-path`, `--bypass-admin-warning`, `--disable-error-reporting`)
-- Localizations: Japanese, Korean, Hungarian, Russian, Chinese
-- GitHub issue templates (bug report, feature request)
+- SABR streaming for YouTube: a video that cannot be direct-played is fetched over SABR and served to AVPro as a seekable HLS stream instead of failing
+- Live stream support, with a configurable window and DRC, super-resolution and voice-boosted audio filters
+- Translations for Hungarian, Italian, Japanese, Korean, Portuguese, Russian and Chinese
+- About page with version, credits and links to Discord, GitHub and Steam
+- SteamVR integration through the OpenVR API: registers as a background app, follows the Start with SteamVR setting, and can close when SteamVR does
+- Launch arguments: `--no-gui`, `--global-path`, `--bypass-admin-warning`, `--disable-error-reporting`, `--kill-existing-instance`, `--no-steam`
+- Max Concurrent Downloads setting, with a cancel button and a progress bar showing speed and ETA on each active download
+- Use yt-dlp from PATH is now a settings toggle, not only the `--global-path` launch argument
+- yt-dlp Arguments Override, which replaces the additional arguments rather than appending to them
+- Clear all history button on the History tab
+- MOTD banner renders Markdown
+- Known-unavailable videos are remembered, so a looping player stops re-asking YouTube for a deleted video
+- GitHub issue templates
+- Hosts file management and an elevation helper for it
 - "Other Chromium-based browser" and "Other Firefox-based browser" options in cookie setup
-- SteamVR overlay flag in vrmanifest for native auto-start support
+- Cookie setup now includes a hosts file step
 
 ### Changed
-- Admin warning is now a non-blocking dialog instead of preventing app launch
-- Backend starts regardless of admin status
+- yt-dlp runs with `--ignore-config`, so a global yt-dlp config is ignored rather than deleted. The startup prompt offering to delete it is gone
+- YouTube downloads still run one at a time even with Max Concurrent Downloads above 1. Parallel yt-dlp runs each rewrite the cookie jar with a different rotated token, which is what causes "Sign in to confirm you're not a bot". Concurrency applies to direct downloads and to overlapping them with yt-dlp work
+- Admin warning is a non-blocking dialog instead of preventing launch, and the backend starts regardless of admin status
+- Version numbering stays on 2.x rather than upstream's calendar versioning
 
 ### Fixed
+- Custom domain matching compares the URL host instead of searching the whole URL for the domain text
+- Cached video URLs no longer contain Windows path separators
+- Custom domain downloads no longer fail outright
+- Manifest links (`.m3u8`, `.mpd`) are muxed by yt-dlp instead of the playlist text being saved as the video
+- The Redirect VRDancing label showed as a raw key in Hungarian, Korean, Russian and Chinese
+- index.html is no longer counted as a cached video
 - Cookie "ST-" entries from Firefox causing instant expiration after import
-- App not shutting down cleanly when Close to Tray is disabled (Linux and Windows)
+- App not shutting down cleanly when Close to Tray is disabled
+
+### Security
+- A link such as `https://example.com/?x=cdn.yoursite.com` no longer matches the custom domain `cdn.yoursite.com`. Only the host itself and its subdomains match
+- Crash reporting is disabled. Upstream reports to its own Sentry server by default; this fork ships no telemetry
 
 ## [2.8.1] - 2026-03-17
 

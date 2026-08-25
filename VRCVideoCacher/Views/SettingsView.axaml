@@ -219,7 +219,7 @@
                                 <DataTemplate>
                                     <Grid ColumnDefinitions="*, Auto" Margin="0,5">
                                         <TextBox Grid.Column="0" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                 Watermark="cdn.example.com"/>
+                                                 PlaceholderText="cdn.example.com"/>
                                         <Button Grid.Column="1" Margin="5,0,0,0"
                                                 Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveCacheCustomDomainCommand}"
                                                 CommandParameter="{Binding}">
@@ -252,7 +252,7 @@
                                 <DataTemplate>
                                     <Grid ColumnDefinitions="*, Auto" Margin="0,5">
                                         <TextBox Grid.Column="0" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                 Watermark="cdn.example.com"/>
+                                                 PlaceholderText="cdn.example.com"/>
                                         <Button Grid.Column="1" Margin="5,0,0,0"
                                                 Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveClearCustomDomainOnExitCommand}"
                                                 CommandParameter="{Binding}">
