@@ -3,7 +3,7 @@
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
         <TargetFramework>net10.0</TargetFramework>
-        <Version>2026.8.23</Version>
+        <Version>2.9.0</Version>
         <SentryNoSourceLink>true</SentryNoSourceLink>
         <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
         <Nullable>enable</Nullable>
@@ -26,13 +26,6 @@
         <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
         <!-- IL2037: EF Core 10 DynamicDependency on ExecuteUpdate overload not resolvable by ILLink -->
         <NoWarn>$(NoWarn);IL2037</NoWarn>
-        <!-- Sentry symbol upload for readable stack traces (requires SENTRY_AUTH_TOKEN env var) -->
-        <SentryUploadSymbols Condition="'$(SENTRY_AUTH_TOKEN)' != ''">true</SentryUploadSymbols>
-        <SentryUploadSources Condition="'$(SENTRY_AUTH_TOKEN)' != ''">true</SentryUploadSources>
-        <SentryOrg>phoenixvr</SentryOrg>
-        <SentryProject>vrcvideocacher</SentryProject>
-        <SentryUrl>https://sentry.ellyvr.dev</SentryUrl>
-        <!-- Keep PDB as a separate file so Sentry's MSBuild task can upload it -->
         <DebugType>portable</DebugType>
     </PropertyGroup>
 
@@ -72,13 +65,6 @@
         <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
         <!-- IL2037: EF Core 10 DynamicDependency on ExecuteUpdate overload not resolvable by ILLink -->
         <NoWarn>$(NoWarn);IL2037</NoWarn>
-        <!-- Sentry symbol upload for readable stack traces (requires SENTRY_AUTH_TOKEN env var) -->
-        <SentryUploadSymbols Condition="'$(SENTRY_AUTH_TOKEN)' != ''">true</SentryUploadSymbols>
-        <SentryUploadSources Condition="'$(SENTRY_AUTH_TOKEN)' != ''">true</SentryUploadSources>
-        <SentryOrg>phoenixvr</SentryOrg>
-        <SentryProject>vrcvideocacher</SentryProject>
-        <SentryUrl>https://sentry.ellyvr.dev</SentryUrl>
-        <!-- Keep PDB as a separate file so Sentry's MSBuild task can upload it -->
         <DebugType>portable</DebugType>
     </PropertyGroup>
     

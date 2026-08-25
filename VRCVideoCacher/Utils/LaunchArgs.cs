@@ -1,4 +1,4 @@
-namespace VRCVideoCacher.Utils;
+﻿namespace VRCVideoCacher.Utils;
 
 public class LaunchArgs
 {
@@ -14,7 +14,7 @@ public class LaunchArgs
 
     public static bool IsBypassArgumentPresent;
     public static bool HasGui = true;
-    public static bool ErrorReporting = true;
+    public static bool ErrorReporting;
     public static bool UseGlobalPath;
     public static int? OldPid;
     public static bool KillExistingInstance = false;

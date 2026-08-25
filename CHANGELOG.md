@@ -1,0 +1,329 @@
+# Changelog
+
+## [2.9.0] - 2026-08-26
+
+### Added
+- About page with version, credits, and links to Discord/GitHub/Steam
+- Clear YouTube Cookies button on Dashboard (visible when cookie file exists)
+- Launch args support (`--no-gui`, `--global-path`, `--bypass-admin-warning`, `--disable-error-reporting`)
+- Localizations: Japanese, Korean, Hungarian, Russian, Chinese
+- GitHub issue templates (bug report, feature request)
+- "Other Chromium-based browser" and "Other Firefox-based browser" options in cookie setup
+- SteamVR overlay flag in vrmanifest for native auto-start support
+
+### Changed
+- Admin warning is now a non-blocking dialog instead of preventing app launch
+- Backend starts regardless of admin status
+
+### Fixed
+- Cookie "ST-" entries from Firefox causing instant expiration after import
+- App not shutting down cleanly when Close to Tray is disabled (Linux and Windows)
+
+## [2.8.1] - 2026-03-17
+
+### Added
+- Start Minimized option in Settings -- launch minimized to tray or taskbar
+- "Don't show this again" checkbox in Cookie Setup wizard
+- MOTD banner on Dashboard from remote config
+- Lazy-load metadata and thumbnails for History items without titles
+- Centralized yt-dlp argument builder (`GenerateYtdlArgs`) -- cookies, ffmpeg, deno, and config args in one place
+- Deno runtime support for yt-dlp (`--js-runtimes`)
+- Hosts file auto-created with default content if missing
+- CORS header on cookie API endpoint
+
+### Changed
+- Version source of truth moved from hardcoded constant to .csproj `<Version>` property (read via assembly attribute at runtime)
+- yt-dlp and Deno downloads run in parallel on startup
+- `TryGetYouTubeVideoId` returns empty string instead of throwing exceptions
+- Error logging uses full stack traces (`ex.ToString()`) instead of just message
+- PyPyDanceApiService logger context corrected to own type
+- YouTube download validates video ID before proceeding
+
+### Fixed
+- Start minimized now works via config flag instead of `--minimized` CLI arg
+- History tab no longer fully refreshes on every metadata cache update
+
+## [2.8.0] - 2026-03-08
+
+### Added
+- History tab -- view recently played videos with thumbnails, type badges, and action buttons
+- SteamVR auto-start -- register as SteamVR plugin so it launches with VR
+- Frequency-aware cache eviction -- frequently watched videos stay cached longer
+- Cookie setup wizard hosts file step (Step 4) on Windows
+- Host toggle state syncs between Dashboard and cookie setup wizard
+- Thumbnail fallback icon for videos without thumbnails in History
+- Multi-language support (i18n) using CodingSeb.Localization.Avalonia -- all UI strings localized
+- Language selector in Settings under new General section
+- Crowdin integration for community translations (GitHub Actions workflow)
+- Close to Tray option in Settings -- minimize to tray on window close instead of exiting
+- Unsaved settings indicator -- shows warning when settings differ from saved config
+- Smart change detection -- toggling a setting back to its saved value clears the unsaved warning
+- Linux privilege elevation for hosts toggle (pkexec, sudo -A, pressure vessel/Steam Deck support)
+- Auto-detect system language on first launch for i18n
+
+### Changed
+- History deduplicates entries within 5-second window to prevent VRChat multi-request spam
+- Nav order: Dashboard, History, Cache Browser, Downloads, Logs, Settings
+- Cache Browser defers data load to OnLoaded for faster navigation
+- Settings header (title, status, save/reset buttons) is now sticky above the scrollable content
+- Tray icon menu items update dynamically when language changes
+- README simplified with centered banner and Steam/GitHub download badges
+- `YtdlpPath` config replaced with `YtdlpGlobalPath` boolean toggle
+- `YtdlpWebServerURL` config renamed to `YtdlpWebServerUrl` (old key still loads via JsonProperty)
+- UtilsPath moved to a fixed location under AppData
+- Updater downloads to temp file and hash-checks before replacing binary
+- Global yt-dlp config check extracted to dedicated `YtdlpGlobalConfig` class
+- Cookie validation endpoint changed from `/account` to `/new`
+- First-run console setup only runs in `--nogui` mode
+
+### Fixed
+- Taskkill / Task Manager not quitting the app when Close to Tray is enabled (Win32 WndProc hook)
+- Linux SIGTERM not shutting down cleanly (PosixSignalRegistration handler)
+- Linux cache path missing `VRCVideoCacher` subdirectory when XDG_CACHE_HOME is unset
+- UAC cancellation on Windows hosts toggle no longer logs an error
+- Hosts toggle verifies the entry after elevation instead of trusting the exit code
+
+### Removed
+- File logging (logs/VRCVideoCacher.log) -- console and in-app log viewer are sufficient
+- Old yt-dlp version file migration (`yt-dlp.version.txt`)
+
+## [2.7.0] - 2026-02-25
+
+### Added
+- Hosts file toggle -- redirect `localhost.youtube.com` to `127.0.0.1` with UAC elevation
+- YouTube URL resolver support (dmn.moe, u2b.cx, t-ne.x0.to, nextnex.com, r.0cm.org)
+- Remote config service (motd, prefetch retry count from vvc.ellyvr.dev)
+- Sensitive data logging for EF Core (debug builds)
+
+### Changed
+- Config and data files moved to `%AppData%/VRCVideoCacher` (auto-migrates from exe directory)
+- `Path.Combine` replaced with `Path.Join` across codebase
+- WebServer reinitializes cleanly on URL change
+- AsNoTracking for play history queries
+
+### Fixed
+- Config migration failing when exe and AppData are on different drives
+
+## [2.6.1] - 2026-02-14
+
+### Fixed
+- YouTube-specific yt-dlp args leaked to non-YouTube URLs in Resonite mode
+- Custom domain streaming prefetch failing to load
+
+### Changed
+- Download queue log includes URL type (e.g., `Queued YouTube download: "id"`)
+
+## [2.6.0] - 2026-02-14
+
+### Added
+- Concurrent downloads with configurable max (1-8, default 2) in Settings
+- Per-download progress bars for YouTube, custom domain, and HTTP downloads
+- yt-dlp JSON progress parsing via `--progress-template` for accurate real-time progress
+- Cancel button on active downloads (kills entire process tree)
+- Download queue UI shows multiple active downloads with individual progress
+
+### Fixed
+- Large custom domain downloads (HLS streams) no longer block YouTube and other downloads
+- Custom domain streaming videos failing to download
+
+### Changed
+- Downloads use per-download temp directories to avoid file conflicts
+- Stale temp directories cleaned up on startup
+
+## [2.5.1] - 2026-02-13
+
+### Fixed
+- `CacheYouTubeMaxResolution` setting ignored in URL resolution path (was hardcoded to 1080p)
+- YouTube-specific codec filters (`vcodec!=av01`, `vcodec!=vp9.2`) applied to non-YouTube URLs (e.g., Twitch), causing 500 errors
+- Potato mode (Unity player) download ignoring max resolution setting (now respects config, capped at 1080p)
+
+## [2.5.0] - 2026-02-13
+
+### Added
+- EF Core SQLite database for video metadata cache and play history
+- Admin check - warns when running with elevated privileges
+- Cache only mode - serve only cached content without downloading
+- Cookie validation on dashboard - checks cookies online and shows Valid/Expired status
+- PyPyDance API service for fetching song metadata and thumbnails
+- VRDancing API service for fetching dance metadata and thumbnails
+- Embedded thumbnail extraction from media files using TagLibSharp
+- OS-level video thumbnail extraction (Windows Shell API, Linux freedesktop/D-Bus)
+- Audio-only file detection including `.mp4` files with no video stream
+- Generic popup window for error messages
+- Trim cache automatically when max size setting is changed
+- Delete associated thumbnails when removing cached videos (preserves recently played)
+- Per-category cache size breakdown on Dashboard (YouTube, PyPyDance, VRDancing, Custom Domains)
+- Eviction protection settings - protect specific categories from cache eviction
+- Tooltips and description text on all settings for better discoverability
+
+### Changed
+- Config properties renamed to PascalCase (e.g., `ytdlPath` → `YtdlpPath`)
+- Default cache max size changed to 10 GB
+- Cache eviction priority: YouTube first, then PyPyDance, VRDancing, custom domains last
+- Converted to scoped namespaces throughout codebase
+- Thumbnails managed via ThumbnailManager instead of YouTubeMetadataService
+- Reorganized ConfigModel with categorized sections
+- Status bar shows evictable vs limit when eviction protection is active, with total in parentheses
+
+### Fixed
+- `-J` flag in URL causing yt-dlp to output JSON instead of downloading
+- Accidentally blocking API calls
+- Config file corruption handling (recreates on JSON parse failure)
+- Linux Steam folder detection (handle multiple and empty folders)
+- AVPro prefetch retry when initial prefetch fails
+- BlockRedirect UI binding
+- Nullable warnings in VRDancingAPIService
+- Suppressed IL2037 EF Core trimming warning
+- Absolute path for winget on Windows
+- Cache eviction counting protected content toward the max size limit
+
+## [2.4.2] - 2026-01-27
+
+### Fixed
+- PreCacheUrls now properly supports YouTube and other video URLs (not just JSON endpoints)
+
+## [2.4.1] - 2026-01-27
+
+### Fixed
+- Removed AVPro size fallback that was causing issues
+- Process handle cleanup when checking for existing instances
+
+## [2.4.0] - 2026-01-22
+
+### Added
+- Clickable URL button in log viewer for YouTube and custom domain URLs (excludes localhost and googlevideo.com)
+- Cookie status display in Settings (shows logged-in YouTube account email)
+- Browser-specific URL opening in cookie setup wizard (opens in Chrome/Firefox based on selection)
+
+## [2.3.1] - 2026-01-21
+
+### Fixed
+- VRCX auto-start toggle applying immediately instead of waiting for save
+
+## [2.3.0] - 2026-01-21
+
+### Added
+- File logging (logs/VRCVideoCacher.log with 5-day retention)
+
+## [2.2.0] - 2026-01-21
+
+### Changed
+- Switch to semantic versioning (from date-based versioning)
+
+### Fixed
+- build-dev.bat now preserves Config.json
+
+## [2026.1.21] - 2026-01-20
+
+### Added
+- Transition logic for semver versioning (next release will be `2.2.0`)
+- Resonite mode support (from EllyVR/UI branch)
+- BlockRedirect setting for blocked URLs
+
+### Changed
+- Moved utility classes to Utils/ folder
+- Removed ytdlDelay setting
+
+## [2026.1.20] - 2026-01-18
+
+### Fixed
+- Update loop caused by version mismatch in 2026.1.19 release
+- Updater failing when backup file already exists (now uses versioned backup filename)
+
+## [2026.1.19] - 2026-01-18
+
+### Added
+- VRCX auto-start toggle in Settings UI
+
+### Fixed
+- Custom domain folder naming (use `vr-m.net` instead of `vr-m_net`)
+
+## [2026.1.18] - 2026-01-18
+
+### Added
+- Merged UI project into main VRCVideoCacher project (single executable)
+- 360p resolution option
+- Custom domain caching support (`CacheCustomDomains` config)
+- Cache clearing on exit (`ClearYouTubeCacheOnExit`, `ClearPyPyDanceCacheOnExit`, `ClearVRDancingCacheOnExit`, `ClearCustomDomainsOnExit`)
+- `avproOverride` to force AVPro mode for all requests
+- `ytdlArgsOverride` to completely override yt-dlp arguments
+- Category badges in cache browser UI
+- UI settings for all new config options
+- `PreCacheUrls` setting with support for direct video URLs
+- Category filtering dropdown in cache browser
+- Video thumbnails for custom domain videos (extracted via FFmpeg)
+- Music icon for audio-only cached files
+- Auto-refresh cache browser when video downloads complete
+- Mutex to prevent multiple instances
+
+### Changed
+- Organized cached videos into subdirectories by type (YouTube/, PyPyDance/, VRDancing/, CustomDomains/)
+- Updated auto-updater to use Fynn9563 fork releases
+- Cache audio-only detection to avoid repeated FFmpeg runs
+
+### Fixed
+- "Open on YouTube" button for custom domain videos
+- Custom domain streaming URLs (m3u8/mpd) - skip yt-dlp and use direct URL
+- Retry without AVPro if prefetch fails
+
+## [2025.11.24] - 2025-11-24
+
+### Added
+- Avalonia-based graphical interface
+- Cache browser with thumbnails and video metadata
+- Settings UI for all configuration options
+- Download queue viewer
+- Log viewer
+
+## [2025.11.15] - 2025-11-15
+
+### Added
+- Custom Resonite path support
+- Simple setup with defaults
+
+### Fixed
+- Autostart shortcut path updater
+- Updater now uses absolute path
+- Config saves after edit
+
+## [2025.11.8] - 2025-11-08
+
+### Added
+- Prefetching for YouTube to fix playback issues
+
+### Fixed
+- YouTube resolve delay now runs when using third-party resolvers
+
+## [2025.11.5] - 2025-11-11
+
+### Fixed
+- PyPyDance error handling improvements
+- Handle caching multiple formats for same video
+
+## [2025.10.3] - 2025-10-03
+
+### Added
+- Bypass for "VFI - Cinema" URLs
+
+### Fixed
+- Linux updater not setting executable permission
+
+## [2025.9.29] - 2025-09-29
+
+### Changed
+- Auto remove readonly attribute when VRCVideoCacher isn't running
+- Updated block list behavior
+
+## [2025.1.8] - 2025-01-08
+
+### Added
+- Initial versioned release
+
+## [2024.11.27] - 2024-12-03
+
+### Added
+- Initial release
+
+---
+
+For older releases, see [GitHub Releases](https://github.com/Fynn9563/VRCVideoCacher/releases).

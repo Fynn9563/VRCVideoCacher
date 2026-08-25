@@ -1,7 +1,7 @@
 ﻿{
     "source" : "builtin",
     "applications" : [{
-        "app_key" : "com.github.ellyvr.vrcvideocacher",
+        "app_key" : "com.github.fynn9563.vrcvideocacher",
         "launch_type" : "binary",
         "binary_path_windows": "VRCVideoCacher.exe",
         "binary_path_linux": "VRCVideoCacher",

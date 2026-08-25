@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using Sentry.Serilog;
 using Serilog;
 using Serilog.Templates;
@@ -9,13 +9,16 @@ namespace VRCVideoCacher.Utils;
 
 public static class LoggerUtils
 {
-    private const string SentryDsn = "https://233e3c027a6239500a4bb3ba81f99ddd@sentry.ellyvr.dev/19";
+    // Empty: this fork ships no crash reporting. Set a DSN here to turn it back on.
+    private const string SentryDsn = "";
     private static readonly string LogsPath = Path.Join(Program.DataPath, "Logs");
     private static DateTime? LoggerStartDateTime;
 
+    private static bool ErrorReportingEnabled => LaunchArgs.ErrorReporting && !string.IsNullOrEmpty(SentryDsn);
+
     public static void InitializeLogger()
     {
-        if (LaunchArgs.ErrorReporting)
+        if (ErrorReportingEnabled)
         {
             SentrySdk.Init(GetSentryOptions());
         }
@@ -31,7 +34,7 @@ public static class LoggerUtils
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 5);
 
-        if (LaunchArgs.ErrorReporting)
+        if (ErrorReportingEnabled)
         {
             loggerConfiguration = loggerConfiguration.WriteTo.Sentry(ConfigureSentryOptions);
         }
@@ -56,7 +59,7 @@ public static class LoggerUtils
 
         try
         {
-            if (LaunchArgs.ErrorReporting)
+            if (ErrorReportingEnabled)
             {
                 SentrySdk.ConfigureScope(scope =>
                 {

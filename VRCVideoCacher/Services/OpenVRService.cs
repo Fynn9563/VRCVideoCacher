@@ -51,19 +51,19 @@ public class OpenVRService
                         }
                         else
                         {
-                            if (OpenVR.Applications.IsApplicationInstalled("com.github.ellyvr.vrcvideocacher"))
+                            if (OpenVR.Applications.IsApplicationInstalled("com.github.fynn9563.vrcvideocacher"))
                             {
                                 Logger.Information("Startup manifest registered successfully");
 
                                 Logger.Information("{AutoLaunchState} steamvr auto-launch", ConfigManager.Config.StartWithSteamVr ? "Enabling" : "Disabling");
-                                OpenVR.Applications.SetApplicationAutoLaunch("com.github.ellyvr.vrcvideocacher", ConfigManager.Config.StartWithSteamVr);
+                                OpenVR.Applications.SetApplicationAutoLaunch("com.github.fynn9563.vrcvideocacher", ConfigManager.Config.StartWithSteamVr);
                             }
                             else
                             {
                                 Logger.Warning("Failed to register startup manifest");
                             }
                         }
-                        if (LaunchArgs.CloseWithSteamVr || true)
+                        if (LaunchArgs.CloseWithSteamVr)
                         {
                             await PollEventsUntilQuit();
                         }
