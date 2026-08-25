@@ -29,17 +29,17 @@
         <DebugType>portable</DebugType>
     </PropertyGroup>
 
-    <!-- SABR feature-branch test build. Same as Release, but:
-           * version becomes 2026.x.y-sabr, so testers (and Sentry) can tell it apart at a glance;
-           * the self-updater is disabled (see SABRRELEASE in Program.cs). That is NOT optional: "-sabr"
+    <!-- Local test build. Same as Release, but:
+           * version carries a "-dev" suffix, so a test build is obvious at a glance;
+           * the self-updater is disabled (see DEVRELEASE in Program.cs). That is NOT optional: "-dev"
              is a SemVer PRERELEASE, which ranks BELOW the plain release, so the updater would decide
-             mainline is newer and overwrite every tester's build with it. -->
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='SabrRelease|AnyCPU'">
-        <DefineConstants>SABRRELEASE</DefineConstants>
+             the published release is newer and overwrite the build being tested. -->
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|AnyCPU'">
+        <DefineConstants>DEVRELEASE</DefineConstants>
         <!-- Appends to the <Version> set above. NOT VersionSuffix: that is only honoured when the version
              is composed from VersionPrefix, and this project sets <Version> outright, so VersionSuffix is
              silently ignored. -->
-        <Version>$(Version)-sabr</Version>
+        <Version>$(Version)-dev</Version>
         <PublishSingleFile>true</PublishSingleFile>
         <SelfContained>true</SelfContained>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>

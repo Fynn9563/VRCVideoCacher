@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mi="using:Material.Icons.Avalonia"
              xmlns:l="using:Jeek.Avalonia.Localization"
@@ -25,6 +25,7 @@
 
                     <StackPanel Spacing="5">
                         <TextBlock Text="{Binding CreatedBy}"/>
+                        <TextBlock Text="{Binding ModifiedBy}"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="15">
                         <Button Click="OnDiscordClick" ToolTip.Tip="Discord">

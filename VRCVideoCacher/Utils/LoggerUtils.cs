@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Sentry.Serilog;
 using Serilog;
 using Serilog.Templates;
@@ -111,9 +111,6 @@ public static class LoggerUtils
         var platform = OperatingSystem.IsLinux() ? "linux" : "windows";
 #if STEAMRELEASE
         o.Environment = $"steam-{platform}";
-#elif SABRRELEASE
-        // Keep feature-branch crashes out of the production Sentry environment.
-        o.Environment = $"sabr-{platform}";
 #else
         o.Environment = platform;
 #endif

@@ -167,5 +167,6 @@
   "CancelDownload": "Cancel download",
   "ClearAllHistory": "Clear all history",
   "OpenUrl": "Open URL",
-  "CopyUrl": "Copy URL"
+  "CopyUrl": "Copy URL",
+  "ModifiedBy": "Modified By"
 }

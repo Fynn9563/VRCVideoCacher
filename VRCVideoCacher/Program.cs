@@ -18,7 +18,9 @@ namespace VRCVideoCacher;
 internal sealed class Program
 {
     public static string YtdlpHash = string.Empty;
-    // Versioning is YEAR.MONTH.RELEASE — set in the .csproj <Version> property
+    // Semantic versioning (MAJOR.MINOR.PATCH), set in the .csproj <Version> property.
+    // Upstream uses CalVer (YEAR.MONTH.RELEASE), which sorts ABOVE this fork's 2.x, so the updater
+    // must never point at upstream's releases or every build replaces itself. See Updater.UpdateUrl.
     public static readonly string Version =
         typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? "unknown";
@@ -27,6 +29,7 @@ internal sealed class Program
     public const string Creator_Haxy = "Haxy";
     public const string Creator_Hauskaz = "Hauskaz";
     public const string Creator_DubyaDude = "DubyaDude";
+    public const string Modifier_Fynn = "Fynn9563";
     public static ILogger Logger = Log.ForContext("SourceContext", "Core");
     public static readonly string CurrentProcessPath = Path.GetDirectoryName(Environment.ProcessPath) ?? string.Empty;
     public static readonly string DataPath = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VRCVideoCacher");
@@ -99,6 +102,7 @@ internal sealed class Program
         Logger = Log.ForContext("SourceContext", "Core");
 
         Logger.Information("VRCVideoCacher version {Version} created by {Elly}, {Natsumi}, {Haxy}, {Hauskaz}, {DubyaDude}", Version, Creator_Elly, Creator_Natsumi, Creator_Haxy, Creator_Hauskaz, Creator_DubyaDude);
+        Logger.Information("Modified by {Fynn}", Modifier_Fynn);
 
         TaskScheduler.UnobservedTaskException += (_, e) =>
         {
@@ -155,10 +159,10 @@ internal sealed class Program
         // Surface a fixed-port (9696) conflict up front — with the offending process — before WebServer
         // throws an opaque bind error. Reassignable ports (bgutil) handle themselves when they start.
         PortAudit.CheckWebServerPort();
-        // SABRRELEASE: the version carries a "-sabr" suffix, which SemVer ranks BELOW the plain release —
-        // so the updater would consider mainline "newer" and overwrite the test build. Never self-update
-        // a feature-branch build.
-#if !STEAMRELEASE && !SABRRELEASE
+        // DEVRELEASE: the version carries a "-dev" suffix, which SemVer ranks BELOW the plain release,
+        // so the updater would consider the published release "newer" and overwrite the build being
+        // tested. Never self-update a local test build.
+#if !STEAMRELEASE && !DEVRELEASE
         await Updater.CheckForUpdates();
 #endif
         Updater.Cleanup();
