@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using Avalonia.Input.Platform;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -148,6 +148,17 @@ public partial class HistoryViewModel : ViewModelBase
     }
 
     private bool _isRefreshing;
+
+    [RelayCommand]
+    private void ClearHistory()
+    {
+        DatabaseManager.ClearPlayHistory();
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            HistoryItems.Clear();
+            StatusText = string.Format(Localizer.Get("EntriesCountFormat"), 0);
+        });
+    }
 
     [RelayCommand]
     private void Refresh()

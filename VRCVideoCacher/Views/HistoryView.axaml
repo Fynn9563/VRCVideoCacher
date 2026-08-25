@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:VRCVideoCacher.ViewModels"
              xmlns:mi="using:Material.Icons.Avalonia"
@@ -12,9 +12,14 @@
         <!-- Header -->
         <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="10">
             <TextBlock Text="{l:Localize History}" FontSize="24" FontWeight="Bold"/>
-            <Button Grid.Column="1" Command="{Binding RefreshCommand}" ToolTip.Tip="{l:Localize Refresh}">
-                <mi:MaterialIcon Kind="Refresh" Width="20" Height="20"/>
-            </Button>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Button Command="{Binding ClearHistoryCommand}" ToolTip.Tip="{l:Localize ClearAllHistory}">
+                    <mi:MaterialIcon Kind="DeleteSweep" Width="20" Height="20"/>
+                </Button>
+                <Button Command="{Binding RefreshCommand}" ToolTip.Tip="{l:Localize Refresh}">
+                    <mi:MaterialIcon Kind="Refresh" Width="20" Height="20"/>
+                </Button>
+            </StackPanel>
         </Grid>
 
         <!-- History List -->
@@ -46,10 +51,10 @@
 
                             <!-- Action Buttons -->
                             <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                <Button Command="{Binding OpenUrlCommand}" ToolTip.Tip="Open URL" Padding="8">
+                                <Button Command="{Binding OpenUrlCommand}" ToolTip.Tip="{l:Localize OpenUrl}" Padding="8">
                                     <mi:MaterialIcon Kind="OpenInNew" Width="18" Height="18"/>
                                 </Button>
-                                <Button Command="{Binding CopyUrlCommand}" ToolTip.Tip="Copy URL" Padding="8">
+                                <Button Command="{Binding CopyUrlCommand}" ToolTip.Tip="{l:Localize CopyUrl}" Padding="8">
                                     <mi:MaterialIcon Kind="ContentCopy" Width="18" Height="18"/>
                                 </Button>
                             </StackPanel>

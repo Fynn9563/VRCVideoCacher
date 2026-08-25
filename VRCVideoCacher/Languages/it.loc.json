@@ -164,5 +164,8 @@
   "ProtectCustomDomainsTooltip": "Custom domain videos will not be deleted when the cache exceeds the max size",
   "MaxConcurrentDownloads": "Max Concurrent Downloads",
   "MaxConcurrentDownloadsTooltip": "How many videos download at once. YouTube downloads still run one at a time, because parallel yt-dlp runs corrupt the cookie session.",
-  "CancelDownload": "Cancel download"
+  "CancelDownload": "Cancel download",
+  "ClearAllHistory": "Clear all history",
+  "OpenUrl": "Open URL",
+  "CopyUrl": "Copy URL"
 }

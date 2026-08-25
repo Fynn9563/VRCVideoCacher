@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using VRCVideoCacher.Database.Models;
 using VRCVideoCacher.Models;
@@ -71,6 +71,14 @@ public static class DatabaseManager
         }
         db.SaveChanges();
         OnVideoInfoCacheUpdated?.Invoke();
+    }
+
+    public static void ClearPlayHistory()
+    {
+        using var db = ContextFactory.CreateDbContext();
+        db.PlayHistory.RemoveRange(db.PlayHistory);
+        db.SaveChanges();
+        OnPlayHistoryAdded?.Invoke();
     }
 
     public static List<History> GetPlayHistory(int limit = 50)
