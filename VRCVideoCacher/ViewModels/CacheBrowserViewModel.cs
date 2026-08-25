@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using Avalonia.Input.Platform;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -67,7 +67,8 @@ public partial class CacheItemViewModel : ViewModelBase
     [RelayCommand]
     private async Task CopyUrl()
     {
-        var url = $"{ConfigManager.Config.YtdlpWebServerUrl}/{FileName}";
+        var relativeUrl = FileName.Replace('\\', '/');
+        var url = $"{ConfigManager.Config.YtdlpWebServerUrl}/{relativeUrl}";
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
         {
             var clipboard = desktop.MainWindow?.Clipboard;

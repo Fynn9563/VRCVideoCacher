@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Serilog;
 using VRCVideoCacher.Models;
 using VRCVideoCacher.Services.Sabr;
@@ -232,8 +232,9 @@ public static class SabrRestreamService
 
         // H.264/VP9 + Opus in MP4 — the same combination AVPro already plays in our HLS segments, so no
         // separate AAC fetch is needed. GetCachedFile falls back to .mp4 for the avpro=true case too.
-        var fileName = $"{videoId}.mp4";
+        var fileName = CacheManager.GetRelativePath(UrlType.YouTube, $"{videoId}.mp4");
         var filePath = Path.Join(CacheManager.CachePath, fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
         if (File.Exists(filePath))
             return;
 
@@ -321,7 +322,7 @@ public static class SabrRestreamService
         if (!CacheConverges)
             return; // APIController already queued the download
 
-        var fileName = $"{videoInfo.VideoId}.mp4";
+        var fileName = CacheManager.GetRelativePath(UrlType.YouTube, $"{videoInfo.VideoId}.mp4");
         if (File.Exists(Path.Join(CacheManager.CachePath, fileName)))
             return; // the session produced it from the streamed fragments
 

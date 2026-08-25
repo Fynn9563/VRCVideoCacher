@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using EmbedIO;
 using EmbedIO.Routing;
 using EmbedIO.WebApi;
@@ -135,11 +135,11 @@ public class ApiController : WebApiController
             return;
         }
 
-        var (isCached, filePath, fileName) = GetCachedFile(videoInfo.VideoId, avPro);
+        var (isCached, filePath, relativeUrl) = GetCachedFile(videoInfo, avPro);
         if (isCached)
         {
             File.SetLastWriteTimeUtc(filePath, DateTime.UtcNow);
-            var url = $"{ConfigManager.Config.YtdlpWebServerUrl}/{fileName}";
+            var url = $"{ConfigManager.Config.YtdlpWebServerUrl}/{relativeUrl}";
             Log.Information("Responding with Cached URL: {URL}", url);
             await HttpContext.SendStringAsync(url, "text/plain", Encoding.UTF8);
             return;
@@ -255,7 +255,7 @@ public class ApiController : WebApiController
             return;
 
         // check if file is cached again to handle race condition
-        (isCached, _, _) = GetCachedFile(videoInfo.VideoId, avPro);
+        (isCached, _, _) = GetCachedFile(videoInfo, avPro);
         if (!isCached && (
                 (videoInfo.UrlType == UrlType.YouTube && ConfigManager.Config.CacheYouTube) ||
                 (videoInfo.UrlType == UrlType.PyPyDance && ConfigManager.Config.CachePyPyDance) ||
@@ -277,19 +277,24 @@ public class ApiController : WebApiController
         await HttpContext.SendStringAsync("Video unavailable.", "text/plain", Encoding.UTF8);
     }
 
-    private static (bool isCached, string filePath, string fileName) GetCachedFile(string videoId, bool avPro)
+    private static (bool isCached, string filePath, string relativeUrl) GetCachedFile(VideoInfo videoInfo, bool avPro)
     {
+        var subdirPath = CacheManager.GetSubdirectoryPath(videoInfo.UrlType);
         var ext = avPro ? "webm" : "mp4";
-        var fileName = $"{videoId}.{ext}";
-        var filePath = Path.Join(CacheManager.CachePath, fileName);
+        var baseFileName = $"{videoInfo.VideoId}.{ext}";
+        var filePath = Path.Join(subdirPath, baseFileName);
         var isCached = File.Exists(filePath);
         if (avPro && !isCached)
         {
             // retry with .mp4
-            fileName = $"{videoId}.mp4";
-            filePath = Path.Join(CacheManager.CachePath, fileName);
+            baseFileName = $"{videoInfo.VideoId}.mp4";
+            filePath = Path.Join(subdirPath, baseFileName);
             isCached = File.Exists(filePath);
         }
-        return (isCached, filePath, fileName);
+
+        var relativeUrl = isCached
+            ? CacheManager.GetRelativeUrl(videoInfo.UrlType, baseFileName)
+            : string.Empty;
+        return (isCached, filePath, relativeUrl);
     }
 }

@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Serilog;
 using VRCVideoCacher.Database;
 using VRCVideoCacher.Models;
@@ -19,6 +19,11 @@ public class CacheManager
     private static readonly ConcurrentDictionary<string, VideoCache> CachedAssets = new();
     public static readonly string CachePath;
 
+    private const string YouTubeSubdir = "YouTube";
+    private const string PyPyDanceSubdir = "PyPyDance";
+    private const string VRDancingSubdir = "VRDancing";
+    private const string CustomDomainsSubdir = "CustomDomains";
+
     // Events for UI
     public static event Action<string, CacheChangeType>? OnCacheChanged;
 
@@ -32,6 +37,7 @@ public class CacheManager
             CachePath = Path.Join(Program.CurrentProcessPath, ConfigManager.Config.CachedAssetPath);
 
         Log.Debug("Using cache path {CachePath}", CachePath);
+        CreateSubdirectories();
         BuildCache();
     }
 
@@ -47,6 +53,46 @@ public class CacheManager
         return Path.Join(cachePath, "VRCVideoCacher");
     }
 
+    private static void CreateSubdirectories()
+    {
+        Directory.CreateDirectory(CachePath);
+        Directory.CreateDirectory(Path.Join(CachePath, YouTubeSubdir));
+        Directory.CreateDirectory(Path.Join(CachePath, PyPyDanceSubdir));
+        Directory.CreateDirectory(Path.Join(CachePath, VRDancingSubdir));
+        Directory.CreateDirectory(Path.Join(CachePath, CustomDomainsSubdir));
+    }
+
+    public static string GetSubdirectoryPath(UrlType urlType, string? domain = null)
+    {
+        return urlType switch
+        {
+            UrlType.YouTube => Path.Join(CachePath, YouTubeSubdir),
+            UrlType.PyPyDance => Path.Join(CachePath, PyPyDanceSubdir),
+            UrlType.VRDancing => Path.Join(CachePath, VRDancingSubdir),
+            UrlType.CustomDomain when !string.IsNullOrEmpty(domain) => Path.Join(CachePath, CustomDomainsSubdir, domain),
+            UrlType.CustomDomain => Path.Join(CachePath, CustomDomainsSubdir),
+            _ => CachePath
+        };
+    }
+
+    /// Cache-relative path. Doubles as the CachedAssets key and combines with CachePath on disk.
+    public static string GetRelativePath(UrlType urlType, string fileName, string? domain = null)
+    {
+        return urlType switch
+        {
+            UrlType.YouTube => Path.Join(YouTubeSubdir, fileName),
+            UrlType.PyPyDance => Path.Join(PyPyDanceSubdir, fileName),
+            UrlType.VRDancing => Path.Join(VRDancingSubdir, fileName),
+            UrlType.CustomDomain when !string.IsNullOrEmpty(domain) => Path.Join(CustomDomainsSubdir, domain, fileName),
+            UrlType.CustomDomain => Path.Join(CustomDomainsSubdir, fileName),
+            _ => fileName
+        };
+    }
+
+    /// Same path expressed for a URL. Path.Join yields backslashes on Windows, which do not belong in one.
+    public static string GetRelativeUrl(UrlType urlType, string fileName, string? domain = null)
+        => GetRelativePath(urlType, fileName, domain).Replace('\\', '/');
+
     public static void Init()
     {
         TryFlushCache();
@@ -56,12 +102,47 @@ public class CacheManager
     {
         CachedAssets.Clear();
         Directory.CreateDirectory(CachePath);
-        var files = Directory.GetFiles(CachePath);
-        foreach (var path in files)
+
+        ScanDirectory(UrlType.YouTube);
+        ScanDirectory(UrlType.PyPyDance);
+        ScanDirectory(UrlType.VRDancing);
+        ScanCustomDomainDirectories();
+
+        // Anything sitting in the cache root, including leftovers from the old flat layout.
+        foreach (var path in Directory.GetFiles(CachePath))
         {
             var file = Path.GetFileName(path);
+            if (file.Equals("index.html", StringComparison.OrdinalIgnoreCase))
+                continue;
             AddToCache(file);
         }
+    }
+
+    private static void ScanDirectory(UrlType urlType)
+    {
+        var subdirPath = GetSubdirectoryPath(urlType);
+        if (!Directory.Exists(subdirPath))
+            return;
+
+        foreach (var path in Directory.GetFiles(subdirPath))
+            AddToCache(GetRelativePath(urlType, Path.GetFileName(path)));
+    }
+
+    private static void ScanCustomDomainDirectories()
+    {
+        var customDomainsPath = Path.Join(CachePath, CustomDomainsSubdir);
+        if (!Directory.Exists(customDomainsPath))
+            return;
+
+        foreach (var domainDir in Directory.GetDirectories(customDomainsPath))
+        {
+            var domain = Path.GetFileName(domainDir);
+            foreach (var path in Directory.GetFiles(domainDir))
+                AddToCache(GetRelativePath(UrlType.CustomDomain, Path.GetFileName(path), domain));
+        }
+
+        foreach (var path in Directory.GetFiles(customDomainsPath))
+            AddToCache(GetRelativePath(UrlType.CustomDomain, Path.GetFileName(path)));
     }
 
     public static void TryFlushCache()
@@ -98,6 +179,9 @@ public class CacheManager
             oldestFiles.RemoveAt(0);
         }
     }
+
+    public static void AddToCache(string fileName, UrlType urlType, string? domain = null)
+        => AddToCache(GetRelativePath(urlType, fileName, domain));
 
     public static void AddToCache(string fileName)
     {

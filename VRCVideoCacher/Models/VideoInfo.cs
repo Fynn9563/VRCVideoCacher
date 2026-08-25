@@ -1,4 +1,4 @@
-// ReSharper disable InconsistentNaming
+﻿// ReSharper disable InconsistentNaming
 namespace VRCVideoCacher.Models;
 
 public enum UrlType
@@ -6,6 +6,7 @@ public enum UrlType
     YouTube,
     PyPyDance,
     VRDancing,
+    CustomDomain,
     Other
 }
 

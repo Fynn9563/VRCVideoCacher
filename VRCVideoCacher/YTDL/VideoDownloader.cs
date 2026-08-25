@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
@@ -207,8 +207,11 @@ public class VideoDownloader
         }
         Thread.Sleep(100);
 
-        var fileName = $"{videoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
+        var baseFileName = $"{videoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
+        var fileName = CacheManager.GetRelativePath(UrlType.YouTube, baseFileName);
+        var relativeUrl = CacheManager.GetRelativeUrl(UrlType.YouTube, baseFileName);
         var filePath = Path.Join(CacheManager.CachePath, fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
         if (File.Exists(filePath))
         {
             Log.Error("File already exists, canceling...");
@@ -241,7 +244,7 @@ public class VideoDownloader
         }
 
         CacheManager.AddToCache(fileName);
-        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerUrl}/{fileName}");
+        Log.Information("YouTube Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerUrl}/{relativeUrl}");
         return true;
     }
 
@@ -277,8 +280,11 @@ public class VideoDownloader
         }
         Thread.Sleep(100);
 
-        var fileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
+        var baseFileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
+        var fileName = CacheManager.GetRelativePath(UrlType.VRDancing, baseFileName);
+        var relativeUrl = CacheManager.GetRelativeUrl(UrlType.VRDancing, baseFileName);
         var filePath = Path.Join(CacheManager.CachePath, fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
         if (File.Exists(filePath))
         {
             Log.Error("File already exists, canceling...");
@@ -305,7 +311,7 @@ public class VideoDownloader
         }
 
         CacheManager.AddToCache(fileName);
-        Log.Information("VRDancing Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerUrl}/{fileName}");
+        Log.Information("VRDancing Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerUrl}/{relativeUrl}");
         return true;
     }
 
@@ -336,8 +342,11 @@ public class VideoDownloader
         response.Dispose();
         await Task.Delay(10);
 
-        var fileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
+        var baseFileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
+        var fileName = CacheManager.GetRelativePath(videoInfo.UrlType, baseFileName);
+        var relativeUrl = CacheManager.GetRelativeUrl(videoInfo.UrlType, baseFileName);
         var filePath = Path.Join(CacheManager.CachePath, fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
         if (File.Exists(tempDownloadMp4Path))
         {
             File.Move(tempDownloadMp4Path, filePath);
@@ -349,7 +358,7 @@ public class VideoDownloader
         }
 
         CacheManager.AddToCache(fileName);
-        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerUrl}/{fileName}");
+        Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerUrl}/{relativeUrl}");
         return true;
     }
 }
