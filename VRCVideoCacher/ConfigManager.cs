@@ -186,6 +186,19 @@ public class ConfigModel
     public bool CacheVrDancing = false;
     public bool CacheOnly = false;
 
+    // Categories exempt from size-based eviction. Protected content still counts toward the total
+    // reported in the UI, but is not measured against CacheMaxSizeInGb and is never evicted.
+    public bool EvictionProtectYouTube = false;
+    public bool EvictionProtectPyPyDance = false;
+    public bool EvictionProtectVRDancing = false;
+    public bool EvictionProtectCustomDomains = false;
+
+    // Wiped on clean shutdown. ClearCustomDomainsOnExit lists the domains to wipe, not a flag.
+    public bool ClearYouTubeCacheOnExit = false;
+    public bool ClearPyPyDanceCacheOnExit = false;
+    public bool ClearVRDancingCacheOnExit = false;
+    public string[] ClearCustomDomainsOnExit = [];
+
     // Cache Rules
     public string[] BlockedUrls = ["https://na2.vrdancing.club/sampleurl.mp4"];
     public string BlockRedirect = "https://www.youtube.com/watch?v=byv2bKekeWQ";

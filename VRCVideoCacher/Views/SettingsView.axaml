@@ -156,6 +156,40 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Eviction Protection -->
+                <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
+                    <StackPanel Spacing="15">
+                        <StackPanel>
+                            <TextBlock Text="{l:Localize EvictionProtection}" FontWeight="SemiBold" FontSize="16"/>
+                            <TextBlock Text="{l:Localize EvictionProtectionDesc}" Foreground="#888" FontSize="12"/>
+                        </StackPanel>
+
+                        <CheckBox IsChecked="{Binding EvictionProtectYouTube}" Content="{l:Localize ProtectYouTube}"
+                                  ToolTip.Tip="{l:Localize ProtectYouTubeTooltip}"/>
+                        <CheckBox IsChecked="{Binding EvictionProtectPyPyDance}" Content="{l:Localize ProtectPyPyDance}"
+                                  ToolTip.Tip="{l:Localize ProtectPyPyDanceTooltip}"/>
+                        <CheckBox IsChecked="{Binding EvictionProtectVRDancing}" Content="{l:Localize ProtectVRDancing}"
+                                  ToolTip.Tip="{l:Localize ProtectVRDancingTooltip}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Clear Cache on Exit -->
+                <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
+                    <StackPanel Spacing="15">
+                        <StackPanel>
+                            <TextBlock Text="{l:Localize ClearCacheOnExit}" FontWeight="SemiBold" FontSize="16"/>
+                            <TextBlock Text="{l:Localize ClearCacheOnExitDesc}" Foreground="#888" FontSize="12"/>
+                        </StackPanel>
+
+                        <CheckBox IsChecked="{Binding ClearYouTubeCacheOnExit}" Content="{l:Localize ClearYouTubeCacheOnExit}"
+                                  ToolTip.Tip="{l:Localize ClearYouTubeCacheOnExitTooltip}"/>
+                        <CheckBox IsChecked="{Binding ClearPyPyDanceCacheOnExit}" Content="{l:Localize ClearPyPyDanceCacheOnExit}"
+                                  ToolTip.Tip="{l:Localize ClearPyPyDanceCacheOnExitTooltip}"/>
+                        <CheckBox IsChecked="{Binding ClearVRDancingCacheOnExit}" Content="{l:Localize ClearVRDancingCacheOnExit}"
+                                  ToolTip.Tip="{l:Localize ClearVRDancingCacheOnExitTooltip}"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- Game Patching -->
                 <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
                     <StackPanel Spacing="15">

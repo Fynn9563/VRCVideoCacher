@@ -151,12 +151,18 @@ public class CacheManager
             return;
 
         var maxCacheSize = (long)(ConfigManager.Config.CacheMaxSizeInGb * 1024f * 1024f * 1024f);
-        var cacheSize = GetCacheSize();
+        // Protected categories are exempt, so only evictable content is measured against the limit.
+        var cacheSize = GetEvictableCacheSize();
         if (cacheSize < maxCacheSize)
             return;
 
         var recentPlayHistory = DatabaseManager.GetPlayHistory();
-        var oldestFiles = CachedAssets.OrderBy(x => x.Value.LastModified).ToList();
+        // Category priority first (YouTube evicted before custom domains), then oldest.
+        var oldestFiles = CachedAssets
+            .Where(x => !IsEvictionProtected(x.Value.FileName))
+            .OrderBy(x => GetEvictionPriority(x.Value.FileName))
+            .ThenBy(x => x.Value.LastModified)
+            .ToList();
         while (cacheSize >= maxCacheSize && oldestFiles.Count > 0)
         {
             var oldestFile = oldestFiles.First();
@@ -205,6 +211,26 @@ public class CacheManager
         TryFlushCache();
     }
 
+    private static bool IsEvictionProtected(string relativePath)
+    {
+        var config = ConfigManager.Config;
+        if (relativePath.StartsWith(YouTubeSubdir) && config.EvictionProtectYouTube) return true;
+        if (relativePath.StartsWith(PyPyDanceSubdir) && config.EvictionProtectPyPyDance) return true;
+        if (relativePath.StartsWith(VRDancingSubdir) && config.EvictionProtectVRDancing) return true;
+        if (relativePath.StartsWith(CustomDomainsSubdir) && config.EvictionProtectCustomDomains) return true;
+        return false;
+    }
+
+    /// Lower is evicted first: YouTube (0), PyPyDance (1), VRDancing (2), CustomDomains (3).
+    private static int GetEvictionPriority(string relativePath)
+    {
+        if (relativePath.StartsWith(YouTubeSubdir)) return 0;
+        if (relativePath.StartsWith(PyPyDanceSubdir)) return 1;
+        if (relativePath.StartsWith(VRDancingSubdir)) return 2;
+        if (relativePath.StartsWith(CustomDomainsSubdir)) return 3;
+        return 4;
+    }
+
     private static long GetCacheSize()
     {
         var totalSize = 0L;
@@ -222,7 +248,36 @@ public class CacheManager
 
     public static long GetTotalCacheSize() => GetCacheSize();
 
+    public static long GetEvictableCacheSize() =>
+        CachedAssets.Where(x => !IsEvictionProtected(x.Value.FileName)).Sum(x => x.Value.Size);
+
     public static int GetCachedVideoCount() => CachedAssets.Count;
+
+    public static Dictionary<string, long> GetCategorySizes()
+    {
+        var sizes = new Dictionary<string, long>
+        {
+            [YouTubeSubdir] = 0,
+            [PyPyDanceSubdir] = 0,
+            [VRDancingSubdir] = 0,
+            [CustomDomainsSubdir] = 0
+        };
+
+        foreach (var cache in CachedAssets)
+        {
+            var name = cache.Value.FileName;
+            if (name.StartsWith(YouTubeSubdir)) sizes[YouTubeSubdir] += cache.Value.Size;
+            else if (name.StartsWith(PyPyDanceSubdir)) sizes[PyPyDanceSubdir] += cache.Value.Size;
+            else if (name.StartsWith(VRDancingSubdir)) sizes[VRDancingSubdir] += cache.Value.Size;
+            else if (name.StartsWith(CustomDomainsSubdir)) sizes[CustomDomainsSubdir] += cache.Value.Size;
+        }
+
+        return sizes;
+    }
+
+    public static bool IsEvictionProtectionActive() =>
+        ConfigManager.Config.EvictionProtectYouTube || ConfigManager.Config.EvictionProtectPyPyDance ||
+        ConfigManager.Config.EvictionProtectVRDancing || ConfigManager.Config.EvictionProtectCustomDomains;
 
     public static void DeleteCacheItem(string fileName)
     {
@@ -234,6 +289,76 @@ public class CacheManager
         CachedAssets.TryRemove(fileName, out _);
         OnCacheChanged?.Invoke(fileName, CacheChangeType.Removed);
         Log.Information("Deleted cached video: {FileName}", fileName);
+    }
+
+    /// Wipes the categories the user marked for clearing. Runs on clean shutdown only.
+    public static void ClearCacheOnExit()
+    {
+        var directoriesToClear = new List<(UrlType type, string path)>();
+
+        if (ConfigManager.Config.ClearYouTubeCacheOnExit)
+            directoriesToClear.Add((UrlType.YouTube, GetSubdirectoryPath(UrlType.YouTube)));
+        if (ConfigManager.Config.ClearPyPyDanceCacheOnExit)
+            directoriesToClear.Add((UrlType.PyPyDance, GetSubdirectoryPath(UrlType.PyPyDance)));
+        if (ConfigManager.Config.ClearVRDancingCacheOnExit)
+            directoriesToClear.Add((UrlType.VRDancing, GetSubdirectoryPath(UrlType.VRDancing)));
+
+        var domainsToClear = ConfigManager.Config.ClearCustomDomainsOnExit;
+        if (directoriesToClear.Count == 0 && domainsToClear.Length == 0)
+            return;
+
+        Log.Information("Clearing cache on exit...");
+
+        foreach (var (type, path) in directoriesToClear)
+        {
+            try
+            {
+                if (!Directory.Exists(path))
+                    continue;
+
+                var files = Directory.GetFiles(path);
+                foreach (var file in files)
+                    DeleteCachedFileAndThumbnail(file);
+
+                Log.Information("Cleared {Type} cache ({Count} files)", type, files.Length);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to clear {Type} cache: {Error}", type, ex.ToString());
+            }
+        }
+
+        foreach (var domain in domainsToClear)
+        {
+            try
+            {
+                var domainPath = GetSubdirectoryPath(UrlType.CustomDomain, domain);
+                if (!Directory.Exists(domainPath))
+                    continue;
+
+                var files = Directory.GetFiles(domainPath);
+                foreach (var file in files)
+                    DeleteCachedFileAndThumbnail(file);
+
+                Log.Information("Cleared CustomDomain cache for {Domain} ({Count} files)", domain, files.Length);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to clear CustomDomain cache for {Domain}: {Error}", domain, ex.ToString());
+            }
+        }
+
+        Log.Information("Cache cleanup completed.");
+    }
+
+    private static void DeleteCachedFileAndThumbnail(string filePath)
+    {
+        var videoId = Path.GetFileNameWithoutExtension(filePath);
+        var thumbnailPath = ThumbnailManager.GetThumbnailPath(videoId);
+        if (File.Exists(thumbnailPath))
+            File.Delete(thumbnailPath);
+
+        File.Delete(filePath);
     }
 
     public static void ClearCache()

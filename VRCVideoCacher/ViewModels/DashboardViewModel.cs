@@ -1,4 +1,4 @@
-using Avalonia.Controls.ApplicationLifetimes;
+﻿using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -156,6 +156,24 @@ public partial class DashboardViewModel : ViewModelBase
         Dispatcher.UIThread.Post(() => { HostState = ElevatorManager.HasHostsLine; });
     }
 
+    [ObservableProperty]
+    private long _youTubeCacheSize;
+
+    [ObservableProperty]
+    private long _pyPyDanceCacheSize;
+
+    [ObservableProperty]
+    private long _vrDancingCacheSize;
+
+    [ObservableProperty]
+    private bool _showYouTubeSize;
+
+    [ObservableProperty]
+    private bool _showPyPyDanceSize;
+
+    [ObservableProperty]
+    private bool _showVRDancingSize;
+
     private void RefreshCacheStats()
     {
         TotalCacheSize = CacheManager.GetTotalCacheSize();
@@ -165,6 +183,16 @@ public partial class DashboardViewModel : ViewModelBase
         if (assets.ContainsKey("index.html"))
             count--;
         CachedVideoCount = count;
+
+        var sizes = CacheManager.GetCategorySizes();
+        YouTubeCacheSize = sizes["YouTube"];
+        PyPyDanceCacheSize = sizes["PyPyDance"];
+        VrDancingCacheSize = sizes["VRDancing"];
+
+        var config = ConfigManager.Config;
+        ShowYouTubeSize = config.CacheYouTube;
+        ShowPyPyDanceSize = config.CachePyPyDance;
+        ShowVRDancingSize = config.CacheVrDancing;
     }
 
     [RelayCommand]

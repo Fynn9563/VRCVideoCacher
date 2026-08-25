@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Jeek.Avalonia.Localization;
 using VRCVideoCacher.Utils;
@@ -49,18 +49,22 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void UpdateCacheStatus()
     {
-        var size = CacheManager.GetTotalCacheSize();
+        var totalSize = CacheManager.GetTotalCacheSize();
         var maxSize = ConfigManager.Config.CacheMaxSizeInGb;
 
-        if (maxSize > 0)
+        if (maxSize <= 0)
         {
-            var maxBytes = (long)(maxSize * 1024 * 1024 * 1024);
-            CacheStatusText = $"Cache: {FormatSize(size)} / {FormatSize(maxBytes)}";
+            CacheStatusText = $"Cache: {FormatSize(totalSize)}";
+            return;
         }
-        else
-        {
-            CacheStatusText = $"Cache: {FormatSize(size)}";
-        }
+
+        var maxBytes = (long)(maxSize * 1024 * 1024 * 1024);
+        // Only evictable content counts against the limit, so show that against it and the true
+        // total alongside, otherwise a protected category reads as if it were over budget.
+        var evictableSize = CacheManager.GetEvictableCacheSize();
+        CacheStatusText = evictableSize != totalSize
+            ? $"Cache: {FormatSize(evictableSize)} / {FormatSize(maxBytes)} ({FormatSize(totalSize)} total)"
+            : $"Cache: {FormatSize(totalSize)} / {FormatSize(maxBytes)}";
     }
 
     private static string FormatSize(long bytes)

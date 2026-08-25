@@ -87,6 +87,24 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _cacheOnly;
 
+    [ObservableProperty]
+    private bool _evictionProtectYouTube;
+
+    [ObservableProperty]
+    private bool _evictionProtectPyPyDance;
+
+    [ObservableProperty]
+    private bool _evictionProtectVRDancing;
+
+    [ObservableProperty]
+    private bool _clearYouTubeCacheOnExit;
+
+    [ObservableProperty]
+    private bool _clearPyPyDanceCacheOnExit;
+
+    [ObservableProperty]
+    private bool _clearVRDancingCacheOnExit;
+
     // Patching
     [ObservableProperty]
     private bool _patchResonite;
@@ -182,6 +200,12 @@ public partial class SettingsViewModel : ViewModelBase
         CachePyPyDance = config.CachePyPyDance;
         CacheVRDancing = config.CacheVrDancing;
         CacheOnly = config.CacheOnly;
+        EvictionProtectYouTube = config.EvictionProtectYouTube;
+        EvictionProtectPyPyDance = config.EvictionProtectPyPyDance;
+        EvictionProtectVRDancing = config.EvictionProtectVRDancing;
+        ClearYouTubeCacheOnExit = config.ClearYouTubeCacheOnExit;
+        ClearPyPyDanceCacheOnExit = config.ClearPyPyDanceCacheOnExit;
+        ClearVRDancingCacheOnExit = config.ClearVRDancingCacheOnExit;
         PatchResonite = config.PatchResonite;
         PatchVRC = config.PatchVrChat;
         AutoUpdate = config.AutoUpdateVrcVideoCacher;
@@ -265,6 +289,12 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnCachePyPyDanceChanged(bool value) => SetHasChanges();
     partial void OnCacheVRDancingChanged(bool value) => SetHasChanges();
     partial void OnCacheOnlyChanged(bool value) => SetHasChanges();
+    partial void OnEvictionProtectYouTubeChanged(bool value) => SetHasChanges();
+    partial void OnEvictionProtectPyPyDanceChanged(bool value) => SetHasChanges();
+    partial void OnEvictionProtectVRDancingChanged(bool value) => SetHasChanges();
+    partial void OnClearYouTubeCacheOnExitChanged(bool value) => SetHasChanges();
+    partial void OnClearPyPyDanceCacheOnExitChanged(bool value) => SetHasChanges();
+    partial void OnClearVRDancingCacheOnExitChanged(bool value) => SetHasChanges();
     partial void OnPatchResoniteChanged(bool value) => SetHasChanges();
     partial void OnPatchVRCChanged(bool value) => SetHasChanges();
     partial void OnAutoUpdateChanged(bool value) => SetHasChanges();
@@ -302,6 +332,12 @@ public partial class SettingsViewModel : ViewModelBase
         config.CachePyPyDance = CachePyPyDance;
         config.CacheVrDancing = CacheVRDancing;
         config.CacheOnly = CacheOnly;
+        config.EvictionProtectYouTube = EvictionProtectYouTube;
+        config.EvictionProtectPyPyDance = EvictionProtectPyPyDance;
+        config.EvictionProtectVRDancing = EvictionProtectVRDancing;
+        config.ClearYouTubeCacheOnExit = ClearYouTubeCacheOnExit;
+        config.ClearPyPyDanceCacheOnExit = ClearPyPyDanceCacheOnExit;
+        config.ClearVRDancingCacheOnExit = ClearVRDancingCacheOnExit;
         config.PatchResonite = PatchResonite;
         config.PatchVrChat = PatchVRC;
         config.AutoUpdateVrcVideoCacher = AutoUpdate;

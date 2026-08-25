@@ -345,6 +345,7 @@ internal sealed class Program
     private static void OnAppQuit()
     {
         FileTools.RestoreAllYtdl();
+        CacheManager.ClearCacheOnExit();
         Logger.Information("Exiting...");
     }
 
