@@ -1,4 +1,4 @@
-using Serilog;
+﻿using Serilog;
 using VRCVideoCacher.Models;
 
 namespace VRCVideoCacher.YTDL.SiteHandlers.Sites;
@@ -16,7 +16,17 @@ public class CustomDomainHandler : ISiteHandler
     public Task<VideoInfo?> GetVideoInfo(string url, Uri uri, bool avPro)
     {
         CacheManager.MatchCustomDomain(uri, out var domain);
-        var videoId = VideoId.HashUrl(url);
+
+        // Name the cache entry after the URL's own filename, matching how this fork has always
+        // stored custom domain videos. Hash only when the URL carries no usable filename.
+        var fileName = Path.GetFileName(Uri.UnescapeDataString(uri.LocalPath));
+        var videoId = fileName.Split('.')[0];
+        if (string.IsNullOrWhiteSpace(videoId))
+            videoId = VideoId.HashUrl(url);
+
+        var isStreaming = url.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase) ||
+                          url.EndsWith(".mpd", StringComparison.OrdinalIgnoreCase);
+
         Log.Information("Custom domain {Domain} matched for {URL}", domain, url);
         return Task.FromResult<VideoInfo?>(new VideoInfo
         {
@@ -24,7 +34,8 @@ public class CustomDomainHandler : ISiteHandler
             VideoId = videoId,
             UrlType = UrlType.CustomDomain,
             DownloadFormat = DownloadFormat.MP4,
-            Domain = domain
+            Domain = domain,
+            IsStreaming = isStreaming
         });
     }
 }

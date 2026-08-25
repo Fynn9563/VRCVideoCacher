@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:VRCVideoCacher.ViewModels"
              xmlns:mi="using:Material.Icons.Avalonia"
@@ -26,14 +26,25 @@
             <StackPanel Spacing="10">
                 <TextBlock Text="{l:Localize CurrentDownload}" FontWeight="SemiBold" FontSize="16"/>
 
-                <Grid ColumnDefinitions="Auto, *, Auto" IsVisible="{Binding CurrentDownload, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <mi:MaterialIcon Grid.Column="0" Kind="Download" Width="24" Height="24" Foreground="#64B5F6"/>
-                    <StackPanel Grid.Column="1" Margin="15,0">
-                        <TextBlock Text="{Binding CurrentDownload.VideoId}" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding CurrentDownload.UrlType}" Foreground="#888888" FontSize="12"/>
-                    </StackPanel>
-                    <TextBlock Grid.Column="2" Text="{Binding CurrentStatus}" VerticalAlignment="Center"/>
-                </Grid>
+                <ItemsControl ItemsSource="{Binding ActiveDownloads}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DownloadItemViewModel">
+                            <Grid ColumnDefinitions="Auto, *, Auto" Margin="0,4">
+                                <mi:MaterialIcon Grid.Column="0" Kind="Download" Width="24" Height="24" Foreground="#64B5F6"/>
+                                <StackPanel Grid.Column="1" Margin="15,0">
+                                    <TextBlock Text="{Binding VideoId}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding UrlType}" Foreground="#888888" FontSize="12"/>
+                                </StackPanel>
+                                <Button Grid.Column="2" VerticalAlignment="Center"
+                                        ToolTip.Tip="{l:Localize CancelDownload}"
+                                        Command="{Binding $parent[ItemsControl].((vm:DownloadQueueViewModel)DataContext).CancelDownloadCommand}"
+                                        CommandParameter="{Binding}">
+                                    <mi:MaterialIcon Kind="Close" Width="16" Height="16"/>
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <TextBlock Text="{l:Localize NoActiveDownload}"
                            IsVisible="{Binding CurrentDownload, Converter={x:Static ObjectConverters.IsNull}}"

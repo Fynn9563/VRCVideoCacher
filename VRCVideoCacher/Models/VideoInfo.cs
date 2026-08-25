@@ -24,4 +24,6 @@ public class VideoInfo
     public required DownloadFormat DownloadFormat;
     // Set for UrlType.CustomDomain: selects the CustomDomains/<domain>/ cache subdirectory.
     public string? Domain;
+    // HLS/DASH manifest rather than a plain file: needs yt-dlp, not a straight HTTP GET.
+    public bool IsStreaming;
 }

@@ -185,6 +185,8 @@ public class ConfigModel
     public bool CachePyPyDance = false;
     public bool CacheVrDancing = false;
     public bool CacheOnly = false;
+    // yt-dlp still serialises on the cookie jar, so this mainly parallelises direct downloads.
+    public int MaxConcurrentDownloads = 2;
     public bool CacheCustomDomainsEnabled = false;
     // Hostnames, e.g. ["cdn.example.com"]. Subdomains of a listed host match too.
     public string[] CacheCustomDomains = [];

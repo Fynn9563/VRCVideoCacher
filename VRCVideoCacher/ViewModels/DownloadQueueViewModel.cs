@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -13,6 +13,9 @@ public partial class DownloadItemViewModel : ViewModelBase
     public string VideoId { get; init; } = string.Empty;
     public string UrlType { get; init; } = string.Empty;
     public string Format { get; init; } = string.Empty;
+
+    // Matches VideoDownloader's ActiveDownloads key, so the cancel button can address one download.
+    public string DownloadKey => $"{VideoId}:{Format}";
 }
 
 public partial class DownloadQueueViewModel : ViewModelBase
@@ -30,6 +33,7 @@ public partial class DownloadQueueViewModel : ViewModelBase
     private string _statusMessage = string.Empty;
 
     public ObservableCollection<DownloadItemViewModel> QueuedDownloads { get; } = [];
+    public ObservableCollection<DownloadItemViewModel> ActiveDownloads { get; } = [];
 
     public DownloadQueueViewModel()
     {
@@ -44,14 +48,6 @@ public partial class DownloadQueueViewModel : ViewModelBase
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            CurrentDownload = new DownloadItemViewModel
-            {
-                VideoUrl = video.VideoUrl,
-                VideoId = video.VideoId,
-                UrlType = video.UrlType.ToString(),
-                Format = video.DownloadFormat.ToString()
-            };
-            CurrentStatus = $"Downloading {video.VideoId}...";
             RefreshQueue();
         });
     }
@@ -60,8 +56,6 @@ public partial class DownloadQueueViewModel : ViewModelBase
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            CurrentDownload = null;
-            CurrentStatus = success ? "Completed" : "Failed";
             StatusMessage = success
                 ? $"Downloaded: {video.VideoId}"
                 : $"Failed to download: {video.VideoId}";
@@ -91,25 +85,28 @@ public partial class DownloadQueueViewModel : ViewModelBase
             });
         }
 
-        var current = VideoDownloader.GetCurrentDownload();
-        if (current != null)
+        ActiveDownloads.Clear();
+        foreach (var video in VideoDownloader.GetActiveDownloads())
         {
-            CurrentDownload = new DownloadItemViewModel
+            ActiveDownloads.Add(new DownloadItemViewModel
             {
-                VideoUrl = current.VideoUrl,
-                VideoId = current.VideoId,
-                UrlType = current.UrlType.ToString(),
-                Format = current.DownloadFormat.ToString()
-            };
-            CurrentStatus = $"Downloading {current.VideoId}...";
+                VideoUrl = video.VideoUrl,
+                VideoId = video.VideoId,
+                UrlType = video.UrlType.ToString(),
+                Format = video.DownloadFormat.ToString()
+            });
         }
-        else
+
+        CurrentDownload = ActiveDownloads.FirstOrDefault();
+        if (ActiveDownloads.Count > 0)
         {
-            CurrentDownload = null;
-            if (QueuedDownloads.Count == 0)
-            {
-                CurrentStatus = "Idle";
-            }
+            CurrentStatus = ActiveDownloads.Count == 1
+                ? $"Downloading {ActiveDownloads[0].VideoId}..."
+                : $"Downloading {ActiveDownloads.Count} videos...";
+        }
+        else if (QueuedDownloads.Count == 0)
+        {
+            CurrentStatus = "Idle";
         }
     }
 
@@ -140,6 +137,13 @@ public partial class DownloadQueueViewModel : ViewModelBase
         {
             StatusMessage = $"Error: {ex}";
         }
+    }
+
+    [RelayCommand]
+    private void CancelDownload(DownloadItemViewModel item)
+    {
+        VideoDownloader.CancelDownload(item.DownloadKey);
+        StatusMessage = $"Cancelling: {item.VideoId}";
     }
 
     [RelayCommand]

@@ -25,61 +25,119 @@ public class VideoDownloader
     public static event Action<VideoInfo, bool>? OnDownloadCompleted;
     public static event Action? OnQueueChanged;
 
-    // Current download tracking
-    private static VideoInfo? _currentDownload;
+    // Active download tracking, keyed by video id and format
+    private static readonly ConcurrentDictionary<string, ActiveDownload> ActiveDownloads = new();
+
+    private sealed class ActiveDownload
+    {
+        public required VideoInfo VideoInfo { get; init; }
+        public required CancellationTokenSource Cts { get; init; }
+    }
+
+    private static string DownloadKey(VideoInfo videoInfo) =>
+        $"{videoInfo.VideoId}:{videoInfo.DownloadFormat}";
 
     static VideoDownloader()
     {
-        Task.Run(DownloadThread);
+        Task.Run(DownloadDispatcher);
     }
 
-    private static async Task DownloadThread()
+    private static async Task DownloadDispatcher()
     {
         while (true)
         {
             await Task.Delay(100);
             if (DownloadQueue.IsEmpty)
+                continue;
+
+            var max = Math.Max(1, ConfigManager.Config.MaxConcurrentDownloads);
+            if (ActiveDownloads.Count >= max)
+                continue;
+
+            if (!DownloadQueue.TryDequeue(out var queueItem) || queueItem == null)
+                continue;
+
+            _ = Task.Run(() => ProcessDownload(queueItem));
+        }
+    }
+
+    private static async Task ProcessDownload(VideoInfo videoInfo)
+    {
+        var key = DownloadKey(videoInfo);
+        using var cts = new CancellationTokenSource();
+        if (!ActiveDownloads.TryAdd(key, new ActiveDownload { VideoInfo = videoInfo, Cts = cts }))
+            return;
+
+        OnDownloadStarted?.Invoke(videoInfo);
+        OnQueueChanged?.Invoke();
+
+        var success = false;
+        try
+        {
+            var ct = cts.Token;
+            switch (videoInfo.UrlType)
             {
-                _currentDownload = null;
-                continue;
+                case UrlType.YouTube:
+                    success = await DownloadYouTubeVideo(videoInfo, ct);
+                    break;
+                case UrlType.PyPyDance:
+                    success = await DownloadVideoWithId(videoInfo, ct);
+                    break;
+                case UrlType.VRDancing:
+                    success = await DownloadVRDancingVideoWithId(videoInfo, ct);
+                    break;
+                case UrlType.CustomDomain:
+                    // A .m3u8 or .mpd is a manifest, so a direct fetch would save the playlist text
+                    // rather than the video. yt-dlp muxes the segments instead.
+                    success = videoInfo.IsStreaming
+                        ? await DownloadVRDancingVideoWithId(videoInfo, ct)
+                        : await DownloadVideoWithId(videoInfo, ct);
+                    break;
+                case UrlType.Other:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
+        }
+        catch (OperationCanceledException)
+        {
+            Log.Information("Download cancelled: {VideoId}", videoInfo.VideoId);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Exception during download: {Ex}", ex.ToString());
+        }
+        finally
+        {
+            ActiveDownloads.TryRemove(key, out _);
+        }
 
-            DownloadQueue.TryDequeue(out var queueItem);
-            if (queueItem == null)
-                continue;
+        OnDownloadCompleted?.Invoke(videoInfo, success);
+        OnQueueChanged?.Invoke();
+    }
 
-            _currentDownload = queueItem;
-            OnDownloadStarted?.Invoke(queueItem);
-
-            var success = false;
+    /// Starts the process and kills its whole tree if the token trips, so a cancelled download
+    /// leaves no orphaned yt-dlp behind.
+    private static async Task RunProcessAsync(Process process, CancellationToken ct)
+    {
+        process.Start();
+        try
+        {
+            await process.WaitForExitAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
             try
             {
-                switch (queueItem.UrlType)
-                {
-                    case UrlType.YouTube:
-                        success = await DownloadYouTubeVideo(queueItem);
-                        break;
-                    case UrlType.PyPyDance:
-                        success = await DownloadVideoWithId(queueItem);
-                        break;
-                    case UrlType.VRDancing:
-                        success = await DownloadVRDancingVideoWithId(queueItem);
-                        break;
-                    case UrlType.Other:
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+                if (!process.HasExited)
+                    process.Kill(entireProcessTree: true);
             }
             catch (Exception ex)
             {
-                Log.Error("Exception during download: {Ex}", ex.ToString());
-                success = false;
+                Log.Warning("Failed to kill cancelled download process: {Ex}", ex.Message);
             }
 
-            OnDownloadCompleted?.Invoke(queueItem, success);
-            OnQueueChanged?.Invoke();
-            _currentDownload = null;
+            throw;
         }
     }
 
@@ -91,9 +149,7 @@ public class VideoDownloader
             // Log.Information("URL is already in the download queue.");
             return;
         }
-        if (_currentDownload != null &&
-            _currentDownload.VideoId == videoInfo.VideoId &&
-            _currentDownload.DownloadFormat == videoInfo.DownloadFormat)
+        if (ActiveDownloads.ContainsKey(DownloadKey(videoInfo)))
         {
             // Log.Information("URL is already being downloaded.");
             return;
@@ -112,9 +168,22 @@ public class VideoDownloader
     // Public accessors for UI
     public static IReadOnlyList<VideoInfo> GetQueueSnapshot() => DownloadQueue.ToArray();
     public static int GetQueueCount() => DownloadQueue.Count;
-    public static VideoInfo? GetCurrentDownload() => _currentDownload;
+    public static VideoInfo? GetCurrentDownload() => ActiveDownloads.Values.FirstOrDefault()?.VideoInfo;
+    public static IReadOnlyList<VideoInfo> GetActiveDownloads() =>
+        ActiveDownloads.Values.Select(x => x.VideoInfo).ToArray();
 
-    private static async Task<bool> DownloadYouTubeVideo(VideoInfo videoInfo)
+    public static void CancelDownload(string downloadKey)
+    {
+        if (!ActiveDownloads.TryGetValue(downloadKey, out var active))
+            return;
+
+        Log.Information("Cancelling download: {Key}", downloadKey);
+        active.Cts.Cancel();
+    }
+
+    public static void CancelDownload(VideoInfo videoInfo) => CancelDownload(DownloadKey(videoInfo));
+
+    private static async Task<bool> DownloadYouTubeVideo(VideoInfo videoInfo, CancellationToken ct)
     {
         var url = videoInfo.VideoUrl;
 
@@ -190,10 +259,9 @@ public class VideoDownloader
         // yt-dlp rewrites the cookie jar on exit; overlapping this download with a URL resolution
         // corrupts the session and gets us bot-checked. See YtdlCookieJar.
         string error;
-        using (await YtdlCookieJar.AcquireAsync())
+        using (await YtdlCookieJar.AcquireAsync(ct))
         {
-            process.Start();
-            await process.WaitForExitAsync();
+            await RunProcessAsync(process, ct);
             error = (await process.StandardError.ReadToEndAsync()).Trim();
         }
 
@@ -248,7 +316,7 @@ public class VideoDownloader
         return true;
     }
 
-    private static async Task<bool> DownloadVRDancingVideoWithId(VideoInfo videoInfo)
+    private static async Task<bool> DownloadVRDancingVideoWithId(VideoInfo videoInfo, CancellationToken ct)
     {
         using var tempDir = new TempDir();
         var tempDownloadMp4Path = Path.Join(tempDir.FullName, TempDownloadMp4Name);
@@ -269,8 +337,7 @@ public class VideoDownloader
         };
         process.StartInfo.Arguments = $"-q -o \"{tempDownloadMp4Path}\" --remux-video mp4 \"{url}\"";
         Log.Information("Downloading VRDancing Video: {Args}", process.StartInfo.Arguments);
-        process.Start();
-        await process.WaitForExitAsync();
+        await RunProcessAsync(process, ct);
         var error = await process.StandardError.ReadToEndAsync();
         error = error.Trim();
         if (process.ExitCode != 0)
@@ -315,19 +382,19 @@ public class VideoDownloader
         return true;
     }
 
-    private static async Task<bool> DownloadVideoWithId(VideoInfo videoInfo)
+    private static async Task<bool> DownloadVideoWithId(VideoInfo videoInfo, CancellationToken ct)
     {
         using var tempDir = new TempDir();
         var tempDownloadMp4Path = Path.Join(tempDir.FullName, TempDownloadMp4Name);
 
         Log.Information("Downloading Video: {URL}", videoInfo.VideoUrl);
         var url = videoInfo.VideoUrl;
-        var response = await HttpClient.GetAsync(url);
+        var response = await HttpClient.GetAsync(url, ct);
         if (response.StatusCode == HttpStatusCode.Redirect)
         {
             Log.Information("Redirected to: {URL}", response.Headers.Location);
             url = response.Headers.Location?.ToString();
-            response = await HttpClient.GetAsync(url);
+            response = await HttpClient.GetAsync(url, ct);
         }
         if (!response.IsSuccessStatusCode)
         {
@@ -335,9 +402,9 @@ public class VideoDownloader
             return false;
         }
 
-        await using var stream = await response.Content.ReadAsStreamAsync();
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
         await using var fileStream = new FileStream(tempDownloadMp4Path, FileMode.Create, FileAccess.Write, FileShare.None);
-        await stream.CopyToAsync(fileStream);
+        await stream.CopyToAsync(fileStream, ct);
         fileStream.Close();
         response.Dispose();
         await Task.Delay(10);
