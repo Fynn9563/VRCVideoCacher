@@ -16,6 +16,17 @@ public partial class DownloadItemViewModel : ViewModelBase
 
     // Matches VideoDownloader's ActiveDownloads key, so the cancel button can address one download.
     public string DownloadKey => $"{VideoId}:{Format}";
+
+    [ObservableProperty]
+    private double _progressPercent;
+
+    [ObservableProperty]
+    private string _progressText = string.Empty;
+
+    // yt-dlp reports -1 until it knows the size, so the bar runs indeterminate until then.
+    public bool IsProgressKnown => ProgressPercent >= 0;
+
+    partial void OnProgressPercentChanged(double value) => OnPropertyChanged(nameof(IsProgressKnown));
 }
 
 public partial class DownloadQueueViewModel : ViewModelBase
@@ -42,6 +53,7 @@ public partial class DownloadQueueViewModel : ViewModelBase
         VideoDownloader.OnDownloadStarted += OnDownloadStarted;
         VideoDownloader.OnDownloadCompleted += OnDownloadCompleted;
         VideoDownloader.OnQueueChanged += OnQueueChanged;
+        VideoDownloader.OnDownloadProgress += OnDownloadProgress;
     }
 
     private void OnDownloadStarted(VideoInfo video)
@@ -60,6 +72,20 @@ public partial class DownloadQueueViewModel : ViewModelBase
                 ? $"Downloaded: {video.VideoId}"
                 : $"Failed to download: {video.VideoId}";
             RefreshQueue();
+        });
+    }
+
+    private void OnDownloadProgress(VideoInfo video, double percent, string text)
+    {
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var key = $"{video.VideoId}:{video.DownloadFormat}";
+            var item = ActiveDownloads.FirstOrDefault(x => x.DownloadKey == key);
+            if (item == null)
+                return;
+
+            item.ProgressPercent = percent;
+            item.ProgressText = text;
         });
     }
 

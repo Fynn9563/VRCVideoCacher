@@ -61,7 +61,7 @@ public class YtdlManager
     public static bool UseGlobalYtdlpPath =>
         LaunchArgs.UseGlobalPath || ConfigManager.Config.YtdlpGlobalPath;
 
-    public static string GenerateYtdlArgs(List<string> args, string urlArg)
+    public static string GenerateYtdlArgs(List<string> args, string urlArg, bool reportProgress = false)
     {
         var globalArgs = new List<string>
         {
@@ -69,9 +69,22 @@ public class YtdlManager
             "--ignore-config",
             "--no-playlist",
             "--no-warnings",
-            "--no-mtime",
-            "--no-progress"
+            "--no-mtime"
         };
+
+        // Progress is off for everything except queued downloads, where the UI draws a bar from it.
+        // --progress overrides -q; the JSON template gives one parseable object per line.
+        if (reportProgress)
+        {
+            globalArgs.Add("--progress");
+            globalArgs.Add("--newline");
+            globalArgs.Add("--progress-template \"download:%(progress)j\"");
+        }
+        else
+        {
+            globalArgs.Add("--no-progress");
+        }
+
         args.AddRange(globalArgs);
 
         if (File.Exists(FfmpegPath))

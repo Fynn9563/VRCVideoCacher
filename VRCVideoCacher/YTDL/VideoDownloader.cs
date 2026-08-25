@@ -1,6 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
+using System.Text.Json;
+using System.Globalization;
 using System.Text;
 using Serilog;
 using VRCVideoCacher.Models;
@@ -24,6 +26,7 @@ public class VideoDownloader
     public static event Action<VideoInfo>? OnDownloadStarted;
     public static event Action<VideoInfo, bool>? OnDownloadCompleted;
     public static event Action? OnQueueChanged;
+    public static event Action<VideoInfo, double, string>? OnDownloadProgress;
 
     // Active download tracking, keyed by video id and format
     private static readonly ConcurrentDictionary<string, ActiveDownload> ActiveDownloads = new();
@@ -118,12 +121,20 @@ public class VideoDownloader
 
     /// Starts the process and kills its whole tree if the token trips, so a cancelled download
     /// leaves no orphaned yt-dlp behind.
-    private static async Task RunProcessAsync(Process process, CancellationToken ct)
+    private static async Task RunProcessAsync(Process process, CancellationToken ct, VideoInfo? progressFor = null)
     {
         process.Start();
+
+        // stdout must be drained while the process runs: with progress enabled it emits a line per
+        // update, and a full pipe buffer would block yt-dlp forever.
+        var drain = progressFor == null
+            ? Task.CompletedTask
+            : DrainProgress(process, progressFor, ct);
+
         try
         {
             await process.WaitForExitAsync(ct);
+            await drain;
         }
         catch (OperationCanceledException)
         {
@@ -253,7 +264,7 @@ public class VideoDownloader
             // $@"-f best/bestvideo[height<=?720]+bestaudio {url} " %(id)s.%(ext)s
         }
 
-        process.StartInfo.Arguments = YtdlManager.GenerateYtdlArgs(args, $"-- \"{videoId}\"");
+        process.StartInfo.Arguments = YtdlManager.GenerateYtdlArgs(args, $"-- \"{videoId}\"", reportProgress: true);
         Log.Information("Downloading YouTube Video: {Args}", process.StartInfo.Arguments);
 
         // yt-dlp rewrites the cookie jar on exit; overlapping this download with a URL resolution
@@ -261,7 +272,7 @@ public class VideoDownloader
         string error;
         using (await YtdlCookieJar.AcquireAsync(ct))
         {
-            await RunProcessAsync(process, ct);
+            await RunProcessAsync(process, ct, videoInfo);
             error = (await process.StandardError.ReadToEndAsync()).Trim();
         }
 
@@ -402,9 +413,10 @@ public class VideoDownloader
             return false;
         }
 
+        var totalBytes = response.Content.Headers.ContentLength ?? -1;
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         await using var fileStream = new FileStream(tempDownloadMp4Path, FileMode.Create, FileAccess.Write, FileShare.None);
-        await stream.CopyToAsync(fileStream, ct);
+        await CopyWithProgress(stream, fileStream, totalBytes, videoInfo, ct);
         fileStream.Close();
         response.Dispose();
         await Task.Delay(10);
@@ -427,5 +439,94 @@ public class VideoDownloader
         CacheManager.AddToCache(fileName);
         Log.Information("Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerUrl}/{relativeUrl}");
         return true;
+    }
+
+    private static async Task CopyWithProgress(Stream source, Stream destination, long totalBytes,
+        VideoInfo videoInfo, CancellationToken ct)
+    {
+        var buffer = new byte[81920];
+        long copied = 0;
+        var lastReport = 0L;
+        int read;
+        while ((read = await source.ReadAsync(buffer, ct)) > 0)
+        {
+            await destination.WriteAsync(buffer.AsMemory(0, read), ct);
+            copied += read;
+
+            // Report at most once per MiB; the UI cannot use finer than that anyway.
+            if (copied - lastReport < 1_048_576)
+                continue;
+
+            lastReport = copied;
+            var percent = totalBytes > 0 ? copied * 100.0 / totalBytes : -1;
+            var text = totalBytes > 0
+                ? $"{percent:F1}% of {FormatBytes(totalBytes)}"
+                : FormatBytes(copied);
+            OnDownloadProgress?.Invoke(videoInfo, percent, text);
+        }
+    }
+
+    private static async Task DrainProgress(Process process, VideoInfo videoInfo, CancellationToken ct)
+    {
+        try
+        {
+            while (await process.StandardOutput.ReadLineAsync(ct) is { } line)
+                ParseYtdlpProgress(line, videoInfo);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation is handled by the caller, which kills the process.
+        }
+    }
+
+    private static void ParseYtdlpProgress(string line, VideoInfo videoInfo)
+    {
+        if (string.IsNullOrWhiteSpace(line) || !line.StartsWith('{'))
+            return;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(line);
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("status", out var statusEl) || statusEl.GetString() != "downloading")
+                return;
+
+            double percent = -1;
+            if (root.TryGetProperty("_percent_str", out var pctEl))
+            {
+                var pctStr = pctEl.GetString()?.Trim().TrimEnd('%');
+                if (pctStr != null)
+                    double.TryParse(pctStr, CultureInfo.InvariantCulture, out percent);
+            }
+
+            var speed = root.TryGetProperty("_speed_str", out var spdEl) ? spdEl.GetString()?.Trim() ?? "?" : "?";
+            var eta = root.TryGetProperty("_eta_str", out var etaEl) ? etaEl.GetString()?.Trim() ?? "?" : "?";
+            var total = root.TryGetProperty("_total_bytes_str", out var totEl)
+                ? totEl.GetString()?.Trim()
+                : root.TryGetProperty("_total_bytes_estimate_str", out var estEl)
+                    ? $"~{estEl.GetString()?.Trim()}"
+                    : null;
+
+            var text = total != null
+                ? $"{percent:F1}% of {total} at {speed} ETA {eta}"
+                : $"{percent:F1}% at {speed} ETA {eta}";
+
+            OnDownloadProgress?.Invoke(videoInfo, percent, text);
+        }
+        catch (JsonException)
+        {
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        return bytes switch
+        {
+            >= 1_073_741_824 => $"{bytes / 1_073_741_824.0:F2} GiB",
+            >= 1_048_576 => $"{bytes / 1_048_576.0:F1} MiB",
+            >= 1024 => $"{bytes / 1024.0:F0} KiB",
+            _ => $"{bytes} B"
+        };
     }
 }
