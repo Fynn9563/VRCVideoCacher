@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Serilog;
 
 namespace VRCVideoCacher.Services;
@@ -42,6 +42,13 @@ public static class UnavailableVideoCache
         "Private video",
         "This video is private",
         "account associated with this video has been terminated",
+        // YouTube says "This video is unavailable", which contains neither "Video unavailable" nor
+        // "This video is not available" as a substring, so the two above do not catch the single most
+        // common case.
+        "video is unavailable",
+        // A live stream whose recording was never published. Permanent, and distinct from
+        // "This live event will begin in ...", which is a scheduled premiere and must NOT be marked.
+        "live stream recording is not available",
     ];
 
     /// <summary>
