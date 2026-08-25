@@ -29,7 +29,11 @@ fork's own features re-applied on top.
 - Admin warning is a non-blocking dialog instead of preventing launch, and the backend starts regardless of admin status
 - Version numbering stays on 2.x rather than upstream's calendar versioning
 
+### Removed
+- Crowdin integration. The workflow synced this fork's English strings into upstream's Crowdin project, so translations are maintained here directly now
+
 ### Fixed
+- Clear cache on exit now also runs at the next startup if the previous session was killed rather than closed. VRCX force-closes the app when VRChat exits, which skipped the cleanup entirely and left the cache behind
 - Custom domain matching compares the URL host instead of searching the whole URL for the domain text
 - Cached video URLs no longer contain Windows path separators
 - Custom domain downloads no longer fail outright

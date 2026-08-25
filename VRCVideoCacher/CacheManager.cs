@@ -18,6 +18,8 @@ public class CacheManager
     private static readonly ILogger Log = Program.Logger.ForContext<CacheManager>();
     private static readonly ConcurrentDictionary<string, VideoCache> CachedAssets = new();
     public static readonly string CachePath;
+    // Present while a session is running. Left behind means that session was killed, not closed.
+    private static readonly string LockFilePath = Path.Join(Program.DataPath, ".cache.lock");
 
     private const string YouTubeSubdir = "YouTube";
     private const string PyPyDanceSubdir = "PyPyDance";
@@ -38,6 +40,7 @@ public class CacheManager
 
         Log.Debug("Using cache path {CachePath}", CachePath);
         CreateSubdirectories();
+        ClearCacheFromUncleanShutdown();
         BuildCache();
     }
 
@@ -95,6 +98,7 @@ public class CacheManager
 
     public static void Init()
     {
+        CreateLockFile();
         TryFlushCache();
     }
 
@@ -291,7 +295,6 @@ public class CacheManager
         Log.Information("Deleted cached video: {FileName}", fileName);
     }
 
-    /// Wipes the categories the user marked for clearing. Runs on clean shutdown only.
     /// Matches a URL's host against the configured custom domains. Compares the host itself, never
     /// the whole URL, so "https://evil.example/?x=cdn.mysite.com" cannot pass as "cdn.mysite.com".
     public static bool MatchCustomDomain(Uri uri, out string? domain)
@@ -315,7 +318,66 @@ public class CacheManager
         return false;
     }
 
+    /// Clean shutdown: clear what the user asked for, then release the lock so the next start
+    /// knows this session ended properly.
     public static void ClearCacheOnExit()
+    {
+        try
+        {
+            ClearConfiguredCategories();
+        }
+        finally
+        {
+            RemoveLockFile();
+        }
+    }
+
+    /// VRCX force-closes this app when VRChat exits, and --kill-existing-instance does the same to a
+    /// previous instance. Neither runs ProcessExit, so a configured clear-on-exit never happens and
+    /// the cache survives a session it was meant to be wiped after. A leftover lock file is the
+    /// signal that happened, so do the clearing now, before the cache index is built from disk.
+    private static void ClearCacheFromUncleanShutdown()
+    {
+        try
+        {
+            if (!File.Exists(LockFilePath))
+                return;
+
+            Log.Warning("Previous session was killed rather than closed, clearing now instead");
+            ClearConfiguredCategories();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Failed to clear cache after unclean shutdown: {Message}", ex.Message);
+        }
+    }
+
+    private static void CreateLockFile()
+    {
+        try
+        {
+            File.WriteAllText(LockFilePath, DateTime.UtcNow.ToString("O"));
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Failed to create cache lock file: {Message}", ex.Message);
+        }
+    }
+
+    private static void RemoveLockFile()
+    {
+        try
+        {
+            if (File.Exists(LockFilePath))
+                File.Delete(LockFilePath);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Failed to remove cache lock file: {Message}", ex.Message);
+        }
+    }
+
+    private static void ClearConfiguredCategories()
     {
         var directoriesToClear = new List<(UrlType type, string path)>();
 
