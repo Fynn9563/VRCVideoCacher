@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Net;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -177,7 +177,7 @@ internal sealed class Program
 
         YtdlpHash = GetOurYtdlpHash();
         await VvcConfigService.GetConfig();
-        if (ConfigManager.Config.YtdlpAutoUpdate && !LaunchArgs.UseGlobalPath)
+        if (ConfigManager.Config.YtdlpAutoUpdate && !YtdlManager.UseGlobalYtdlpPath)
         {
             await Task.WhenAll(
                 YtdlManager.TryDownloadYtdlp(),

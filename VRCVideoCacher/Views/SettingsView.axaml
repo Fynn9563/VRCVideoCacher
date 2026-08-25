@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:VRCVideoCacher.ViewModels"
              xmlns:mi="using:Material.Icons.Avalonia"
@@ -82,9 +82,18 @@
                         <CheckBox IsChecked="{Binding YtdlUseCookies}" Content="{l:Localize UseYouTubeCookies}"/>
                         <CheckBox IsChecked="{Binding YtdlAutoUpdate}" Content="{l:Localize AutoUpdateUtils}"/>
 
+                        <CheckBox IsChecked="{Binding YtdlpGlobalPath}"
+                                  Content="{l:Localize YtdlpPathGlobalLabel}"
+                                  ToolTip.Tip="{l:Localize YtdlpPathGlobalTooltip}"/>
+
                         <StackPanel Spacing="5">
                             <TextBlock Text="{l:Localize AdditionalYtdlpArgs}"/>
                             <TextBox Text="{Binding YtdlAdditionalArgs}" PlaceholderText="Optional arguments"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="5" ToolTip.Tip="{l:Localize YtdlpArgsOverrideTooltip}">
+                            <TextBlock Text="{l:Localize YtdlpArgsOverride}"/>
+                            <TextBox Text="{Binding YtdlArgsOverride}" PlaceholderText="{l:Localize LeaveEmptyForAdditionalArgs}"/>
                         </StackPanel>
 
                         <StackPanel Spacing="5">

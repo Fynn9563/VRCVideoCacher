@@ -1,4 +1,4 @@
-{
+﻿{
   "Dashboard": "ダッシュボード",
   "Settings": "設定",
   "CacheBrowser": "キャッシュブラウザー",
@@ -6,7 +6,6 @@
   "History": "履歴",
   "Logs": "ログ",
   "About": "バージョン情報",
-
   "Refresh": "更新",
   "Save": "保存",
   "Reset": "リセット",
@@ -18,7 +17,6 @@
   "Done": "完了",
   "Language": "言語",
   "General": "一般",
-
   "ToggleHostTooltip": "ローカルホストキャッシュに YouTube ドメインを使用するかどうかを切り替えます",
   "ServerStatus": "サーバーの状態",
   "Cache": "キャッシュ",
@@ -36,7 +34,6 @@
   "Expired": "期限切れ",
   "Unknown": "不明",
   "ServerRunning": "サーバー実行中",
-
   "ServerSettings": "サーバーの設定",
   "WebServerUrl": "Web サーバーの URL",
   "DownloadSettings": "ダウンロードの設定",
@@ -75,12 +72,10 @@
   "SettingsReset": "設定は最後に保存された値にリセットされます。",
   "SettingsUnsavedChanges": "保存していない変更があります。",
   "RedirectVRDancing": "EU の VRDancing を NA にリダイレクト",
-
   "OpenFolder": "フォルダーを開く",
   "DeleteAllCache": "すべてのキャッシュを削除",
   "SearchVideosWatermark": "動画を検索...",
   "VideosCountFormat": "{1} 件中、{0} 件の動画",
-
   "DownloadQueue": "ダウンロードキュー",
   "ClearQueue": "キューを消去",
   "CurrentDownload": "現在のダウンロード",
@@ -89,7 +84,6 @@
   "EnterVideoUrl": "動画の URL を入力...",
   "QueuedDownloads": "キューされたダウンロード",
   "QueueIsEmpty": "キューは空です",
-
   "LogViewer": "ログビューアー",
   "ExportLogs": "ログをエクスポート",
   "ClearLogs": "ログを消去",
@@ -99,9 +93,7 @@
   "Warning": "警告",
   "Error": "エラー",
   "AutoScroll": "自動スクロール",
-
   "EntriesCountFormat": "{0} 件のエントリ",
-
   "CookieSetupTitle": "YouTube の Cookie 拡張機能をセットアップ",
   "CookieSetupSubtitle": "YouTube のボット検出による問題を修正します",
   "CookieSetupStep1Header": "ステップ 1: ブラウザーを選択",
@@ -131,14 +123,17 @@
   "AddHostsEntry": "hosts エントリを追加",
   "OpenChromeWebStore": "Chrome ウェブストアを開く",
   "OpenFirefoxAddons": "Firefox Add-ons を開く",
-
   "DontShowThisAgain": "今後表示しない",
   "TrayShow": "表示",
   "TrayOpenCacheFolder": "キャッシュフォルダーを開く",
   "TrayExit": "終了",
-
   "CreatedBy": "開発者:",
   "ReportAnIssue": "問題を報告",
   "OpenIssueOnGitHub": "GitHub の Issue を開く",
-  "JoinOurDiscord": "Discord に参加して問題を報告"
+  "JoinOurDiscord": "Discord に参加して問題を報告",
+  "YtdlpPathGlobalLabel": "Use yt-dlp from PATH environment variable",
+  "YtdlpPathGlobalTooltip": "Use a system-installed yt-dlp instead of the bundled one. Only enable if you have yt-dlp installed and available in your PATH",
+  "YtdlpArgsOverride": "yt-dlp Arguments Override (replaces Additional Args when set)",
+  "YtdlpArgsOverrideTooltip": "Completely replaces the default yt-dlp arguments. When set, Additional Arguments are ignored. Use with caution",
+  "LeaveEmptyForAdditionalArgs": "Leave empty to use Additional Arguments"
 }

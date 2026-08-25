@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Jeek.Avalonia.Localization;
 using Newtonsoft.Json;
 using Serilog;
@@ -135,6 +135,10 @@ public class ConfigModel
     public bool YtdlpAutoUpdate = true;
     public string YtdlpAdditionalArgs = string.Empty;
     public string YtdlpDubLanguage = string.Empty;
+    // Replaces YtdlpAdditionalArgs outright when set, rather than appending to it.
+    public string YtdlpArgsOverride = string.Empty;
+    // GUI equivalent of the --global-path launch arg; either one enables it.
+    public bool YtdlpGlobalPath;
 
     // SABR restreaming: when an uncached YouTube video can't be direct-played, fetch it over SABR and
     // serve it to AVPro as a seekable HLS VOD instead of returning an unplayable URL.

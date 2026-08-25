@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using Newtonsoft.Json;
@@ -45,7 +45,7 @@ public class YtdlManager
         CookiesPath = Path.Join(Program.DataPath, "youtube_cookies.txt");
 
         // try to locate in PATH
-        if (LaunchArgs.UseGlobalPath)
+        if (UseGlobalYtdlpPath)
         {
             YtdlPath = FileTools.LocateFile(OperatingSystem.IsWindows() ? "yt-dlp.exe" : "yt-dlp") ??
                        throw new FileNotFoundException("Unable to find yt-dlp");
@@ -57,6 +57,9 @@ public class YtdlManager
 
         Log.Debug("Using ytdl path: {YtdlPath}", YtdlPath);
     }
+
+    public static bool UseGlobalYtdlpPath =>
+        LaunchArgs.UseGlobalPath || ConfigManager.Config.YtdlpGlobalPath;
 
     public static string GenerateYtdlArgs(List<string> args, string urlArg)
     {
@@ -82,8 +85,9 @@ public class YtdlManager
         if (Program.IsCookiesEnabledAndValid())
             args.Add($"--cookies \"{CookiesPath}\"");
 
-        if (!string.IsNullOrEmpty(ConfigManager.Config.YtdlpAdditionalArgs))
-            args.Add(ConfigManager.Config.YtdlpAdditionalArgs);
+        var extraArgs = YtdlArgsHelper.GetYtdlArgs();
+        if (!string.IsNullOrEmpty(extraArgs))
+            args.Add(extraArgs);
 
         args.Add(urlArg);
         return string.Join(' ', args);

@@ -1,4 +1,4 @@
-{
+﻿{
   "Dashboard": "Dashboard",
   "Settings": "Settings",
   "CacheBrowser": "Cache Browser",
@@ -6,7 +6,6 @@
   "History": "History",
   "Logs": "Logs",
   "About": "About",
-
   "Refresh": "Refresh",
   "Save": "Save",
   "Reset": "Reset",
@@ -18,7 +17,6 @@
   "Done": "Done",
   "Language": "Language",
   "General": "General",
-
   "ToggleHostTooltip": "Toggle using YouTube domain for localhost cache",
   "ServerStatus": "Server Status",
   "Cache": "Cache",
@@ -36,7 +34,6 @@
   "Expired": "Expired",
   "Unknown": "Unknown",
   "ServerRunning": "Server running",
-
   "ServerSettings": "Server Settings",
   "WebServerUrl": "Web Server URL",
   "DownloadSettings": "Download Settings",
@@ -75,12 +72,10 @@
   "SettingsReset": "Settings reset to last saved values.",
   "SettingsUnsavedChanges": "You have unsaved changes.",
   "RedirectVRDancing": "Redirect EU VRDancing to NA",
-
   "OpenFolder": "Open Folder",
   "DeleteAllCache": "Delete All Cache",
   "SearchVideosWatermark": "Search videos...",
   "VideosCountFormat": "{0} of {1} videos",
-
   "DownloadQueue": "Download Queue",
   "ClearQueue": "Clear Queue",
   "CurrentDownload": "Current Download",
@@ -89,7 +84,6 @@
   "EnterVideoUrl": "Enter video URL...",
   "QueuedDownloads": "Queued Downloads",
   "QueueIsEmpty": "Queue is empty",
-
   "LogViewer": "Log Viewer",
   "ExportLogs": "Export Logs",
   "ClearLogs": "Clear Logs",
@@ -99,9 +93,7 @@
   "Warning": "Warning",
   "Error": "Error",
   "AutoScroll": "Auto-scroll",
-
   "EntriesCountFormat": "{0} entries",
-
   "CookieSetupTitle": "YouTube Cookie Extension Setup",
   "CookieSetupSubtitle": "Fix YouTube bot detection errors",
   "CookieSetupStep1Header": "Step 1: Select your browser",
@@ -131,14 +123,17 @@
   "AddHostsEntry": "Add Hosts Entry",
   "OpenChromeWebStore": "Open Chrome Web Store",
   "OpenFirefoxAddons": "Open Firefox Add-ons",
-
   "DontShowThisAgain": "Don't show this again",
   "TrayShow": "Show",
   "TrayOpenCacheFolder": "Open Cache Folder",
   "TrayExit": "Exit",
-
   "CreatedBy": "Created By",
   "ReportAnIssue": "Report an Issue",
   "OpenIssueOnGitHub": "Open an issue on GitHub",
-  "JoinOurDiscord": "Join our Discord to report an issue"
+  "JoinOurDiscord": "Join our Discord to report an issue",
+  "YtdlpPathGlobalLabel": "Use yt-dlp from PATH environment variable",
+  "YtdlpPathGlobalTooltip": "Use a system-installed yt-dlp instead of the bundled one. Only enable if you have yt-dlp installed and available in your PATH",
+  "YtdlpArgsOverride": "yt-dlp Arguments Override (replaces Additional Args when set)",
+  "YtdlpArgsOverrideTooltip": "Completely replaces the default yt-dlp arguments. When set, Additional Arguments are ignored. Use with caution",
+  "LeaveEmptyForAdditionalArgs": "Leave empty to use Additional Arguments"
 }

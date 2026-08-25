@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
@@ -39,6 +39,12 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _ytdlAdditionalArgs = string.Empty;
+
+    [ObservableProperty]
+    private string _ytdlArgsOverride = string.Empty;
+
+    [ObservableProperty]
+    private bool _ytdlpGlobalPath;
 
     [ObservableProperty]
     private string _ytdlDubLanguage = string.Empty;
@@ -162,6 +168,8 @@ public partial class SettingsViewModel : ViewModelBase
         YtdlUseCookies = config.YtdlpUseCookies;
         YtdlAutoUpdate = config.YtdlpAutoUpdate;
         YtdlAdditionalArgs = config.YtdlpAdditionalArgs;
+        YtdlArgsOverride = config.YtdlpArgsOverride;
+        YtdlpGlobalPath = config.YtdlpGlobalPath;
         YtdlDubLanguage = config.YtdlpDubLanguage;
         SabrFilterDrcAudio = config.SabrFilterDrcAudio;
         SabrFilterSuperResolution = config.SabrFilterSuperResolution;
@@ -243,6 +251,8 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnYtdlUseCookiesChanged(bool value) => SetHasChanges();
     partial void OnYtdlAutoUpdateChanged(bool value) => SetHasChanges();
     partial void OnYtdlAdditionalArgsChanged(string value) => SetHasChanges();
+    partial void OnYtdlArgsOverrideChanged(string value) => SetHasChanges();
+    partial void OnYtdlpGlobalPathChanged(bool value) => SetHasChanges();
     partial void OnYtdlDubLanguageChanged(string value) => SetHasChanges();
     partial void OnSabrFilterDrcAudioChanged(bool value) => SetHasChanges();
     partial void OnSabrFilterSuperResolutionChanged(bool value) => SetHasChanges();
@@ -278,6 +288,8 @@ public partial class SettingsViewModel : ViewModelBase
         config.YtdlpUseCookies = YtdlUseCookies;
         config.YtdlpAutoUpdate = YtdlAutoUpdate;
         config.YtdlpAdditionalArgs = YtdlAdditionalArgs;
+        config.YtdlpArgsOverride = YtdlArgsOverride;
+        config.YtdlpGlobalPath = YtdlpGlobalPath;
         config.YtdlpDubLanguage = YtdlDubLanguage;
         config.SabrFilterDrcAudio = SabrFilterDrcAudio;
         config.SabrFilterSuperResolution = SabrFilterSuperResolution;
