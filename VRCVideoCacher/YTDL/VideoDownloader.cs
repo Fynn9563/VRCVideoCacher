@@ -212,7 +212,7 @@ public class VideoDownloader
             videoId = await VideoId.TryGetYouTubeVideoId(url);
             if (string.IsNullOrEmpty(videoId))
             {
-                Log.Warning("Invalid YouTube URL: {URL}", url);
+                Log.Debug("Not caching {URL}: no cacheable video id", url);
                 return false;
             }
         }

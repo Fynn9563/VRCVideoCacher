@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Serilog;
@@ -108,14 +108,17 @@ public class VideoId
             Type = UrlType.YouTube
         });
 
+        // Neither of these is a failure: the video still plays, it just is not written to the cache.
+        // Only the download path calls this, so returning empty skips caching and nothing else.
         if (data.IsLive == true)
         {
-            Log.Warning("Failed to get video ID: Video is a stream");
+            Log.Information("Not caching {VideoId}: live streams are not cached", data.Id);
             return string.Empty;
         }
         if (data.Duration > ConfigManager.Config.CacheYouTubeMaxLength * 60)
         {
-            Log.Warning("Failed to get video ID: Video is longer than configured max length ({Length})", data.Duration / 60 / ConfigManager.Config.CacheYouTubeMaxLength);
+            Log.Information("Not caching {VideoId}: {Minutes:0} min exceeds the {Max} min cache limit",
+                data.Id, data.Duration / 60.0, ConfigManager.Config.CacheYouTubeMaxLength);
             return string.Empty;
         }
 
