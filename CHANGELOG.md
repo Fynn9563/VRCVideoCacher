@@ -2,12 +2,10 @@
 
 ## [2.9.0] - 2026-08-26
 
-Rebased onto upstream's sabr branch, five months of upstream work, with this
-fork's own features re-applied on top.
+Rebased onto five months of upstream work, with this fork's own features
+re-applied on top.
 
 ### Added
-- SABR streaming for YouTube: a video that cannot be direct-played is fetched over SABR and served to AVPro as a seekable HLS stream instead of failing
-- Live stream support, with a configurable window and DRC, super-resolution and voice-boosted audio filters
 - Translations for Hungarian, Italian, Japanese, Korean, Portuguese, Russian and Chinese
 - About page with version, credits and links to Discord, GitHub and Steam
 - SteamVR integration through the OpenVR API: registers as a background app, follows the Start with SteamVR setting, and can close when SteamVR does
@@ -18,26 +16,31 @@ fork's own features re-applied on top.
 - Clear all history button on the History tab
 - MOTD banner renders Markdown
 - Known-unavailable videos are remembered, so a looping player stops re-asking YouTube for a deleted video
+- Warning when the web server port is already in use, naming the process holding it
 - GitHub issue templates
-- Hosts file management and an elevation helper for it
 - "Other Chromium-based browser" and "Other Firefox-based browser" options in cookie setup
 - Cookie setup now includes a hosts file step
 
 ### Changed
+- Site handling moved to a per-site handler registry, which is where custom domain matching now lives
 - yt-dlp runs with `--ignore-config`, so a global yt-dlp config is ignored rather than deleted. The startup prompt offering to delete it is gone
 - YouTube downloads still run one at a time even with Max Concurrent Downloads above 1. Parallel yt-dlp runs each rewrite the cookie jar with a different rotated token, which is what causes "Sign in to confirm you're not a bot". Concurrency applies to direct downloads and to overlapping them with yt-dlp work
+- SteamVR auto-start replaces the hand-written vrmanifest registration, using the OpenVR API directly
 - Admin warning is a non-blocking dialog instead of preventing launch, and the backend starts regardless of admin status
 - Version numbering stays on 2.x rather than upstream's calendar versioning
 
 ### Removed
 - Crowdin integration. The workflow synced this fork's English strings into upstream's Crowdin project, so translations are maintained here directly now
+- Migration of data and config from older layouts
 
 ### Fixed
 - Clear cache on exit now also runs at the next startup if the previous session was killed rather than closed. VRCX force-closes the app when VRChat exits, which skipped the cleanup entirely and left the cache behind
 - Custom domain matching compares the URL host instead of searching the whole URL for the domain text
 - Cached video URLs no longer contain Windows path separators
 - Custom domain downloads no longer fail outright
-- Manifest links (`.m3u8`, `.mpd`) are muxed by yt-dlp instead of the playlist text being saved as the video
+- Manifest links (`.m3u8`, `.mpd`) are downloaded with yt-dlp, falling back to ffmpeg, instead of the playlist text being saved as the video
+- A video too long to cache is reported as such instead of as a failed video ID, and the length is shown in minutes rather than as a ratio
+- Videos that are gone no longer raise repeated error popups: "This video is unavailable" and "This live stream recording is not available" are now recognised, so the video is remembered after the first failure
 - The Redirect VRDancing label showed as a raw key in Hungarian, Korean, Russian and Chinese
 - index.html is no longer counted as a cached video
 - Cookie "ST-" entries from Firefox causing instant expiration after import
