@@ -6,7 +6,6 @@ using Avalonia;
 using Serilog;
 using VRCVideoCacher.API;
 using VRCVideoCacher.Services;
-using VRCVideoCacher.Services.Sabr;
 using VRCVideoCacher.Utils;
 using VRCVideoCacher.YTDL;
 #if STEAMRELEASE
@@ -189,19 +188,6 @@ internal sealed class Program
             );
             YtdlManager.StartYtdlUpdaterThread();
             _ = YtdlManager.TryDownloadFfmpeg();
-        }
-
-        // Warm the SABR PO token provider now (downloads/installs on first run, then supervises its Deno
-        // server) so it is usually ready by the first SABR playback. Runs in the background; SABR waits on
-        // its readiness and fails cleanly if it never comes up. Deno is provisioned just above.
-        if (ConfigManager.Config.SabrRestreamEnabled)
-        {
-            BgUtilPotProvider.Ensure();
-            // SABR hands AVPro Opus-in-MP4, which an out-of-date Windows decodes as silent audio and
-            // VRChat then shows as a video that never plays. Nothing in any log says so — hence the
-            // explicit check. Runs off the startup path; it costs a decode of a ~1s clip.
-            if (OperatingSystem.IsWindows())
-                _ = Task.Run(OpusMp4Check.Run);
         }
 
         if (OperatingSystem.IsWindows())

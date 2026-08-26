@@ -168,35 +168,6 @@ public class ApiController : WebApiController
             return;
         }
 
-        // Testing: force everything through the SABR restream path.
-        if (ConfigManager.Config.SabrRestreamForce && videoInfo.UrlType == UrlType.YouTube)
-        {
-            var forcedUrl = await SabrRestreamService.TryGetRestreamUrlAsync(videoInfo);
-            if (!string.IsNullOrEmpty(forcedUrl))
-            {
-                Log.Information("Responding with forced SABR restream URL: {URL}", forcedUrl);
-                await HttpContext.SendStringAsync(forcedUrl, "text/plain", Encoding.UTF8);
-                // The SABR session fetches the whole video anyway; when it is streaming at the cache's
-                // resolution it writes the cached file itself, so downloading it again would fetch the
-                // same video twice. Only queue a separate download when the resolutions differ.
-                // Never queue a livestream: it has no end, and the download worker is a single serial
-                // thread, so one live job blocks every other cache download indefinitely.
-                if (ConfigManager.Config.CacheYouTube && !SabrRestreamService.CacheConverges
-                    && !SabrRestreamService.IsLiveSession(videoInfo.VideoId))
-                    VideoDownloader.QueueDownload(videoInfo);
-                return;
-            }
-            Log.Warning("Forced SABR restream failed; falling back to normal resolution.");
-
-            // The SABR extract may have just learned the video is gone (deleted/private). If so, don't
-            // fall through to another yt-dlp call for the same dead video — refuse it now.
-            if (UnavailableVideoCache.IsUnavailable(videoInfo.VideoId))
-            {
-                await RespondVideoUnavailable(videoInfo.VideoId);
-                return;
-            }
-        }
-
         var (response, success) = await VideoId.GetUrl(videoInfo, avPro);
         if (!success)
         {
@@ -204,8 +175,8 @@ public class ApiController : WebApiController
             // only send the error back if it's for YouTube, otherwise let it play the request URL normally
             if (videoInfo.UrlType == UrlType.YouTube)
             {
-                // A genuinely gone video fails identically on every retry — and through SABR too — so
-                // record it and stop, sparing both the SABR rescue below and the player's next request.
+                // A genuinely gone video fails identically on every retry, so record it and stop,
+                // sparing the player's next request as well as ours.
                 if (UnavailableVideoCache.IsUnavailabilityError(response))
                 {
                     UnavailableVideoCache.Mark(videoInfo.VideoId);
@@ -213,18 +184,6 @@ public class ApiController : WebApiController
                     return;
                 }
 
-                // SABR-only videos have no playable direct URL; try to restream them live to AVPro.
-                var restreamUrl = await SabrRestreamService.TryGetRestreamUrlAsync(videoInfo);
-                if (!string.IsNullOrEmpty(restreamUrl))
-                {
-                    Log.Information("Responding with SABR restream URL: {URL}", restreamUrl);
-                    await HttpContext.SendStringAsync(restreamUrl, "text/plain", Encoding.UTF8);
-                    // Still cache in the background so the next play is a direct cache hit — unless it
-                    // is a live broadcast, which can never be "fully" downloaded.
-                    if (ConfigManager.Config.CacheYouTube && !SabrRestreamService.IsLiveSession(videoInfo.VideoId))
-                        VideoDownloader.QueueDownload(videoInfo);
-                    return;
-                }
                 HttpContext.Response.StatusCode = 500;
                 await HttpContext.SendStringAsync(response, "text/plain", Encoding.UTF8);
                 return;

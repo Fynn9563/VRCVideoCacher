@@ -11,11 +11,11 @@ public class CustomDomainHandler : ISiteHandler
 
     public bool CanHandle(Uri uri) =>
         ConfigManager.Config.CacheCustomDomainsEnabled &&
-        CacheManager.MatchCustomDomain(uri, out _);
+        CacheManager.IsCustomDomainUrl(uri, out _);
 
     public Task<VideoInfo?> GetVideoInfo(string url, Uri uri, bool avPro)
     {
-        CacheManager.MatchCustomDomain(uri, out var domain);
+        CacheManager.IsCustomDomainUrl(uri, out var domain);
 
         // Name the cache entry after the URL's own filename, matching how this fork has always
         // stored custom domain videos. Hash only when the URL carries no usable filename.

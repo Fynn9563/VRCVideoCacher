@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text;
 using Serilog;
@@ -14,9 +14,8 @@ public class WinGet
         { "VP9 Video Extensions", "9n4d0msmp0pt" },
         { "AV1 Video Extension", "9mvzqvxjbq9v" },
         { "Dolby Digital Plus decoder for PC OEMs", "9nvjqjbdkn97" },
-        // Supplies the Opus/Vorbis decoders, which SABR needs — we mux Opus audio. Note this package
-        // alone is NOT sufficient for Opus in MP4: that also needs a Windows new enough for the MF MP4
-        // source to map the Opus sample entry, which is what OpusMp4Check actually verifies.
+        // Supplies the Opus/Vorbis decoders. Cached YouTube audio is Opus in WebM, which AVPro cannot
+        // play without these.
         { "Web Media Extensions", "9n5tdp8vcmhs" }
     };
 

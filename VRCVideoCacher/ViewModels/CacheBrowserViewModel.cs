@@ -91,6 +91,24 @@ public partial class CacheItemViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void OpenInMediaPlayer()
+    {
+        var filePath = Path.Join(CacheManager.CachePath, FileName);
+        if (!File.Exists(filePath))
+            return;
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = filePath,
+                UseShellExecute = true
+            });
+        }
+        catch { /* Ignore errors */ }
+    }
+
+    [RelayCommand]
     private async Task CopyUrl()
     {
         var relativeUrl = FileName.Replace('\\', '/');

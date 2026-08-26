@@ -103,23 +103,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- YouTube SABR Options -->
-                <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
-                    <StackPanel Spacing="15">
-                        <TextBlock Text="{l:Localize YouTubeSabrOptions}" FontWeight="SemiBold" FontSize="16"/>
-
-                        <CheckBox IsChecked="{Binding SabrFilterDrcAudio}"
-                                  Content="{l:Localize SabrFilterDrcAudio}"
-                                  ToolTip.Tip="{l:Localize SabrFilterDrcAudioTooltip}"/>
-                        <CheckBox IsChecked="{Binding SabrFilterSuperResolution}"
-                                  Content="{l:Localize SabrFilterSuperResolution}"
-                                  ToolTip.Tip="{l:Localize SabrFilterSuperResolutionTooltip}"/>
-                        <CheckBox IsChecked="{Binding SabrFilterVoiceBoostedAudio}"
-                                  Content="{l:Localize SabrFilterVoiceBoostedAudio}"
-                                  ToolTip.Tip="{l:Localize SabrFilterVoiceBoostedAudioTooltip}"/>
-                    </StackPanel>
-                </Border>
-
                 <!-- Cache Settings -->
                 <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
                     <StackPanel Spacing="15">
@@ -194,6 +177,40 @@
                                   ToolTip.Tip="{l:Localize ClearPyPyDanceCacheOnExitTooltip}"/>
                         <CheckBox IsChecked="{Binding ClearVRDancingCacheOnExit}" Content="{l:Localize ClearVRDancingCacheOnExit}"
                                   ToolTip.Tip="{l:Localize ClearVRDancingCacheOnExitTooltip}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Pre-Cache URLs -->
+                <Border Background="#2d2d2d" CornerRadius="8" Padding="20">
+                    <StackPanel Spacing="15">
+                        <StackPanel>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Text="{l:Localize PreCacheUrls}" FontWeight="SemiBold" FontSize="16" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Command="{Binding AddPreCacheUrlCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <mi:MaterialIcon Kind="Plus" Width="16" Height="16"/>
+                                        <TextBlock Text="{l:Localize Add}"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                            <TextBlock Text="{l:Localize PreCacheUrlsDesc}" Foreground="#888" FontSize="12"/>
+                        </StackPanel>
+
+                        <ItemsControl ItemsSource="{Binding PreCacheUrls}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="*, Auto" Margin="0,5">
+                                        <TextBox Grid.Column="0" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 PlaceholderText="https://youtube.com/watch?v=..."/>
+                                        <Button Grid.Column="1" Margin="5,0,0,0"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemovePreCacheUrlCommand}"
+                                                CommandParameter="{Binding}">
+                                            <mi:MaterialIcon Kind="Delete" Width="16" Height="16"/>
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </Border>
 

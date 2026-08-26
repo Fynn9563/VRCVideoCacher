@@ -74,6 +74,9 @@
                                 <Button Command="{Binding OpenOnYouTubeCommand}" ToolTip.Tip="Open on YouTube" Padding="8">
                                     <mi:MaterialIcon Kind="Youtube" Width="18" Height="18" Foreground="#FF0000"/>
                                 </Button>
+                                <Button Command="{Binding OpenInMediaPlayerCommand}" ToolTip.Tip="{l:Localize OpenInMediaPlayer}" Padding="8">
+                                    <mi:MaterialIcon Kind="PlayCircle" Width="18" Height="18" Foreground="#64B5F6"/>
+                                </Button>
                                 <Button Command="{Binding CopyUrlCommand}" ToolTip.Tip="Copy Local URL" Padding="8">
                                     <mi:MaterialIcon Kind="ContentCopy" Width="18" Height="18"/>
                                 </Button>

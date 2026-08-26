@@ -40,7 +40,7 @@ public class CacheManager
 
         Log.Debug("Using cache path {CachePath}", CachePath);
         CreateSubdirectories();
-        ClearCacheFromUncleanShutdown();
+        CheckAndClearPreviousSession();
         BuildCache();
     }
 
@@ -297,7 +297,7 @@ public class CacheManager
 
     /// Matches a URL's host against the configured custom domains. Compares the host itself, never
     /// the whole URL, so "https://evil.example/?x=cdn.mysite.com" cannot pass as "cdn.mysite.com".
-    public static bool MatchCustomDomain(Uri uri, out string? domain)
+    public static bool IsCustomDomainUrl(Uri uri, out string? domain)
     {
         domain = null;
         var host = uri.Host;
@@ -336,7 +336,7 @@ public class CacheManager
     /// previous instance. Neither runs ProcessExit, so a configured clear-on-exit never happens and
     /// the cache survives a session it was meant to be wiped after. A leftover lock file is the
     /// signal that happened, so do the clearing now, before the cache index is built from disk.
-    private static void ClearCacheFromUncleanShutdown()
+    private static void CheckAndClearPreviousSession()
     {
         try
         {

@@ -13,6 +13,8 @@ namespace VRCVideoCacher.YTDL;
 
 public class VideoDownloader
 {
+    /// Some CDNs only serve a manifest to something that looks like a desktop player.
+    private const string StreamingUserAgent = "NSPlayer/12.00.19041.6926 WMFSDK/12.00.19041.6926";
     private const string TempDownloadMp4Name = "_tempVideo.mp4";
     private const string TempDownloadWebmName = "_tempVideo.webm";
     private static readonly ILogger Log = Program.Logger.ForContext<VideoDownloader>();
@@ -93,7 +95,7 @@ public class VideoDownloader
                     // A .m3u8 or .mpd is a manifest, so a direct fetch would save the playlist text
                     // rather than the video. yt-dlp muxes the segments instead.
                     success = videoInfo.IsStreaming
-                        ? await DownloadVRDancingVideoWithId(videoInfo, ct)
+                        ? await DownloadCustomDomainWithYtdlp(videoInfo, ct)
                         : await DownloadVideoWithId(videoInfo, ct);
                     break;
                 case UrlType.Other:
@@ -129,7 +131,7 @@ public class VideoDownloader
         // update, and a full pipe buffer would block yt-dlp forever.
         var drain = progressFor == null
             ? Task.CompletedTask
-            : DrainProgress(process, progressFor, ct);
+            : ReadStdoutWithProgress(process, line => ParseYtdlpProgress(line, progressFor), ct);
 
         try
         {
@@ -466,17 +468,132 @@ public class VideoDownloader
         }
     }
 
-    private static async Task DrainProgress(Process process, VideoInfo videoInfo, CancellationToken ct)
+    private static async Task ReadStdoutWithProgress(Process process, Action<string> progressParser,
+        CancellationToken ct = default)
     {
         try
         {
             while (await process.StandardOutput.ReadLineAsync(ct) is { } line)
-                ParseYtdlpProgress(line, videoInfo);
+                progressParser(line);
         }
         catch (OperationCanceledException)
         {
             // Cancellation is handled by the caller, which kills the process.
         }
+    }
+
+    /// <summary>
+    /// Streaming custom domain (.m3u8 / .mpd). yt-dlp muxes the segments; some CDNs only serve them to a
+    /// player-looking client, hence the WMF user-agent and the site's own referer. Falls back to ffmpeg,
+    /// which copes with a few manifests yt-dlp refuses.
+    /// </summary>
+    private static async Task<bool> DownloadCustomDomainWithYtdlp(VideoInfo videoInfo, CancellationToken ct)
+    {
+        using var tempDir = new TempDir();
+        var tempDownloadMp4Path = Path.Join(tempDir.FullName, TempDownloadMp4Name);
+
+        var url = videoInfo.VideoUrl;
+        Log.Information("Downloading Streaming Video: {URL}", url);
+
+        var uri = new Uri(url);
+        var referer = $"{uri.Scheme}://{uri.Host}/";
+
+        var process = new Process
+        {
+            StartInfo =
+            {
+                FileName = YtdlManager.YtdlPath,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+            }
+        };
+        process.StartInfo.Arguments =
+            $"--encoding utf-8 --newline --progress-template \"download:%(progress)j\" " +
+            $"-o \"{tempDownloadMp4Path}\" " +
+            $"--user-agent \"{StreamingUserAgent}\" --referer \"{referer}\" --no-playlist -- \"{url}\"";
+
+        await RunProcessAsync(process, ct, videoInfo);
+        var error = (await process.StandardError.ReadToEndAsync(ct)).Trim();
+
+        if (process.ExitCode != 0)
+        {
+            Log.Warning("yt-dlp failed ({exitCode}): {error}", process.ExitCode, error);
+            Log.Information("Trying ffmpeg fallback for: {URL}", url);
+            if (!await DownloadStreamingWithFfmpeg(url, referer, tempDownloadMp4Path, ct))
+            {
+                Log.Error("Failed to download streaming video (yt-dlp and ffmpeg both failed): {URL}", url);
+                return false;
+            }
+        }
+
+        var baseFileName = $"{videoInfo.VideoId}.{videoInfo.DownloadFormat.ToString().ToLower()}";
+        var fileName = CacheManager.GetRelativePath(UrlType.CustomDomain, baseFileName, videoInfo.Domain);
+        var relativeUrl = CacheManager.GetRelativeUrl(UrlType.CustomDomain, baseFileName, videoInfo.Domain);
+        var filePath = Path.Join(CacheManager.CachePath, fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+
+        if (File.Exists(filePath))
+        {
+            Log.Error("File already exists, canceling...");
+            return false;
+        }
+
+        if (!File.Exists(tempDownloadMp4Path))
+        {
+            Log.Error("Failed to download Streaming Video: {URL}", url);
+            return false;
+        }
+
+        File.Move(tempDownloadMp4Path, filePath);
+        CacheManager.AddToCache(fileName);
+        Log.Information("Streaming Video Downloaded: {URL}", $"{ConfigManager.Config.YtdlpWebServerUrl}/{relativeUrl}");
+        return true;
+    }
+
+    /// <summary>Last resort for a manifest yt-dlp will not take. Stream copy, no re-encode.</summary>
+    private static async Task<bool> DownloadStreamingWithFfmpeg(string url, string referer, string outputPath,
+        CancellationToken ct)
+    {
+        var ffmpegPath = YtdlManager.FfmpegPath;
+        if (!File.Exists(ffmpegPath))
+        {
+            Log.Error("ffmpeg not found at {Path}, cannot fallback", ffmpegPath);
+            return false;
+        }
+
+        if (File.Exists(outputPath))
+            File.Delete(outputPath);
+
+        var process = new Process
+        {
+            StartInfo =
+            {
+                FileName = ffmpegPath,
+                Arguments = $"-user_agent \"{StreamingUserAgent}\" -referer \"{referer}\" " +
+                            $"-i \"{url}\" -c copy -y \"{outputPath}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+            }
+        };
+
+        await RunProcessAsync(process, ct);
+        var error = (await process.StandardError.ReadToEndAsync(ct)).Trim();
+
+        if (process.ExitCode != 0)
+        {
+            Log.Error("ffmpeg failed ({exitCode}): {error}", process.ExitCode, error);
+            return false;
+        }
+
+        return File.Exists(outputPath);
     }
 
     private static void ParseYtdlpProgress(string line, VideoInfo videoInfo)

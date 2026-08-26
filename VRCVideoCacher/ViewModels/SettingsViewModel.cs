@@ -51,15 +51,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private string _ytdlDubLanguage = string.Empty;
 
-    // YouTube SABR Options
-    [ObservableProperty]
-    private bool _sabrFilterDrcAudio;
 
-    [ObservableProperty]
-    private bool _sabrFilterSuperResolution;
 
-    [ObservableProperty]
-    private bool _sabrFilterVoiceBoostedAudio;
 
     // Cache Settings
     [ObservableProperty]
@@ -143,6 +136,9 @@ public partial class SettingsViewModel : ViewModelBase
     public ObservableCollection<EditableString> CacheCustomDomains { get; } = [];
     public ObservableCollection<EditableString> ClearCustomDomainsOnExit { get; } = [];
 
+    // Pre-Cache URLs
+    public ObservableCollection<EditableString> PreCacheUrls { get; } = [];
+
     [ObservableProperty]
     private string _blockRedirect = string.Empty;
 
@@ -204,9 +200,6 @@ public partial class SettingsViewModel : ViewModelBase
         YtdlArgsOverride = config.YtdlpArgsOverride;
         YtdlpGlobalPath = config.YtdlpGlobalPath;
         YtdlDubLanguage = config.YtdlpDubLanguage;
-        SabrFilterDrcAudio = config.SabrFilterDrcAudio;
-        SabrFilterSuperResolution = config.SabrFilterSuperResolution;
-        SabrFilterVoiceBoostedAudio = config.SabrFilterVoiceBoostedAudio;
         CachedAssetPath = config.CachedAssetPath;
         CacheYouTube = config.CacheYouTube;
         CacheYouTubeMaxResolution = config.CacheYouTubeMaxResolution;
@@ -243,6 +236,9 @@ public partial class SettingsViewModel : ViewModelBase
         ClearCustomDomainsOnExit.Clear();
         foreach (var domain in config.ClearCustomDomainsOnExit)
             ClearCustomDomainsOnExit.Add(new EditableString(domain));
+        PreCacheUrls.Clear();
+        foreach (var url in config.PreCacheUrls)
+            PreCacheUrls.Add(new EditableString(url));
 
         BlockRedirect = config.BlockRedirect;
 
@@ -303,9 +299,6 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnYtdlArgsOverrideChanged(string value) => SetHasChanges();
     partial void OnYtdlpGlobalPathChanged(bool value) => SetHasChanges();
     partial void OnYtdlDubLanguageChanged(string value) => SetHasChanges();
-    partial void OnSabrFilterDrcAudioChanged(bool value) => SetHasChanges();
-    partial void OnSabrFilterSuperResolutionChanged(bool value) => SetHasChanges();
-    partial void OnSabrFilterVoiceBoostedAudioChanged(bool value) => SetHasChanges();
     partial void OnCachedAssetPathChanged(string value) => SetHasChanges();
     partial void OnCacheYouTubeChanged(bool value) => SetHasChanges();
     partial void OnCacheYouTubeMaxResolutionChanged(int value) => SetHasChanges();
@@ -349,9 +342,6 @@ public partial class SettingsViewModel : ViewModelBase
         config.YtdlpArgsOverride = YtdlArgsOverride;
         config.YtdlpGlobalPath = YtdlpGlobalPath;
         config.YtdlpDubLanguage = YtdlDubLanguage;
-        config.SabrFilterDrcAudio = SabrFilterDrcAudio;
-        config.SabrFilterSuperResolution = SabrFilterSuperResolution;
-        config.SabrFilterVoiceBoostedAudio = SabrFilterVoiceBoostedAudio;
         config.CachedAssetPath = CachedAssetPath;
         config.CacheYouTube = CacheYouTube;
         config.CacheYouTubeMaxResolution = CacheYouTubeMaxResolution;
@@ -373,6 +363,8 @@ public partial class SettingsViewModel : ViewModelBase
             .Select(d => d.Value.Trim()).Where(d => !string.IsNullOrEmpty(d)).ToArray();
         config.ClearCustomDomainsOnExit = ClearCustomDomainsOnExit
             .Select(d => d.Value.Trim()).Where(d => !string.IsNullOrEmpty(d)).ToArray();
+        config.PreCacheUrls = PreCacheUrls
+            .Select(u => u.Value.Trim()).Where(u => !string.IsNullOrEmpty(u)).ToArray();
         config.PatchResonite = PatchResonite;
         config.PatchVrChat = PatchVRC;
         config.AutoUpdateVrcVideoCacher = AutoUpdate;
@@ -409,6 +401,20 @@ public partial class SettingsViewModel : ViewModelBase
     private void RemoveBlockedUrl(BlockedUrlEntry url)
     {
         BlockedUrls.Remove(url);
+    }
+
+    [RelayCommand]
+    private void AddPreCacheUrl()
+    {
+        PreCacheUrls.Add(new EditableString("https://"));
+        SetHasChanges();
+    }
+
+    [RelayCommand]
+    private void RemovePreCacheUrl(EditableString url)
+    {
+        PreCacheUrls.Remove(url);
+        SetHasChanges();
     }
 
     [RelayCommand]
