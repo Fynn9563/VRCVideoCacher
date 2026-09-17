@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using Serilog;
 using VRCVideoCacher.Models;
+using VRCVideoCacher.Services.Sabr;
 
 namespace VRCVideoCacher.YTDL.SiteHandlers.Sites;
 
@@ -10,7 +11,7 @@ public class YouTubeHandler : ISiteHandler
     private static readonly string[] Hosts = ["youtube.com", "youtu.be", "www.youtube.com", "m.youtube.com", "music.youtube.com"];
     private static readonly Regex IdRegex = new(@"(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|live\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})");
     private const string AVProFormat = "(mp4/best)[height<=?1080][height>=?64][width>=?64]";
-    private const string UnityPlayerFormat = "(mp4/best)[vcodec!=av01][vcodec!=vp9.2][height<=?1080][height>=?64][width>=?64][protocol^=http]";
+    private const string UnityPlayerFormat = "(mp4/best)[vcodec!^=av01][vcodec!^=vp09][vcodec!^=vp9][height<=?1080][height>=?64][width>=?64][protocol^=http]";
 
     public bool CanHandle(Uri uri) => Hosts.Contains(uri.Host);
 
@@ -68,6 +69,13 @@ public class YouTubeHandler : ISiteHandler
             // Unity Player
             args.Add($"-f \"{UnityPlayerFormat}\"");
         }
+
+        // Send a GVS PO token on the legacy path too, exactly as SABR does: YouTube increasingly
+        // bot-checks token-less extractions, and this is what stops it. Non-Premium only (Premium needs
+        // none — SabrExtractor.AccountIsPremium), and only when the provider is actually up so we never
+        // stall or fail the legacy path on a provider that is disabled or still coming online.
+        if (!SabrExtractor.AccountIsPremium && BgUtilPotProvider.IsReady)
+            args.AddRange(BgUtilPotProvider.ExtractorArgs);
 
         return args;
     }

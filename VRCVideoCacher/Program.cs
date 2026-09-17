@@ -6,6 +6,7 @@ using Avalonia;
 using Serilog;
 using VRCVideoCacher.API;
 using VRCVideoCacher.Services;
+using VRCVideoCacher.Services.Sabr;
 using VRCVideoCacher.Utils;
 using VRCVideoCacher.YTDL;
 #if STEAMRELEASE
@@ -23,6 +24,7 @@ internal sealed class Program
     public static readonly string Version =
         typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? "unknown";
+    public const string BgUtilsVersion = "2.0.0";
     public const string Creator_Elly = "Elly";
     public const string Creator_Natsumi = "Natsumi";
     public const string Creator_Haxy = "Haxy";
@@ -103,13 +105,7 @@ internal sealed class Program
         Logger.Information("VRCVideoCacher version {Version} created by {Elly}, {Natsumi}, {Haxy}, {Hauskaz}, {DubyaDude}", Version, Creator_Elly, Creator_Natsumi, Creator_Haxy, Creator_Hauskaz, Creator_DubyaDude);
         Logger.Information("Modified by {Fynn}", Modifier_Fynn);
 
-        TaskScheduler.UnobservedTaskException += (_, e) =>
-        {
-            if (e.Exception != null && e.Exception is Exception ex)
-            {
-                LoggerUtils.LogUnhandledException(ex, "Unobserved task exception");
-            }
-        };
+        TaskScheduler.UnobservedTaskException += LoggerUtils.OnUnobservedTaskException;
 #if !DEBUG
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
@@ -120,6 +116,10 @@ internal sealed class Program
             Log.CloseAndFlush();
         };
 #endif
+
+        // Clean up before the dashboard can launch any tool verification processes.
+        Directory.CreateDirectory(UtilsPath);
+        BgUtilPotProvider.KillOrphanedInstances();
 
         if (!LaunchArgs.HasGui)
         {
@@ -154,7 +154,6 @@ internal sealed class Program
 
         OpenVRService.Start(CurrentProcessPath);
 
-        Directory.CreateDirectory(UtilsPath);
         // Surface a fixed-port (9696) conflict up front — with the offending process — before WebServer
         // throws an opaque bind error. Reassignable ports (bgutil) handle themselves when they start.
         PortAudit.CheckWebServerPort();
@@ -172,13 +171,14 @@ internal sealed class Program
         }
         if (Environment.CommandLine.Contains("--Hash"))
         {
-            Console.WriteLine(GetOurYtdlpHash());
+            Console.WriteLine(GetYtdlpHash(false));
+            if (OperatingSystem.IsLinux())
+                Console.WriteLine(GetYtdlpHash(true));
             Environment.Exit(0);
         }
         Console.CancelKeyPress += (_, _) => Environment.Exit(0);
         AppDomain.CurrentDomain.ProcessExit += (_, _) => OnAppQuit();
 
-        YtdlpHash = GetOurYtdlpHash();
         await VvcConfigService.GetConfig();
         if (ConfigManager.Config.YtdlpAutoUpdate && !YtdlManager.UseGlobalYtdlpPath)
         {
@@ -188,6 +188,17 @@ internal sealed class Program
             );
             YtdlManager.StartYtdlUpdaterThread();
             _ = YtdlManager.TryDownloadFfmpeg();
+        }
+
+        // Readiness checks may have arrived already; only now may they start the provider.
+        BgUtilPotProvider.EnableStartup();
+        if (ConfigManager.Config.SabrRestreamEnabled)
+        {
+            // SABR hands AVPro Opus-in-MP4, which an out-of-date Windows decodes as silent audio and
+            // VRChat then shows as a video that never plays. Nothing in any log says so — hence the
+            // explicit check. Runs off the startup path; it costs a decode of a ~1s clip.
+            if (OperatingSystem.IsWindows())
+                _ = OpusMp4Check.EnsureAsync();
         }
 
         if (OperatingSystem.IsWindows())
@@ -303,9 +314,10 @@ internal sealed class Program
         }
     }
 
-    public static Stream GetYtDlpStub()
+    public static Stream GetYtDlpStub(bool useLinuxStub)
     {
-        return GetEmbeddedResource("VRCVideoCacher.yt-dlp-stub.exe");
+        string prefix = useLinuxStub ? "_linux" : ".exe";
+        return GetEmbeddedResource($"VRCVideoCacher.yt-dlp-stub{prefix}");
     }
 
     public static Stream GetEmbeddedResource(string resourceName)
@@ -318,9 +330,9 @@ internal sealed class Program
         return stream;
     }
 
-    private static string GetOurYtdlpHash()
+    public static string GetYtdlpHash(bool useLinuxStub)
     {
-        var stream = GetYtDlpStub();
+        var stream = GetYtDlpStub(useLinuxStub);
         using var ms = new MemoryStream();
         stream.CopyTo(ms);
         stream.Dispose();

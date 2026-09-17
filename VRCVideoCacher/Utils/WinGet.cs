@@ -14,8 +14,10 @@ public class WinGet
         { "VP9 Video Extensions", "9n4d0msmp0pt" },
         { "AV1 Video Extension", "9mvzqvxjbq9v" },
         { "Dolby Digital Plus decoder for PC OEMs", "9nvjqjbdkn97" },
-        // Supplies the Opus/Vorbis decoders. Cached YouTube audio is Opus in WebM, which AVPro cannot
-        // play without these.
+        // Supplies the Opus/Vorbis decoders, needed both for cached YouTube audio (Opus in WebM)
+        // and for SABR, which muxes Opus. This package alone is NOT enough for Opus in MP4: that
+        // also needs a Windows new enough for the MF MP4 source to map the Opus sample entry,
+        // which is what OpusMp4Check verifies.
         { "Web Media Extensions", "9n5tdp8vcmhs" }
     };
 

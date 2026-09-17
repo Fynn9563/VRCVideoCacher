@@ -3,7 +3,7 @@
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
         <TargetFramework>net10.0</TargetFramework>
-        <Version>2.9.0</Version>
+        <Version>3.0.0</Version>
         <SentryNoSourceLink>true</SentryNoSourceLink>
         <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
         <Nullable>enable</Nullable>
@@ -117,6 +117,10 @@
         <EmbeddedResource Include="yt-dlp-stub.exe">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </EmbeddedResource>
+        <None Remove="yt-dlp-stub_linux" />
+        <EmbeddedResource Include="yt-dlp-stub_linux">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </EmbeddedResource>
         <None Update="OpenVR\openvr_api.dll">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
           <TargetPath>openvr_api.dll</TargetPath>
@@ -126,7 +130,20 @@
           <TargetPath>libopenvr_api.so</TargetPath>
         </None>
         <EmbeddedResource Include="manifest.vrmanifest" />
+        <!-- ~1s of H.264 + stereo Opus in MP4: the fixture OpusMp4Check decodes through Media
+             Foundation to prove the machine can actually play what SabrSegmentMuxer produces. -->
         <None Remove="opus_probe.mp4" />
+        <EmbeddedResource Include="opus_probe.mp4" />
+        <None Remove="bgutil-pot-server-linux-x64.tar.gz" />
+        <EmbeddedResource Include="bgutil-pot-server-linux-x64.tar.gz"
+                          Condition="'$(RuntimeIdentifier)' == 'linux-x64' Or ('$(RuntimeIdentifier)' == '' And '$(NETCoreSdkPortableRuntimeIdentifier)' == 'linux-x64')">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </EmbeddedResource>
+        <None Remove="bgutil-pot-server-win-x64.zip" />
+        <EmbeddedResource Include="bgutil-pot-server-win-x64.zip"
+                          Condition="'$(RuntimeIdentifier)' == 'win-x64' Or ('$(RuntimeIdentifier)' == '' And '$(NETCoreSdkPortableRuntimeIdentifier)' == 'win-x64')">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </EmbeddedResource>
     </ItemGroup>
 
     <ItemGroup>

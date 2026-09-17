@@ -1,5 +1,6 @@
 ﻿using Serilog;
 using VRCVideoCacher.Models;
+using VRCVideoCacher.Services.Vrm;
 
 namespace VRCVideoCacher.YTDL.SiteHandlers.Sites;
 
@@ -13,7 +14,7 @@ public class CustomDomainHandler : ISiteHandler
         ConfigManager.Config.CacheCustomDomainsEnabled &&
         CacheManager.IsCustomDomainUrl(uri, out _);
 
-    public Task<VideoInfo?> GetVideoInfo(string url, Uri uri, bool avPro)
+    public async Task<VideoInfo?> GetVideoInfo(string url, Uri uri, bool avPro)
     {
         CacheManager.IsCustomDomainUrl(uri, out var domain);
 
@@ -24,11 +25,17 @@ public class CustomDomainHandler : ISiteHandler
         if (string.IsNullOrWhiteSpace(videoId))
             videoId = VideoId.HashUrl(url);
 
+        // vr-m.net hands out /p/<lockId>.m3u8, so the filename above is a bare id that says nothing
+        // about the video. The real title is recoverable from the manifest, so prefer it; the resolver
+        // remembers the mapping, and returns null (leaving the id in place) if it cannot be read.
+        if (VrmTitleService.IsVrmHost(uri))
+            videoId = await VrmTitleService.TryGetCacheNameAsync(uri) ?? videoId;
+
         var isStreaming = url.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase) ||
                           url.EndsWith(".mpd", StringComparison.OrdinalIgnoreCase);
 
         Log.Information("Custom domain {Domain} matched for {URL}", domain, url);
-        return Task.FromResult<VideoInfo?>(new VideoInfo
+        return new VideoInfo
         {
             VideoUrl = url,
             VideoId = videoId,
@@ -36,6 +43,6 @@ public class CustomDomainHandler : ISiteHandler
             DownloadFormat = DownloadFormat.MP4,
             Domain = domain,
             IsStreaming = isStreaming
-        });
+        };
     }
 }
