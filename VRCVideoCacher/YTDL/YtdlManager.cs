@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using Jeek.Avalonia.Localization;
 using Newtonsoft.Json;
 using Serilog;
 using SharpCompress.Readers;
@@ -25,12 +26,49 @@ public class YtdlManager
         Path.Join(Program.UtilsPath, OperatingSystem.IsWindows() ? "deno.exe" : "deno");
     public static readonly string FfmpegPath =
         Path.Join(Program.UtilsPath, OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg");
-    private const string YtdlpApiUrl = "https://api.github.com/repos/yt-dlp/yt-dlp-nightly-builds/releases/latest";
+    // The SABR-capable yt-dlp build, used as the ONLY yt-dlp. It is a superset of mainline: everything
+    // that worked before still works, and SABR-only videos now extract and download too — which mainline
+    // cannot do at all.
+    //
+    // Note this is a fixed tag, not /releases/latest: the build is a PRERELEASE, and /latest skips those.
+    // Because the tag never changes ("sabr"), the up-to-date check must compare the release NAME
+    // ("sabr 2026.07.11.051141"), not the tag, or we would download once and never update again.
+    private const string YtdlpApiUrl = "https://api.github.com/repos/bashonly/yt-dlp/releases/tags/sabr";
     private const string FfmpegNightlyApiUrl = "https://api.github.com/repos/yt-dlp/FFmpeg-Builds/releases/latest";
     private const string FfmpegApiUrl = "https://api.github.com/repos/GyanD/codexffmpeg/releases/latest";
     private const string DenoApiUrl = "https://api.github.com/repos/denoland/deno/releases/latest";
     private const string DenoFallBackVersionURL = "https://dl.deno.land/release-latest.txt";
     private const string DenoFallBackDownloadURL = "https://dl.deno.land/release/";
+
+    // Large tool downloads: retry the whole attempt a few times with a short backoff, and abort a single
+    // attempt if the connection goes silent. ResponseHeadersRead means HttpClient.Timeout no longer bounds
+    // the body, so the stall timeout is what stops a dead socket from hanging the download forever.
+    private const int DownloadRetries = 3;
+    private static readonly TimeSpan DownloadStallTimeout = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// Runs a download attempt up to <see cref="DownloadRetries"/> times with a short linear backoff,
+    /// rethrowing the last failure so the caller can fall back to another source (or log and move on). A
+    /// download is safe to retry — each attempt writes to a fresh file.
+    /// </summary>
+    private static async Task RetryAsync(Func<Task> attempt, string what)
+    {
+        for (var i = 1; ; i++)
+        {
+            try
+            {
+                await attempt();
+                return;
+            }
+            catch (Exception ex) when (i < DownloadRetries)
+            {
+                var delay = TimeSpan.FromSeconds(2 * i);
+                Log.Warning(ex, "{What} failed (attempt {Attempt}/{Attempts}); retrying in {Delay:0}s",
+                    what, i, DownloadRetries, delay.TotalSeconds);
+                await Task.Delay(delay);
+            }
+        }
+    }
 
 
     static YtdlManager()
@@ -142,7 +180,8 @@ public class YtdlManager
         else if (!await CheckIfProcessStarts(YtdlPath))
             currentYtdlVersion = "Not Working";
 
-        var latestVersion = json.tag_name;
+        // See YtdlpApiUrl: the tag is a constant ("sabr"), so the release name carries the real version.
+        var latestVersion = string.IsNullOrEmpty(json.name) ? json.tag_name : json.name;
         Log.Information("YT-DLP Current: {Installed} Latest: {Latest}", currentYtdlVersion, latestVersion);
         if (string.IsNullOrEmpty(latestVersion))
         {
@@ -234,43 +273,55 @@ public class YtdlManager
         Log.Information("Downloading Deno...");
         var url = assets.First().browser_download_url;
 
-        using var response = await HttpClient.GetAsync(url);
-        if (!response.IsSuccessStatusCode)
-        {
-            Log.Information("Failed to download deno from github attempting fallback download.");
-            await TryDownloadDenoFallback(assetName);
-            return;
-        }
-        await using var responseStream = await response.Content.ReadAsStreamAsync();
-        var reader = await ReaderFactory.OpenAsyncReader(responseStream);
-        try
-        {
-            while (await reader.MoveToNextEntryAsync())
-            {
-                if (reader.Entry.Key == null || reader.Entry.IsDirectory)
-                    continue;
+        using var activity = StatusService.Begin(StatusCategory.Provisioning,
+            string.Format(Localizer.Get("StatusDownloading"), "Deno"), key: ToolVerifier.DenoKey);
 
-                Log.Debug("Extracting file {Name} ({Size} bytes)", reader.Entry.Key, reader.Entry.Size);
-                var path = Path.Join(Program.UtilsPath, reader.Entry.Key);
-                await using var outputStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
-                await using var entryStream = await reader.OpenEntryStreamAsync();
-                await entryStream.CopyToAsync(outputStream);
-                FileTools.MarkFileExecutable(path);
-                Versions.CurrentVersion.Deno = json.tag_name;
-                Versions.Save();
-                Log.Information("Deno downloaded and extracted.");
-                return;
+        async Task DownloadFromGithubAsync()
+        {
+            using var response = await HttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+            await using var responseStream = new ProgressStream(
+                await response.Content.ReadAsStreamAsync(), response.Content.Headers.ContentLength,
+                activity.Report, DownloadStallTimeout);
+            var reader = await ReaderFactory.OpenAsyncReader(responseStream);
+            try
+            {
+                while (await reader.MoveToNextEntryAsync())
+                {
+                    if (reader.Entry.Key == null || reader.Entry.IsDirectory)
+                        continue;
+
+                    Log.Debug("Extracting file {Name} ({Size} bytes)", reader.Entry.Key, reader.Entry.Size);
+                    var path = Path.Join(Program.UtilsPath, reader.Entry.Key);
+                    await using var outputStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+                    await using var entryStream = await reader.OpenEntryStreamAsync();
+                    await entryStream.CopyToAsync(outputStream);
+                    FileTools.MarkFileExecutable(path);
+                    Versions.CurrentVersion.Deno = json.tag_name;
+                    Versions.Save();
+                    Log.Information("Deno downloaded and extracted.");
+                    return;
+                }
+                throw new Exception("Deno archive contained no files.");
+            }
+            finally
+            {
+                await reader.DisposeAsync();
             }
         }
-        finally
-        {
-            await reader.DisposeAsync();
-        }
 
-        Log.Error("Failed to extract Deno files.");
+        try
+        {
+            await RetryAsync(DownloadFromGithubAsync, "Deno download");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Deno download from GitHub failed after retries; trying the fallback source.");
+            await TryDownloadDenoFallback(assetName, activity);
+        }
     }
 
-    private static async Task TryDownloadDenoFallback(string assetName)
+    private static async Task TryDownloadDenoFallback(string assetName, StatusActivity activity)
     {
         Log.Warning("Falling back to Deno version check via text file.");
         using var response = await HttpClient.GetAsync(DenoFallBackVersionURL);
@@ -281,40 +332,49 @@ public class YtdlManager
         }
         var latestVersion = (await response.Content.ReadAsStringAsync()).Trim();
         var url = $"{DenoFallBackDownloadURL}{latestVersion}/{assetName}";
-        using var downloadResponse = await HttpClient.GetAsync(url);
-        if (!downloadResponse.IsSuccessStatusCode)
-        {
-            Log.Error("Failed to download Deno from fallback URL: {ResponseStatusCode}", downloadResponse.StatusCode);
-            return;
-        }
 
-        await using var responseStream = await downloadResponse.Content.ReadAsStreamAsync();
-        var reader = await ReaderFactory.OpenAsyncReader(responseStream);
-        try
+        async Task DownloadAsync()
         {
-            while (await reader.MoveToNextEntryAsync())
+            using var downloadResponse = await HttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            downloadResponse.EnsureSuccessStatusCode();
+            await using var responseStream = new ProgressStream(
+                await downloadResponse.Content.ReadAsStreamAsync(), downloadResponse.Content.Headers.ContentLength,
+                activity.Report, DownloadStallTimeout);
+            var reader = await ReaderFactory.OpenAsyncReader(responseStream);
+            try
             {
-                if (reader.Entry.Key == null || reader.Entry.IsDirectory)
-                    continue;
+                while (await reader.MoveToNextEntryAsync())
+                {
+                    if (reader.Entry.Key == null || reader.Entry.IsDirectory)
+                        continue;
 
-                Log.Debug("Extracting file {Name} ({Size} bytes)", reader.Entry.Key, reader.Entry.Size);
-                var path = Path.Join(Program.UtilsPath, reader.Entry.Key);
-                await using var outputStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
-                await using var entryStream = await reader.OpenEntryStreamAsync();
-                await entryStream.CopyToAsync(outputStream);
-                FileTools.MarkFileExecutable(path);
-                Versions.CurrentVersion.Deno = latestVersion;
-                Versions.Save();
-                Log.Information("Deno downloaded and extracted.");
-                return;
+                    Log.Debug("Extracting file {Name} ({Size} bytes)", reader.Entry.Key, reader.Entry.Size);
+                    var path = Path.Join(Program.UtilsPath, reader.Entry.Key);
+                    await using var outputStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+                    await using var entryStream = await reader.OpenEntryStreamAsync();
+                    await entryStream.CopyToAsync(outputStream);
+                    FileTools.MarkFileExecutable(path);
+                    Versions.CurrentVersion.Deno = latestVersion;
+                    Versions.Save();
+                    Log.Information("Deno downloaded and extracted.");
+                    return;
+                }
+                throw new Exception("Deno fallback archive contained no files.");
+            }
+            finally
+            {
+                await reader.DisposeAsync();
             }
         }
-        finally
-        {
-            await reader.DisposeAsync();
-        }
 
-        Log.Error("Failed to extract Deno files from fallback download.");
+        try
+        {
+            await RetryAsync(DownloadAsync, "Deno fallback download");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to download Deno from the fallback source after retries.");
+        }
     }
 
     public static async Task TryDownloadFfmpeg()
@@ -391,38 +451,54 @@ public class YtdlManager
         }
         Log.Information("Downloading FFmpeg...");
 
-        using var response = await HttpClient.GetAsync(url);
-        await using var responseStream = await response.Content.ReadAsStreamAsync();
-        var reader = await ReaderFactory.OpenAsyncReader(responseStream);
-        var success = false;
+        using var activity = StatusService.Begin(StatusCategory.Provisioning,
+            string.Format(Localizer.Get("StatusDownloading"), "FFmpeg"), key: ToolVerifier.FfmpegKey);
+
+        async Task DownloadAsync()
+        {
+            using var response = await HttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+            await using var responseStream = new ProgressStream(
+                await response.Content.ReadAsStreamAsync(), response.Content.Headers.ContentLength,
+                activity.Report, DownloadStallTimeout);
+            var reader = await ReaderFactory.OpenAsyncReader(responseStream);
+            var success = false;
+            try
+            {
+                while (await reader.MoveToNextEntryAsync())
+                {
+                    if (reader.Entry.Key == null || reader.Entry.IsDirectory)
+                        continue;
+
+                    if (!reader.Entry.Key.Contains("/bin/"))
+                        continue;
+
+                    var fileName = Path.GetFileName(reader.Entry.Key);
+                    Log.Debug("Extracting file {Name} ({Size} bytes)", fileName, reader.Entry.Size);
+                    var path = Path.Join(Program.UtilsPath, fileName);
+                    await using var outputStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+                    await using var entryStream = await reader.OpenEntryStreamAsync();
+                    await entryStream.CopyToAsync(outputStream);
+                    FileTools.MarkFileExecutable(path);
+                    success = true;
+                }
+            }
+            finally
+            {
+                await reader.DisposeAsync();
+            }
+
+            if (!success)
+                throw new Exception("Failed to extract ffmpeg files.");
+        }
+
         try
         {
-            while (await reader.MoveToNextEntryAsync())
-            {
-                if (reader.Entry.Key == null || reader.Entry.IsDirectory)
-                    continue;
-
-                if (!reader.Entry.Key.Contains("/bin/"))
-                    continue;
-
-                var fileName = Path.GetFileName(reader.Entry.Key);
-                Log.Debug("Extracting file {Name} ({Size} bytes)", fileName, reader.Entry.Size);
-                var path = Path.Join(Program.UtilsPath, fileName);
-                await using var outputStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
-                await using var entryStream = await reader.OpenEntryStreamAsync();
-                await entryStream.CopyToAsync(outputStream);
-                FileTools.MarkFileExecutable(path);
-                success = true;
-            }
+            await RetryAsync(DownloadAsync, "FFmpeg download");
         }
-        finally
+        catch (Exception ex)
         {
-            await reader.DisposeAsync();
-        }
-
-        if (!success)
-        {
-            Log.Error("Failed to extract ffmpeg files.");
+            Log.Error(ex, "FFmpeg download failed after retries.");
             return;
         }
 
@@ -463,7 +539,6 @@ public class YtdlManager
             if (assetVersion.name != assetName)
                 continue;
 
-            await using var stream = await HttpClient.GetStreamAsync(assetVersion.browser_download_url);
             if (string.IsNullOrEmpty(Program.UtilsPath))
                 throw new Exception("Failed to get YT-DLP path");
 
@@ -472,8 +547,31 @@ public class YtdlManager
             if (!string.IsNullOrEmpty(ytdlDir))
                 Directory.CreateDirectory(ytdlDir);
 
-            await using var fileStream = new FileStream(YtdlPath, FileMode.Create, FileAccess.Write, FileShare.None);
-            await stream.CopyToAsync(fileStream);
+            using var activity = StatusService.Begin(StatusCategory.Provisioning,
+                string.Format(Localizer.Get("StatusDownloading"), "yt-dlp"), key: ToolVerifier.YtDlpKey);
+
+            async Task DownloadAsync()
+            {
+                using var response = await HttpClient.GetAsync(assetVersion.browser_download_url,
+                    HttpCompletionOption.ResponseHeadersRead);
+                response.EnsureSuccessStatusCode();
+                await using var stream = new ProgressStream(
+                    await response.Content.ReadAsStreamAsync(), response.Content.Headers.ContentLength,
+                    activity.Report, DownloadStallTimeout);
+                await using var fileStream = new FileStream(YtdlPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                await stream.CopyToAsync(fileStream);
+            }
+
+            try
+            {
+                await RetryAsync(DownloadAsync, "yt-dlp download");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "yt-dlp download failed after retries.");
+                return;
+            }
+
             Log.Information("Downloaded YT-DLP.");
             FileTools.MarkFileExecutable(YtdlPath);
             // Must match what TryDownloadYtdlp compares against, or every check re-downloads.

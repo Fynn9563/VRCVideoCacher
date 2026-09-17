@@ -51,8 +51,24 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private string _ytdlDubLanguage = string.Empty;
 
+    // YouTube SABR Options
+    [ObservableProperty]
+    private bool _preferSabrStreaming;
 
+    [ObservableProperty]
+    private int _sabrMaxResolution;
 
+    [ObservableProperty]
+    private bool _sabrFilterDrcAudio;
+
+    [ObservableProperty]
+    private bool _sabrFilterSuperResolution;
+
+    [ObservableProperty]
+    private bool _sabrFilterVoiceBoostedAudio;
+
+    [ObservableProperty]
+    private string _sabrAdditionalArgs = string.Empty;
 
     // Cache Settings
     [ObservableProperty]
@@ -158,6 +174,11 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _errorPopups;
 
+    // Pure view state: reveals the advanced setting sections. Not a config value, so it is neither
+    // loaded/saved nor tracked as an unsaved change.
+    [ObservableProperty]
+    private bool _showAdvanced;
+
     // Language selection
     public IReadOnlyList<LanguageOption> AvailableLanguageOptions =>
         Localizer.Languages
@@ -200,6 +221,12 @@ public partial class SettingsViewModel : ViewModelBase
         YtdlArgsOverride = config.YtdlpArgsOverride;
         YtdlpGlobalPath = config.YtdlpGlobalPath;
         YtdlDubLanguage = config.YtdlpDubLanguage;
+        PreferSabrStreaming = config.SabrPreferStreaming;
+        SabrMaxResolution = config.SabrMaxResolution;
+        SabrFilterDrcAudio = config.SabrFilterDrcAudio;
+        SabrFilterSuperResolution = config.SabrFilterSuperResolution;
+        SabrFilterVoiceBoostedAudio = config.SabrFilterVoiceBoostedAudio;
+        SabrAdditionalArgs = config.SabrAdditionalArgs;
         CachedAssetPath = config.CachedAssetPath;
         CacheYouTube = config.CacheYouTube;
         CacheYouTubeMaxResolution = config.CacheYouTubeMaxResolution;
@@ -299,6 +326,12 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnYtdlArgsOverrideChanged(string value) => SetHasChanges();
     partial void OnYtdlpGlobalPathChanged(bool value) => SetHasChanges();
     partial void OnYtdlDubLanguageChanged(string value) => SetHasChanges();
+    partial void OnPreferSabrStreamingChanged(bool value) => SetHasChanges();
+    partial void OnSabrMaxResolutionChanged(int value) => SetHasChanges();
+    partial void OnSabrFilterDrcAudioChanged(bool value) => SetHasChanges();
+    partial void OnSabrFilterSuperResolutionChanged(bool value) => SetHasChanges();
+    partial void OnSabrFilterVoiceBoostedAudioChanged(bool value) => SetHasChanges();
+    partial void OnSabrAdditionalArgsChanged(string value) => SetHasChanges();
     partial void OnCachedAssetPathChanged(string value) => SetHasChanges();
     partial void OnCacheYouTubeChanged(bool value) => SetHasChanges();
     partial void OnCacheYouTubeMaxResolutionChanged(int value) => SetHasChanges();
@@ -342,6 +375,12 @@ public partial class SettingsViewModel : ViewModelBase
         config.YtdlpArgsOverride = YtdlArgsOverride;
         config.YtdlpGlobalPath = YtdlpGlobalPath;
         config.YtdlpDubLanguage = YtdlDubLanguage;
+        config.SabrPreferStreaming = PreferSabrStreaming;
+        config.SabrMaxResolution = SabrMaxResolution;
+        config.SabrFilterDrcAudio = SabrFilterDrcAudio;
+        config.SabrFilterSuperResolution = SabrFilterSuperResolution;
+        config.SabrFilterVoiceBoostedAudio = SabrFilterVoiceBoostedAudio;
+        config.SabrAdditionalArgs = SabrAdditionalArgs;
         config.CachedAssetPath = CachedAssetPath;
         config.CacheYouTube = CacheYouTube;
         config.CacheYouTubeMaxResolution = CacheYouTubeMaxResolution;

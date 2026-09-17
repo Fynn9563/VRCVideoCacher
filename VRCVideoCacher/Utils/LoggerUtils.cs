@@ -1,8 +1,12 @@
 ﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Sentry.Serilog;
 using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using Serilog.Templates;
 using Serilog.Templates.Themes;
+using Tmds.DBus.Protocol;
 using VRCVideoCacher.Services;
 
 namespace VRCVideoCacher.Utils;
@@ -13,6 +17,14 @@ public static class LoggerUtils
     private const string SentryDsn = "";
     private static readonly string LogsPath = Path.Join(Program.DataPath, "Logs");
     private static DateTime? LoggerStartDateTime;
+    private static int _desktopServiceNoticeLogged;
+
+    /// <summary>
+    /// Controls the live minimum log level for every sink (console, file, UI). Defaults to Information so
+    /// the Debug/trace output never spams the log or the log file; the LogViewer's Debug toggle flips this
+    /// to <see cref="LogEventLevel.Debug"/> at runtime to bring it back.
+    /// </summary>
+    public static readonly LoggingLevelSwitch LevelSwitch = new(LogEventLevel.Information);
 
     private static bool ErrorReportingEnabled => LaunchArgs.ErrorReporting && !string.IsNullOrEmpty(SentryDsn);
 
@@ -25,7 +37,8 @@ public static class LoggerUtils
 
         LoggerStartDateTime = DateTime.Now;
         var loggerConfiguration = new LoggerConfiguration()
-            .MinimumLevel.Debug()
+            // Information and above by default; the LogViewer's Debug toggle lowers LevelSwitch at runtime.
+            .MinimumLevel.ControlledBy(LevelSwitch)
             .WriteTo.Console(new ExpressionTemplate(
                 "[{@t:HH:mm:ss} {@l:u3} {Coalesce(Substring(SourceContext, LastIndexOf(SourceContext, '.') + 1),'<none>')}] {@m}" + Environment.NewLine + "{@x}",
                 theme: TemplateTheme.Literate))
@@ -47,8 +60,41 @@ public static class LoggerUtils
         Log.Logger = loggerConfiguration.CreateLogger();
     }
 
+    internal static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        e.SetObserved();
+        ThreadPool.QueueUserWorkItem(static (AggregateException exception) =>
+        {
+            try
+            {
+                LogUnhandledException(exception, "Unobserved task exception");
+            }
+            catch
+            {
+                // Never turn a failure in exception reporting into another unhandled exception.
+            }
+        }, e.Exception, preferLocal: false);
+    }
+
     public static void LogUnhandledException(Exception ex, string message)
     {
+        if (OperatingSystem.IsLinux() && LaunchArgs.HasGui && IsUnavailableDesktopServiceException(ex))
+        {
+            if (Interlocked.Exchange(ref _desktopServiceNoticeLogged, 1) == 0)
+            {
+                try
+                {
+                    Program.Logger.Information(
+                        "A Linux desktop D-Bus service is unavailable; some desktop integration may not work");
+                }
+                catch
+                {
+                }
+            }
+
+            return;
+        }
+
         try
         {
             Console.WriteLine($"{message}: " + ex);
@@ -98,6 +144,30 @@ public static class LoggerUtils
         catch
         {
         }
+    }
+
+    // Keep D-Bus type resolution and aggregate traversal out of non-Linux/headless handling.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    internal static bool IsUnavailableDesktopServiceException(Exception exception)
+    {
+        if (exception is AggregateException aggregate)
+        {
+            var exceptions = aggregate.Flatten().InnerExceptions;
+            if (exceptions.Count == 0)
+                return false;
+
+            foreach (var inner in exceptions)
+            {
+                if (inner is not DBusErrorReplyException
+                    { ErrorName: "org.freedesktop.DBus.Error.ServiceUnknown" })
+                    return false;
+            }
+
+            return true;
+        }
+
+        return exception is DBusErrorReplyException
+            { ErrorName: "org.freedesktop.DBus.Error.ServiceUnknown" };
     }
 
     private static void ConfigureSentryOptions(SentrySerilogOptions o)

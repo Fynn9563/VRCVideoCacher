@@ -1,5 +1,40 @@
 # Changelog
 
+## [3.0.0] - 2026-09-17
+
+Synced with upstream and brought back SABR restreaming, which now works on
+Windows 10.
+
+### Added
+- SABR restreaming for YouTube. Videos that YouTube will not hand over as a plain URL are fetched over SABR and served to AVPro as a seekable HLS stream, including live broadcasts. A video streamed this way is written to the cache from the same fragments, so it is not downloaded twice
+- PO token provider, bundled with the app. No separate download, no Node or Docker. Sending a PO token is what stops YouTube bot-checking token-less requests, and it now applies to the normal URL path as well as SABR
+- Twitter and X video support
+- NicoNico short link support
+- French translation
+- Missing translations fall back to English instead of showing the key name
+- Show advanced settings toggle, which hides the settings most people never change
+- SABR settings: prefer streaming, max streaming resolution, and filters for YouTube's AI-generated audio and upscaled video tracks
+- Max entries setting for History
+- Status bar reports what the app is doing: downloading, streaming, updating, or setting up the PO token provider
+- Dashboard shows the status of every tool it manages
+
+### Changed
+- Clearing all history now asks for confirmation first
+- MOTD banner restyled
+- Unity video player codec checks tightened, so a video it cannot play falls back instead of failing outright
+- Version numbering moves to 3.x
+
+### Fixed
+- SABR audio is muxed as AAC on machines that cannot decode Opus in MP4, which is why SABR video failed to load on Windows 10. This is the fix that made the feature usable here
+- SABR-cached videos were written to the cache root instead of the YouTube folder, so they were never served from cache and had to be re-streamed every play
+- Missing audio on Twitter videos
+- Resonite support on Linux, and Steam library detection on Debian
+- OpenVR no longer reports an error on Linux when SteamVR is absent
+- Log viewer auto-scroll
+
+### Removed
+- The separate SABR test build configuration. SABR is part of the normal build now
+
 ## [2.9.0] - 2026-08-26
 
 Rebased onto five months of upstream work, with this fork's own features
@@ -267,7 +302,7 @@ re-applied on top.
 - VRCX auto-start toggle in Settings UI
 
 ### Fixed
-- Custom domain folder naming (use `vr-m.net` instead of `vr-m_net`)
+- Custom domain folder naming keeps the domain's dots instead of replacing them with underscores
 
 ## [2026.1.18] - 2026-01-18
 

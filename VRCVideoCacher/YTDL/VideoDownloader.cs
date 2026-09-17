@@ -4,6 +4,7 @@ using System.Net;
 using System.Text.Json;
 using System.Globalization;
 using System.Text;
+using Jeek.Avalonia.Localization;
 using Serilog;
 using VRCVideoCacher.Models;
 using VRCVideoCacher.Services;
@@ -75,6 +76,12 @@ public class VideoDownloader
 
         OnDownloadStarted?.Invoke(videoInfo);
         OnQueueChanged?.Invoke();
+
+        // Indeterminate: a download runs through a yt-dlp subprocess (YouTube) or a redirected HTTP
+        // fetch, neither of which reports a clean byte total here. The per-download bar in the queue
+        // UI is fed separately by ParseYtdlpProgress.
+        using var activity = StatusService.Begin(StatusCategory.Downloading,
+            string.Format(Localizer.Get("StatusDownloading"), videoInfo.VideoId));
 
         var success = false;
         try
