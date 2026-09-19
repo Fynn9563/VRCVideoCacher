@@ -1,4 +1,10 @@
-# Changelog
+﻿# Changelog
+
+## [3.0.1] - 2026-09-19
+
+### Fixed
+- An error popup and a file browser window could appear a few minutes after a video played, complaining about a segment the player had long since moved past. SABR fetches segments ahead of the playhead speculatively, and a speculative fetch that timed out was reported as though it were a real crash. A prebuild that fails is harmless, since the real request rebuilds the segment, so it is no longer reported
+- A background error no longer opens the log folder. That still happens when the app is actually going down and you need the log to report it, but not for something it recovered from on its own
 
 ## [3.0.0] - 2026-09-17
 
