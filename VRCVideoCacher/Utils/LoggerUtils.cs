@@ -67,7 +67,9 @@ public static class LoggerUtils
         {
             try
             {
-                LogUnhandledException(exception, "Unobserved task exception");
+                // Not a crash: the app is still running and the user did nothing. Report it, but do
+                // not seize the desktop with a file browser over a faulted background task.
+                LogUnhandledException(exception, "Unobserved task exception", openLogFolder: false);
             }
             catch
             {
@@ -76,7 +78,11 @@ public static class LoggerUtils
         }, e.Exception, preferLocal: false);
     }
 
-    public static void LogUnhandledException(Exception ex, string message)
+    /// <param name="openLogFolder">
+    /// Reveals the log file in the file manager. Appropriate when the process is going down and the
+    /// user needs the log to report it; not for a background fault the app recovered from.
+    /// </param>
+    public static void LogUnhandledException(Exception ex, string message, bool openLogFolder = true)
     {
         if (OperatingSystem.IsLinux() && LaunchArgs.HasGui && IsUnavailableDesktopServiceException(ex))
         {
@@ -123,6 +129,9 @@ public static class LoggerUtils
         try
         {
             Program.Logger.Error(ex, "{Message}", message);
+
+            if (!openLogFolder)
+                return;
 
             var logFile = Path.Combine(LogsPath, $"VRCVideoCacher{(LoggerStartDateTime ?? DateTime.Now):yyyyMMdd}.log");
             if (OperatingSystem.IsWindows())

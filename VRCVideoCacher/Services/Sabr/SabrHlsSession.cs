@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using Serilog;
 
@@ -271,7 +271,21 @@ internal sealed class SabrHlsSession : ISabrSession
             // A prebuild must NEVER move the fetch: it is speculative, so if the fragments aren't there
             // yet, skip it rather than yanking the SABR stream away from the playhead.
             var segment = i;
-            _ = Task.Run(() => BuildSegmentAsync(segment, allowSeek: false));
+            _ = Task.Run(async () =>
+            {
+                // Nobody awaits a prebuild, so an unhandled fault here is rethrown by the finalizer as
+                // an UnobservedTaskException, which the global handler reports as a real error: a popup
+                // and an Explorer window, minutes after a speculative fetch nobody was waiting for.
+                // A prebuild that fails costs nothing, because the real request rebuilds the segment.
+                try
+                {
+                    await BuildSegmentAsync(segment, allowSeek: false);
+                }
+                catch (Exception ex)
+                {
+                    _log.Debug(ex, "SABR {VideoId}: prebuild of segment {Segment} failed", _videoId, segment);
+                }
+            });
         }
     }
 
